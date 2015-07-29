@@ -2,8 +2,8 @@ import os
 from sklearn.externals import joblib
 import yaml
 import pandas as pd
-from drain.model import model
-from drain.model import util
+from drain import model
+from drain import util
 import numpy as np
 from copy import deepcopy
 import matplotlib.colors
@@ -56,13 +56,15 @@ def calculate_metrics(df):
 
     df['baseline']=df.y.apply(lambda y: y.true.sum()*1.0/len(y.true))
 
-    df['coef'] = [get_coef(row) for i,row in df.iterrows()]
+    df['feature_importances'] = [get_feature_importances(row) for i,row in df.iterrows()]
     
     return df
 
-def get_coef(row):
+def get_feature_importances(row):
     if hasattr(row['estimator'], 'coef_'):
         return pd.DataFrame({'name':row['columns'], 'c':row['estimator'].coef_[0]}).sort('c')
+    elif hasattr(row['estimator'], 'feature_importances_'):
+        return pd.DataFrame({'name':row['columns'], 'c':row['estimator'].feature_importances_}).sort('c')
     else:
         return pd.DataFrame()
 
@@ -74,10 +76,6 @@ def precision(y_true, y_score, p):
     count = int(p*len(y_true))
     ydf = pd.DataFrame({'y':y_true, 'risk':y_score}).sort('risk', ascending=False)
     return ydf.head(count).y.sum()/float(count)
-
-def insert_coef(df):
-    df['coef'] = [pd.DataFrame({'name':row['columns'], 'c':row['estimator'].coef_[0]}).sort('c') 
-                        for i,row in df.iterrows()]
 
 def mask(df, key, value):
     return df[df[key] == value]
