@@ -5,9 +5,6 @@ import math
 from statsmodels.discrete.discrete_model import Logit
 
 from sklearn import tree
-import wand.image
-from sklearn.externals.six import StringIO  
-import pydot
 
 def y_score(estimator, X):
     if hasattr(estimator, 'decision_function'):
@@ -59,6 +56,8 @@ def sk_tree(X,y, params={'max_depth':3}):
     return clf.fit(X, y)
 
 def show_tree(X,y,params):
+    import wand.image
+    
     filename ="tree.pdf"
     clf = sk_tree(X,y, params)
     export_tree(clf, filename, [c.encode('ascii') for c in X.columns])
@@ -66,6 +65,9 @@ def show_tree(X,y,params):
     return img
     
 def export_tree(clf, filename, feature_names=None):
+    from sklearn.externals.six import StringIO  
+    import pydot
+
     dot_data = StringIO() 
     tree.export_graphviz(clf, out_file=dot_data, feature_names=feature_names) 
     graph = pydot.graph_from_dot_data(dot_data.getvalue()) 
