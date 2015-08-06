@@ -52,7 +52,7 @@ def calculate_metrics(df):
     df['auc'] = df['y'].apply(lambda y: model.auc(y['true'], y['score']))
 
     for p in [.01, .02, .05, .1]:
-        df['precision' + str(p)] = df['y'].apply(lambda y: precision(y['true'], y['score'], p))
+        df['precision' + str(p)] = df.apply(lambda row: precision(row['y']['true'][row['test']], row['y']['score'][row['test']], p), axis=1)
 
     df['baseline']=df.y.apply(lambda y: y.true.sum()*1.0/len(y.true))
 
