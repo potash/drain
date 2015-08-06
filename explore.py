@@ -49,12 +49,12 @@ def read_models(dirname, estimator=True):
     return df
 
 def calculate_metrics(df):
-    df['auc'] = df['y'].apply(lambda y: model.auc(y['true'], y['score']))
+    df['auc'] = df.apply(lambda row: model.auc(row['y']['true'][row['test']], row['y']['score'][row['test']]), axis=1)
 
     for p in [.01, .02, .05, .1]:
         df['precision' + str(p)] = df.apply(lambda row: precision(row['y']['true'][row['test']], row['y']['score'][row['test']], p), axis=1)
 
-    df['baseline']=df.y.apply(lambda y: y.true.sum()*1.0/len(y.true))
+    df['baseline']=df.apply(lambda row: row['y']['true'][row['test']].sum()*1.0/len(row['y']['true'][row['test']]), axis=1)
 
     df['feature_importances'] = [get_feature_importances(row) for i,row in df.iterrows()]
     
