@@ -165,7 +165,7 @@ class PgSQLDatabase(pandas.io.sql.SQLDatabase):
         if schema is not None:
             table_name = schema + '.' + table_name
 
-        if pk is not None and ( (not existed) or replaced)
+        if pk is not None and ( (not existed) or replaced):
             if isinstance(pk, str):
                 pks = pk
             else:
