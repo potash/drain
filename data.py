@@ -32,7 +32,7 @@ def get_aggregate(table_name, level, engine, end_dates=None, deltas=None):
 
     print sql
 
-    t = pd.read_sql(sql + ' limit 1000', engine)
+    t = pd.read_sql(sql, engine)
     return t
 
 def prefix_column(level, column, prefix=None, delta=None):
