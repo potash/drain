@@ -53,6 +53,9 @@ def get_aggregation(table_name, level_deltas, engine, end_dates=None, left=None,
             t.set_index(['aggregation_end', 'aggregation_id', 'aggregation_delta'], inplace=True)
             t = t.unstack()
             t.columns = [prefix_column(level, column, prefix, delta) for column, delta in product(*t.columns.levels)]
+        else:
+            t.set_index('aggregation_id', inplace=True)
+            t.columns = [prefix_column(level, column, prefix) for column in t.columns]
 
         t.reset_index(inplace=True) # should add exclude arg to prefix_columns
         t.rename(columns={'aggregation_id':level}, inplace=True)
