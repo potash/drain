@@ -3,6 +3,7 @@ from sklearn import preprocessing
 import re
 import numpy as np
 import collections
+from itertools import product
 
 import random
 import datetime
@@ -21,47 +22,47 @@ class ModelData(object):
     def transform(self, **args):
         raise NotImplementedError
 
-# it is left-joined to ensure returned df has the specified rows
-def get_aggregation(table_name, level_deltas, engine, end_dates=None, left=None, prefix=None):
-    for level in level_deltas:
-        deltas = level_deltas[level] if type(level_deltas) is dict else [None]
-        for delta in deltas:
-            t = get_aggregate(table_name, level, engine, end_dates, delta)
-            t.rename(columns={'aggregation_id':level}, inplace=True)
-            t.drop(['aggregation_level'],inplace=True,axis=1)
-            if delta is not None:
-                t.drop(['aggregation_delta'],inplace=True,axis=1)
-
-            index = [level, 'aggregation_end'] if delta is not None else level
-            t.set_index(index, inplace=True)
-            
-            column_prefix = level[:-3] + '_'
-            if prefix is not None:
-                column_prefix += prefix + '_'
-            if delta is not None:
-                delta_prefix = str(delta) + 'y' if delta != -1 else 'all'
-                column_prefix += delta_prefix + '_'
-            
-            util.prefix_columns(t, column_prefix)
-
-            t.reset_index(inplace=True) # should add exclude arg to prefix_columns
-            if left is None:
-                left = t
-            else:
-                left = left.merge(t, on=index, how='left', copy=False)
-
-    return left
-
-def get_aggregate(table_name, level, engine, end_dates=None, delta=None):
-    sql = "select * from {table_name} where aggregation_level='{level}' ".format(table_name=table_name, level=level, end_dates=end_dates, delta=delta)
+def get_aggregate(table_name, level, engine, end_dates=None, deltas=None):
+    sql = "select * from {table_name} where aggregation_level='{level}' ".format(table_name=table_name, level=level)
 
     if end_dates is not None:
-        sqls = map(lambda d: sql + " and aggregation_end = '{end_date}' and aggregation_delta = {delta}".format(end_date=str(d), delta=delta), end_dates)
-    else:
-        sqls = [sql]
+        end_dates = str.join(',', map(lambda d: "'" + str(d) + "'", end_dates))
+        deltas = str.join(',', map(str, deltas))
+        sql = sql + " and aggregation_end in ({end_dates}) and aggregation_delta in ({deltas})".format(end_dates=end_dates, deltas=deltas)
 
-    t = pd.concat((pd.read_sql(sql, engine) for sql in sqls), copy=False)
+    print sql
+
+    t = pd.read_sql(sql + ' limit 1000', engine)
     return t
+
+def prefix_column(level, column, prefix=None, delta=None):
+    column_prefix = level[:-3] + '_'
+    if prefix is not None:
+        column_prefix += prefix + '_'
+    if delta is not None:
+        delta_prefix = str(delta) + 'y' if delta != -1 else 'all'
+        column_prefix += delta_prefix + '_'
+    return column_prefix + column
+
+def get_aggregation(table_name, level_deltas, engine, end_dates=None, left=None, prefix=None):
+    for level in level_deltas:
+        deltas = level_deltas[level] if type(level_deltas) is dict else None
+        t = get_aggregate(table_name, level, engine, end_dates, deltas)
+        t.drop(['aggregation_level'],inplace=True,axis=1)
+        if deltas is not None:
+            t.set_index(['aggregation_end', 'aggregation_id', 'aggregation_delta'], inplace=True)
+            t = t.unstack()
+            t.columns = [prefix_column(level, column, prefix, delta) for column, delta in product(*t.columns.levels)]
+
+        t.reset_index(inplace=True) # should add exclude arg to prefix_columns
+        t.rename(columns={'aggregation_id':level}, inplace=True)
+        if left is None:
+            left = t
+        else:
+            index = [level, 'aggregation_end'] if deltas is not None else level
+            left = left.merge(t, on=index, how='left', copy=False)
+
+    return left
 
 # generate year, month, day features from specified date features
 def expand_dates(df, columns=[]):

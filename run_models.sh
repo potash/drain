@@ -14,4 +14,4 @@ $basename/n_models.py $2/params.yaml
 # delete old model runs
 rm -r $2/*/ 2> /dev/null
 
-$basename/get_params.py $1 $2 $2/params.yaml | parallel -j1 --delay 5 --joblog $2/log $basename/run_model.py
+$basename/get_params.py $1 $2 $2/params.yaml | parallel -j1 --ungroup --delay 5 --joblog $2/log $basename/run_model.py
