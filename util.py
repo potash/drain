@@ -159,12 +159,13 @@ class PgSQLDatabase(pandas.io.sql.SQLDatabase):
                                        schema=schema, dtype=dtype)
         existed = table.exists()
         table.create()
+        replaced = existed and if_exists=='replace'
 
         table_name=name
         if schema is not None:
             table_name = schema + '.' + table_name
 
-        if pk is not None and not existed:
+        if pk is not None and ( (not existed) or replaced)
             if isinstance(pk, str):
                 pks = pk
             else:
