@@ -156,7 +156,7 @@ def show_tree(tree, feature_names):
     img = wand.image.Image(filename=filename)
     return img
 
-def export_tree(clf, filename, feature_names=None):
+def export_tree(tree, filename, feature_names=None):
     from sklearn.externals.six import StringIO
     import pydot
 
