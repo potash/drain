@@ -110,7 +110,7 @@ def binarize_clusters(df, column, n_clusters, train=None):
 # returns endogenous and exogenous variables
 # normalization requires imputation (can't normalize null values)
 # training mask is used for normalization
-def Xy(df, y_column, include=None, exclude=None, impute=True, normalize=True, train=None, category_classes={}):
+def Xy(df, y_column, include=None, exclude=None, train=None, category_classes={}):
     y = df[y_column]
     exclude.add(y_column)
 
@@ -126,17 +126,21 @@ def Xy(df, y_column, include=None, exclude=None, impute=True, normalize=True, tr
     if len(nonnum) > 0:
         print 'Warning: non-numeric columns ' + str(nonnum)
     
-    if impute:
-        imputer = preprocessing.Imputer()
-        Xfit = X[train] if train is not None else X
-        imputer.fit(Xfit)
-        d = imputer.transform(X)
-        if normalize:
-            d = preprocessing.StandardScaler().fit_transform(d)
-        X = pd.DataFrame(d, index=X.index, columns = X.columns)
-
-    
     return (X,y)
+
+def impute(X, train, strategy):
+    imputer = preprocessing.Imputer(strategy=strategy)
+    imputer.fit(X[train])
+    X = pd.DataFrame(imputer.transform(X), index=X.index, columns = X.columns)
+
+    return X
+
+def normalize(X, train):
+    scaler = preprocessing.StandardScaler()
+    scaler.fit(X[train])
+    X = pd.DataFrame(scaler.transform(X), index=X.index, columns = X.columns)
+
+    return X
 
 def select_features(df, include=None, exclude=None, regex=True):
 

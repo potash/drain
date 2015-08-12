@@ -54,7 +54,7 @@ def count_unique(series):
 # normalize a dataframes columns
 # method = 'normalize': use standard score i.e. (X - \mu) / \sigma
 # method = 'percentile': replace with percentile. SLOW
-def normalize(df, method):
+def normalize(df, method='standard'):
     if method == 'standard':
         return pd.DataFrame(preprocessing.scale(df), index=df.index, columns=df.columns)
     elif method == 'percentile':
