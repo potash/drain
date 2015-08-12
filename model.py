@@ -4,8 +4,6 @@ import pandas as pd
 import math
 from statsmodels.discrete.discrete_model import Logit
 
-from sklearn import tree
-
 def y_score(estimator, X):
     if hasattr(estimator, 'decision_function'):
         return estimator.decision_function(X)

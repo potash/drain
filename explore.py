@@ -9,6 +9,7 @@ from copy import deepcopy
 import matplotlib.colors
 from matplotlib import cm
 import matplotlib.pyplot as plt
+from sklearn import tree
 
 def dict_to_df(d):
     df = pd.DataFrame(index=[0])
@@ -156,7 +157,7 @@ def show_tree(tree, feature_names):
     img = wand.image.Image(filename=filename)
     return img
 
-def export_tree(tree, filename, feature_names=None):
+def export_tree(clf, filename, feature_names=None):
     from sklearn.externals.six import StringIO
     import pydot
 
