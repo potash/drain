@@ -177,9 +177,15 @@ def get_correlates(df, c=.99):
             if corr[i][j] >= c:
                 print df.columns[i] + ', ' + df.columns[j] + ': ' + str(corr[i][j])
                 
-def undersample_cv(d, train, p):
-    a = pd.Series([random.random() < p for i in range(len(d))], index=d.index)
-    return train & ((d.test_bll > 5).values | a) 
+def undersample_by(y, train, p):
+    a = pd.Series([random.random() < p for i in range(len(y))], index=y.index)
+    return train & (y | a) 
+
+def undersample_to(y, train, p):
+    T = y[train].sum()
+    F = len(y[train]) - T
+    q = p*T/((1-p)*F)
+    return undersample_by(y, train, q)
 
 def count_unique(series):
     return series.nunique()
