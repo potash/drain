@@ -152,7 +152,7 @@ def show_tree(tree, feature_names):
     import wand.image
 
     filename ="tree.pdf"
-    export_tree(clf, filename, [c.encode('ascii') for c in feature_names])
+    export_tree(tree, filename, [c.encode('ascii') for c in feature_names])
     img = wand.image.Image(filename=filename)
     return img
 
