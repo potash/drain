@@ -55,24 +55,6 @@ def sk_tree(X,y, params={'max_depth':3}):
     clf = tree.DecisionTreeClassifier(**params)
     return clf.fit(X, y)
 
-def show_tree(X,y,params):
-    import wand.image
-    
-    filename ="tree.pdf"
-    clf = sk_tree(X,y, params)
-    export_tree(clf, filename, [c.encode('ascii') for c in X.columns])
-    img = wand.image.Image(filename=filename)
-    return img
-    
-def export_tree(clf, filename, feature_names=None):
-    from sklearn.externals.six import StringIO  
-    import pydot
-
-    dot_data = StringIO() 
-    tree.export_graphviz(clf, out_file=dot_data, feature_names=feature_names) 
-    graph = pydot.graph_from_dot_data(dot_data.getvalue()) 
-    graph.write_pdf(filename)
-
 class LogisticRegression(object):
     def __init__(self):
         pass

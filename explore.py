@@ -147,3 +147,21 @@ def cmap_discretize(cmap, N):
 
 def jenks_labels(breaks):
     return ["<= %0.1f (%s wards)" % (b, c) for b, c in zip(breaks.bins, breaks.counts)]
+
+def show_tree(tree, feature_names):
+    import wand.image
+
+    filename ="tree.pdf"
+    export_tree(clf, filename, [c.encode('ascii') for c in feature_names])
+    img = wand.image.Image(filename=filename)
+    return img
+
+def export_tree(clf, filename, feature_names=None):
+    from sklearn.externals.six import StringIO
+    import pydot
+
+    dot_data = StringIO()
+    tree.export_graphviz(clf, out_file=dot_data, feature_names=feature_names)
+    graph = pydot.graph_from_dot_data(dot_data.getvalue())
+    graph.write_pdf(filename)
+
