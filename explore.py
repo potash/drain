@@ -22,13 +22,14 @@ def dict_to_df(d):
 
 def read_model(dirname, estimator=True):
     estimator = (joblib.load(os.path.join(dirname, 'estimator.pkl'))) if estimator else None
-    estimator_name = estimator.__class__.__name__ if estimator else None
     
     y = (pd.read_csv(os.path.join(dirname, 'y.csv'), index_col=0))
     train = (pd.Series.from_csv(os.path.join(dirname, 'train.csv'), index_col=0))
     test = (pd.Series.from_csv(os.path.join(dirname, 'test.csv'), index_col=0))
     params = yaml.load(open(os.path.join(dirname, 'params.yaml')))
     columns = pd.read_csv(os.path.join(dirname, 'columns.csv')).columns
+
+    estimator_name = params['model']['name']
 
     df = dict_to_df(params)
     df['estimator'] = [estimator]
