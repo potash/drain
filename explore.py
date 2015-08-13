@@ -149,11 +149,11 @@ def cmap_discretize(cmap, N):
 def jenks_labels(breaks):
     return ["<= %0.1f (%s wards)" % (b, c) for b, c in zip(breaks.bins, breaks.counts)]
 
-def show_tree(tree, feature_names):
+def show_tree(tree, feature_names,max_depth=None):
     import wand.image
 
     filename ="tree.pdf"
-    export_tree(tree, filename, [c.encode('ascii') for c in feature_names])
+    export_tree(tree, filename, [c.encode('ascii') for c in feature_names],max_depth)
     img = wand.image.Image(filename=filename)
     return img
 
