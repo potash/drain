@@ -128,15 +128,18 @@ def Xy(df, y_column, include=None, exclude=None, train=None, category_classes={}
     
     return (X,y)
 
-def impute(X, train, strategy):
+def impute(X, train=None, strategy='mean'):
+    print X
     imputer = preprocessing.Imputer(strategy=strategy)
-    imputer.fit(X[train])
+    Xfit = X[train] if train is not None else X
+    imputer.fit(Xfit)
     X = pd.DataFrame(imputer.transform(X), index=X.index, columns = X.columns)
-
+        
     return X
 
-def normalize(X, train):
+def normalize(X, train=None):
     scaler = preprocessing.StandardScaler()
+    Xfit = X[train] if train is not None else X
     scaler.fit(X[train])
     X = pd.DataFrame(scaler.transform(X), index=X.index, columns = X.columns)
 
