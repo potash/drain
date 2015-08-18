@@ -5,6 +5,7 @@ import pandas as pd
 from sklearn.externals import joblib
 import os
 import argparse
+import inspect
 from copy import deepcopy
 
 import model
@@ -47,7 +48,10 @@ print '    with ' + str(len(data.X.columns)) + ' features'
 
 estimator = util.get_class(model_name)(**params['model'])
 
-estimator.fit(data.X[train],data.y[train])
+if 'sample_weight' in inspect.getargspec(estimator.fit) and hasattr(data, 'sample_weight'):
+    estimator.fit(data.X[train],data.y[train], data.sample_weight[train])
+else:
+    estimator.fit(data.X[train],data.y[train])
 
 print 'Validating model'
 print '    on ' + str(test.sum()) + ' examples'

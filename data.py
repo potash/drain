@@ -129,7 +129,6 @@ def Xy(df, y_column, include=None, exclude=None, train=None, category_classes={}
     return (X,y)
 
 def impute(X, train=None, strategy='mean'):
-    print X
     imputer = preprocessing.Imputer(strategy=strategy)
     Xfit = X[train] if train is not None else X
     imputer.fit(Xfit)

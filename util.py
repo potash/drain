@@ -116,9 +116,9 @@ def join_years(left, years, period=None, column='year'):
     df.rename(columns={column + '_y': column}, inplace=True)
     return df
 
+import pandas.io.sql
 class PgSQLDatabase(pandas.io.sql.SQLDatabase):
     import tempfile
-    import pandas.io.sql
     # FIXME Schema is pulled from Meta object, shouldn't actually be part of signature!
     def to_sql(self, frame, name, if_exists='fail', index=True,
                index_label=None, schema=None, chunksize=None, dtype=None, pk=None, prefixes=None, raise_on_error=True):

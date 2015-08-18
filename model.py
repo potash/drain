@@ -8,15 +8,16 @@ def y_score(estimator, X):
     if hasattr(estimator, 'decision_function'):
         return estimator.decision_function(X)
     else:
-        return estimator.predict_proba(X)[:,1]
+        y = estimator.predict_proba(X)
+        return y[:,1]
 
 def auc(y_true, y_score):
     fpr, tpr, thresholds = metrics.roc_curve(y_true, y_score)
     return metrics.auc(fpr, tpr)
 
-def precision(y_true,y_score, proportions):
+def precision(y_true,y_score, x, count=False):
     n = len(y_true)
-    counts = [int(p*n) for p in proportions]
+    counts = x if count else [int(p*n) for p in x]
     
     ydf = pd.DataFrame({'y':y_true, 'risk':y_score}).sort('risk', ascending=False)
     precision = [(ydf.head(counts[i]).y.sum()/float(counts[i])) for i in range(len(counts)) ] # could be O(n) if it mattered
@@ -40,7 +41,7 @@ def precision_scorer(estimator,X,y,p):
 def summary(name, max_train_age, date, y_train, y_test, y_score):
     a = auc(y_test, y_score)
     n_test = len(y_test)
-    p = precision(y_test,y_score, proportions=[.01,.02,.05,.10])
+    p = precision(y_test,y_score, [.01,.02,.05,.10])
     data = {'name':name, 'date':date, 'max_train_age':max_train_age,
             'n_train':len(y_train), 'n_test':n_test, 
             'train_baseline':float(y_train.sum())/len(y_train),
