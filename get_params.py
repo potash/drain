@@ -19,7 +19,7 @@ with open(sys.argv[3]) as f:
     param_dicts = yaml.load(f)
 
 data = param_dicts['data']
-metrics = param_dicts['metrics'] if 'metrics' in param_dicts else True
+metrics = param_dicts['metrics'] if 'metrics' in param_dicts else False
 
 outputs = param_dicts['outputs']
 
