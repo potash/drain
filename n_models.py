@@ -1,4 +1,3 @@
-#!/usr/bin/python
 # Usage: n_models.py <param_file>
 # Prints the number of models to be run by this parameter file
 

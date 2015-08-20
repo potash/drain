@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 import yaml
 import pandas as pd
 from sklearn.externals import joblib
