@@ -19,6 +19,7 @@ with open(sys.argv[3]) as f:
     param_dicts = yaml.load(f)
 
 data = param_dicts['data']
+metrics = param_dicts['metrics'] if 'metrics' in param_dicts else True
 
 outputs = param_dicts['outputs']
 
@@ -34,7 +35,7 @@ for output in outputs:
     
     for model_params in dict_product(models):
         for transform_params in transforms_product:
-            params = {'transform': transform_params, 'model': model_params, 'data': data}
+            params = {'transform': transform_params, 'model': model_params, 'data': data, 'metrics' : metrics}
             
             h = hex(hash(yaml.dump(params)))
             params['output'] = os.path.join(outputdir, h[h.index('x')+1:])

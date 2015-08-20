@@ -58,12 +58,13 @@ print '    on ' + str(test.sum()) + ' examples'
 
 y_score = pd.Series(model.y_score(estimator, data.X), index=data.X.index)
 
-p = [.005,.01,.02,.05]
-precisions = model.precision(data.y[test], y_score[test], p)
+if params['metrics'] :
+    p = [.005,.01,.02,.05]
+    precisions = model.precision(data.y[test], y_score[test], p)
 
-print '    baseline: ' + str(model.baseline(data.y[test]))
-print '    precision: ' + str(', '.join('%s=%.2f' % t for t in zip(p, precisions)))
-print '    auc: ' + str(model.auc(data.y[test], y_score[test]))
+    print '    baseline: ' + str(model.baseline(data.y[test]))
+    print '    precision: ' + str(', '.join('%s=%.2f' % t for t in zip(p, precisions)))
+    print '    auc: ' + str(model.auc(data.y[test], y_score[test]))
 
 if 'output' in params:
     print 'Writing results in ' + params['output']
