@@ -77,11 +77,16 @@ def expand_dates(df, columns=[]):
         df2[column + '_day'] = df[column].apply(lambda x: x.day)
     return df2
 
-# binarize specified categoricals using specified category class dictionary
+# binarize specified categoricals
+# category_classes is either a dict of (column : [class1, class2, ...]) pairs
+# or a list of columns, in which case possible values are found using df[column].unique()
 def binarize(df, category_classes, all_classes=False):
-    #for category,classes in category_classes.iteritems():
-    columns = set(category_classes.keys()).intersection(df.columns)
-    
+    if type(category_classes) is not dict:
+        columns = set(category_classes).intersection(df.columns)
+        category_classes = {column : df[column].unique() for column in columns}
+    else:
+        columns = set(category_classes.keys()).intersection(df.columns)
+
     for category in columns:
         classes = category_classes[category]
         for i in range(len(classes)-1 if not all_classes else len(classes)):
