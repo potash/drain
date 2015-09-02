@@ -51,13 +51,14 @@ def read_models(dirname, estimator=True):
     return df
 
 def calculate_metrics(df):
-    df_metrics = df['params'].apply(lambda d: d['metrics']) # these are the rows of df where metrics is True
-    df['auc'] = df_metrics.apply(lambda row: model.auc(row['y']['true'][row['test']], row['y']['score'][row['test']]), axis=1)
+    df_metrics = df[df['params'].apply(lambda d: d['metrics'])] # these are the rows of df where metrics is True
+    if len(df_metrics) > 0:
+        df['auc'] = df_metrics.apply(lambda row: model.auc(row['y']['true'][row['test']], row['y']['score'][row['test']]), axis=1)
 
-    for p in [.01, .02, .05, .1]:
-        df['precision' + str(p)] = df_metrics.apply(lambda row: precision(row['y']['true'][row['test']], row['y']['score'][row['test']], p), axis=1)
+        for p in [.01, .02, .05, .1]:
+            df['precision' + str(p)] = df_metrics.apply(lambda row: precision(row['y']['true'][row['test']], row['y']['score'][row['test']], p), axis=1)
 
-    df['baseline']=df_metrics.apply(lambda row: row['y']['true'][row['test']].sum()*1.0/len(row['y']['true'][row['test']]), axis=1)
+        df['baseline']=df_metrics.apply(lambda row: row['y']['true'][row['test']].sum()*1.0/len(row['y']['true'][row['test']]), axis=1)
 
     df['feature_importances'] = [get_feature_importances(row) for i,row in df.iterrows()]
     
