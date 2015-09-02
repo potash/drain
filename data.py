@@ -197,3 +197,13 @@ def undersample_to(y, train, p):
 def count_unique(series):
     return series.nunique()
 
+def nearest_neighbors_impute(df, coordinate_columns, data_columns, knr_params={}):
+    from sklearn.neighbors import KNeighborsRegressor
+    for column in data_columns:
+        not_null = df[column].notnull()
+        if (~not_null).sum() == 0:
+            continue
+        knr = KNeighborsRegressor(**knr_params)
+        knr.fit(df.loc[not_null,coordinate_columns], df.loc[not_null,[column]])
+        predicted = knr.predict(df.loc[~not_null,coordinate_columns])
+        df.loc[ (~not_null),[column]] = predicted
