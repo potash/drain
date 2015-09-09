@@ -22,6 +22,24 @@ class ModelData(object):
     def transform(self, **args):
         raise NotImplementedError
 
+# a ModelData wrapper for sklearn.datasets.make_classification for testing
+class ClassificationData(ModelData):
+    def __init__(self, **args):
+        self.args = args
+
+    def read(self, dirname=None):
+        if filename is not None:
+            self.df = pd.read_pickle(os.path.join(dirname, 'df.pkl'))
+        else:
+            from sklearn import datasets
+            X,y = datasets.make_classification(**self.args)
+            df = pd.DataFrame(X)
+            df['y'] = y
+            self.df = df
+
+    def write(self, dirname):
+        self.df.to_pickle(os.path.join(dirname, 'df.pkl'))
+
 def get_aggregate(table_name, level, engine, end_dates=None, deltas=None):
     sql = "select * from {table_name} where aggregation_level='{level}' ".format(table_name=table_name, level=level)
 

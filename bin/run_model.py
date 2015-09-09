@@ -6,8 +6,8 @@ import argparse
 import inspect
 from copy import deepcopy
 
-import model
-import util
+from drain import model
+from drain import util
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)

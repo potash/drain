@@ -3,6 +3,7 @@ import json
 import itertools
 import sys
 import yaml
+from drain import util
     
 def dict_product(d):
     items = sorted(d.items())
@@ -35,7 +36,6 @@ for output in outputs:
         for transform_params in transforms_product:
             params = {'transform': transform_params, 'model': model_params, 'data': data, 'metrics' : metrics}
             
-            h = hex(hash(yaml.dump(params)))
-            params['output'] = os.path.join(outputdir, h[h.index('x')+1:])
+            params['output'] = os.path.join(outputdir, util.hash_yaml_dict(params))
             
             print yaml.dump(params).replace('\n','\\n')

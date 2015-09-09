@@ -3,6 +3,7 @@ import os
 import numpy as np
 import datetime
 import sys
+import yaml
 import pandas as pd
 from sklearn import preprocessing
 from scipy import stats
@@ -16,6 +17,10 @@ def execute_sql(sql, engine):
     trans = conn.begin()
     conn.execute(sql)
     trans.commit()
+
+def hash_yaml_dict(params):
+    h = hex(hash(yaml.dump(params)))
+    return h[h.index('x')+1:]
 
 def datetime64(year,month,day):
     return np.datetime64( ("%04d" % year) + '-' +  ("%02d" % month) + '-' + ("%02d" % day))
