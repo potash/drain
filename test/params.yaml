@@ -1,0 +1,14 @@
+---
+data:
+  - name: [drain.data.ClassificationData]
+    n_samples: [10,100]
+transforms:
+  - {}
+models:
+  - name: [sklearn.ensemble.RandomForestClassifier]
+    n_estimators: [10,100]
+  - name: [sklearn.linear_model.LogisticRegression]
+    C: [.01, .1]
+metrics:
+  - name: [drain.metrics.precision_k]
+    k: [10,100]
