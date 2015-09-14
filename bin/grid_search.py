@@ -3,6 +3,7 @@ import json
 import itertools
 import sys
 import yaml
+import argparse
 from drain import util
     
 # cartesian product of dict whose values are lists
@@ -39,11 +40,17 @@ def drake_step(basedir, params, method, inputs=None):
     inputs = ', ' + str.join(', ', inputs) if inputs is not None else ''
 
     return dirname + ' <- ' + params_file + inputs + ' [method:' + method + ']'
+
+parser = argparse.ArgumentParser(description='Use this script to generate a Drakefile for grid search')
+parser.add_argument('params', type=str, help='yaml params filename')
+parser.add_argument('outputdir', type=str, help='output directory')
+args = parser.parse_args()
+
     
-with open(sys.argv[1]) as f:
+with open(args.params) as f:
     params = yaml.load(f)
 
-outputdir = sys.argv[2]
+outputdir = os.path.abspath(args.outputdir)
 
 runs = []
 
