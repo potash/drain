@@ -187,7 +187,7 @@ def select_features(df, include=None, exclude=None, regex=True):
         d = set.union(*[set(filter(re.compile('^'  + feature + '$').search, df.columns)) for feature in exclude])
         columns = columns.difference(d)
     
-    df = df.reindex(columns = columns)
+    df = df.reindex(columns = columns, copy=False)
     return df
 
 def null_columns(df):
