@@ -23,5 +23,7 @@ print '    with parameters ' + str(params['data'])
 data = util.get_attr(data_name)(**params['data'])
 data.read()
 
-os.makedirs(args.basedir)
+if not os.path.exists(args.basedir):
+    os.makedirs(args.basedir)
+
 data.write(args.basedir)

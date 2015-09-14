@@ -37,16 +37,16 @@ def drake_step(basedir, params, method, inputs=None):
         with file(params_file, 'w') as f:
             yaml.dump(params, f)
 
-    inputs = ', ' + str.join(', ', inputs) if inputs is not None else ''
+    inputs = ', !' + str.join(', !', inputs) if inputs is not None else ''
 
-    return dirname + ' <- ' + params_file + inputs + ' [method:' + method + ']'
+    return '!'+dirname + ' <- ' + '!'+params_file + inputs + ' [method:' + method + ']'
 
 parser = argparse.ArgumentParser(description='Use this script to generate a Drakefile for grid search')
 parser.add_argument('params', type=str, help='yaml params filename')
 parser.add_argument('outputdir', type=str, help='output directory')
+parser.add_argument('drakefile', type=str, default=None, help='output directory')
 args = parser.parse_args()
 
-    
 with open(args.params) as f:
     params = yaml.load(f)
 
@@ -58,6 +58,11 @@ data = list_dict_product(params['data'])
 transforms = list_dict_product(params['transforms'])
 models = list_dict_product(params['models'])
 metrics = list_dict_product(params['metrics'])
+
+if args.drakefile is not None:
+    dirname, basename = os.path.split(os.path.abspath(args.drakefile))
+    print "BASE={}".format(dirname)
+    print "%include $[BASE]/{}".format(basename)
 
 #TODO include a project specific Drakefile via cmd arg
 bindir = os.path.abspath(os.path.dirname(sys.argv[0]))
