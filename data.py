@@ -161,7 +161,7 @@ def Xy(df, y_column, include=None, exclude=None, train=None, category_classes={}
     return (X,y)
 
 def impute(X, train=None, strategy='mean'):
-    imputer = preprocessing.Imputer(strategy=strategy)
+    imputer = preprocessing.Imputer(strategy=strategy, copy=False)
     Xfit = X[train] if train is not None else X
     imputer.fit(Xfit)
     X = pd.DataFrame(imputer.transform(X), index=X.index, columns = X.columns)
@@ -169,9 +169,9 @@ def impute(X, train=None, strategy='mean'):
     return X
 
 def normalize(X, train=None):
-    scaler = preprocessing.StandardScaler()
+    scaler = preprocessing.StandardScaler(copy=False)
     Xfit = X[train] if train is not None else X
-    scaler.fit(X[train])
+    scaler.fit(Xfit)
     X = pd.DataFrame(scaler.transform(X), index=X.index, columns = X.columns)
 
     return X
