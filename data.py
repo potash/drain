@@ -1,6 +1,7 @@
 import pandas as pd
 from sklearn import preprocessing
 import re
+import os
 import numpy as np
 import collections
 from itertools import product
@@ -28,7 +29,7 @@ class ClassificationData(ModelData):
         self.args = args
 
     def read(self, dirname=None):
-        if filename is not None:
+        if dirname is not None:
             self.df = pd.read_pickle(os.path.join(dirname, 'df.pkl'))
         else:
             from sklearn import datasets
@@ -39,6 +40,14 @@ class ClassificationData(ModelData):
 
     def write(self, dirname):
         self.df.to_pickle(os.path.join(dirname, 'df.pkl'))
+
+    def transform(self):
+        self.X = self.df.drop('y', axis=1)
+        self.y = self.df.y
+        
+        train_len = int(len(self.X)/2)
+        train = pd.Series([True]*train_len + [False]*(len(self.X)-train_len))
+        self.cv = (train, ~train)
 
 def get_aggregate(table_name, level, engine, end_dates=None, deltas=None):
     sql = "select * from {table_name} where aggregation_level='{level}' ".format(table_name=table_name, level=level)

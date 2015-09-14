@@ -25,7 +25,8 @@ def hash_yaml_dict(params):
 def datetime64(year,month,day):
     return np.datetime64( ("%04d" % year) + '-' +  ("%02d" % month) + '-' + ("%02d" % day))
 
-def get_class(name):
+# get a class or function by name
+def get_attr(name):
     i = name.rfind('.')
     cls = name[i+1:]
     module = name[:i]
