@@ -54,18 +54,20 @@ print '    on ' + str(test.sum()) + ' examples'
 y_score = pd.Series(model.y_score(estimator, data.X), index=data.X.index)
 
 # print metrics
-common_params = {'data':data, 'estimator':estimator, 'y_score':y_score[test].values, 'y_true':data.y[test].values} # stuff passed to every metric
+common_params = {'data':data, 'estimator':estimator, 'y_score':y_score[test], 'y_true':data.y[test]} # stuff passed to every metric
 for metric in params['metrics']:
     metric_name = metric.pop('name')
     metric_fn = util.get_attr(metric_name)
 
     # get the subset of args that this metric wants
-    mp = {k:v for k,v in metric.iteritems() if k in inspect.getargspec(metric_fn)[0]}
-    cp = {k:v for k,v in common_params.iteritems() if k in inspect.getargspec(metric_fn)[0]}
+    kwds = inspect.getargspec(metric_fn).args
+    mp = {k:v for k,v in metric.iteritems() if k in kwds and v is not None}
+    cp = {k:v for k,v in common_params.iteritems() if k in kwds}
     p = dict(mp, **cp)
     v = metric_fn(**dict(mp, **cp))
 
-    print '    ' + metric_name + str(mp) + ': ' + str(v)
+    mp = map(lambda k: str(k) + '=' + str(mp[k]),mp)
+    print '    ' + metric_fn.__name__ + '(' + str.join(',', mp) + '): ' + str(v)
 
 if not os.path.exists(args.outputdir):
     os.makedirs(args.outputdir)

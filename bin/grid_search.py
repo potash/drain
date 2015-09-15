@@ -44,7 +44,7 @@ def drake_step(basedir, params, method, inputs=None):
 parser = argparse.ArgumentParser(description='Use this script to generate a Drakefile for grid search')
 parser.add_argument('params', type=str, help='yaml params filename')
 parser.add_argument('outputdir', type=str, help='output directory')
-parser.add_argument('drakefile', type=str, default=None, help='output directory')
+parser.add_argument('drakefile', type=str, nargs='?', default=None, help='output directory')
 args = parser.parse_args()
 
 with open(args.params) as f:
