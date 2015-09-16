@@ -1,5 +1,6 @@
 import os
 from sklearn.externals import joblib
+import pickle
 import yaml
 import pandas as pd
 from drain import model
@@ -22,7 +23,10 @@ def dict_to_df(d):
     return df
 
 def read_model(dirname, estimator=True):
-    estimator = (joblib.load(os.path.join(dirname, 'estimator.pkl'))) if estimator else None
+    #estimator = (joblib.load(os.path.join(dirname, 'estimator.pkl'))) if estimator else None
+    if estimator:
+        with os.path.join(dirname, 'estimator.pkl') as f:
+            estimator = pickle.load(f)
     
     y = (pd.read_csv(os.path.join(dirname, 'y.csv'), index_col=0))
     train = (pd.Series.from_csv(os.path.join(dirname, 'train.csv'), index_col=0))

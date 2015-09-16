@@ -1,6 +1,7 @@
 import yaml
 import pandas as pd
 from sklearn.externals import joblib
+import pickle
 import os
 import argparse
 import inspect
@@ -71,8 +72,10 @@ for metric in params['metrics']:
 
 if not os.path.exists(args.outputdir):
     os.makedirs(args.outputdir)
-        
-joblib.dump(estimator, os.path.join(args.outputdir, 'estimator.pkl'))
+    
+with open(os.path.join(args.outputdir, 'estimator.pkl'), 'w') as f:
+    pickle.dump(estimator, f)
+#joblib.dump(estimator, os.path.join(args.outputdir, 'estimator.pkl'))
 
 # write output
 y = pd.DataFrame({'score':y_score, 'true': data.y})
