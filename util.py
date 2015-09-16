@@ -38,7 +38,7 @@ def prefix_columns(df, prefix, ignore=[]):
     df.columns =  [prefix + c if c not in ignore else c for c in df.columns]
 
 def init_object(name, **kwargs):
-    return get_class(name)(**kwargs)
+    return get_attr(name)(**kwargs)
 
 def randtimedelta(low, high, size):
     d = np.empty(shape=size, dtype=datetime.timedelta)
