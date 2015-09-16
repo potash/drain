@@ -1,3 +1,6 @@
+def baseline(y_true):
+    return y_true.sum()*1.0/len(y_true)
+
 def precision(y_true, y_score, data, k=None, p=None, mask=None):
     # deal with k or p
     if k is not None and p is not None:
