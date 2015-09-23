@@ -23,34 +23,38 @@ def dict_to_df(d):
     return df
 
 def read_model(dirname, estimator=True):
-    #estimator = (joblib.load(os.path.join(dirname, 'estimator.pkl'))) if estimator else None
-    if estimator:
-        with os.path.join(dirname, 'estimator.pkl') as f:
-            estimator = pickle.load(f)
+    dirname = os.path.join(dirname, 'output/')
+    if not os.path.isdir(dirname):
+        return
+ 
+#    estimator = (joblib.load(os.path.join(dirname, 'estimator.pkl'))) if estimator else None
+#    if estimator:
+#        with open(os.path.join(dirname, 'estimator.pkl')) as f:
+#            estimator = pickle.load(f)
     
     y = (pd.read_csv(os.path.join(dirname, 'y.csv'), index_col=0))
-    train = (pd.Series.from_csv(os.path.join(dirname, 'train.csv'), index_col=0))
-    test = (pd.Series.from_csv(os.path.join(dirname, 'test.csv'), index_col=0))
-    params = yaml.load(open(os.path.join(dirname, 'params.yaml')))
-    columns = pd.read_csv(os.path.join(dirname, 'columns.csv')).columns
+    features = pd.read_csv(os.path.join(dirname, 'features.csv'))
+    params = yaml.load(open(os.path.join(dirname, '../params.yaml')))
 
     estimator_name = params['model']['name']
 
     df = dict_to_df(params)
-    df['estimator'] = [estimator]
+#    df['estimator'] = [estimator]
     df['estimator_name'] = [estimator_name]
     df['y'] = [y]
-    df['train'] = [train]
-    df['test'] = [test]
-    df['columns'] = [columns]
+    df['features'] = [features]
     df['params'] = [params]
     df['data'] = [util.init_object(**params['data'])]
 
     return df
 
-def read_models(dirname, estimator=True):
+def read_models(dirname, tagname=None, estimator=True):
+    if tagname is not None:
+        dirname = os.path.join(dirname, 'tag', tagname)
+    else:
+        dirname = os.path.join(dirname, 'model')
     df = pd.concat((read_model(subdir, estimator) for subdir in get_subdirs(dirname)), ignore_index=True)
-    calculate_metrics(df)
+    #calculate_metrics(df)
 
     return df
 
@@ -64,17 +68,7 @@ def calculate_metrics(df):
 
         df['baseline']=df_metrics.apply(lambda row: row['y']['true'][row['test']].sum()*1.0/len(row['y']['true'][row['test']]), axis=1)
 
-    df['feature_importances'] = [get_feature_importances(row) for i,row in df.iterrows()]
-    
     return df
-
-def get_feature_importances(row):
-    if hasattr(row['estimator'], 'coef_'):
-        return pd.DataFrame({'name':row['columns'], 'c':row['estimator'].coef_[0]}).sort('c')
-    elif hasattr(row['estimator'], 'feature_importances_'):
-        return pd.DataFrame({'name':row['columns'], 'c':row['estimator'].feature_importances_}).sort('c')
-    else:
-        return pd.DataFrame()
 
 def get_subdirs(directory):
      return [os.path.join(directory, name) for name in os.listdir(directory) 
