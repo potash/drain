@@ -73,14 +73,15 @@ for metric in params['metrics']:
 if not os.path.exists(args.outputdir):
     os.makedirs(args.outputdir)
     
-with open(os.path.join(args.outputdir, 'estimator.pkl'), 'w') as f:
-    pickle.dump(estimator, f)
+#with open(os.path.join(args.outputdir, 'estimator.pkl'), 'w') as f:
+#    pickle.dump(estimator, f)
 #joblib.dump(estimator, os.path.join(args.outputdir, 'estimator.pkl'))
 
 # write output
 y = pd.DataFrame({'score':y_score, 'true': data.y})
+if hasattr(data, 'masks'):
+    y = y.join(data.masks)
+y = y.join(pd.DataFrame({'train': train, 'test':test}))
 y.to_csv(os.path.join(args.outputdir, 'y.csv'), index=True)
 
-train.to_csv(os.path.join(args.outputdir, 'train.csv'), index=True)
-test.to_csv(os.path.join(args.outputdir, 'test.csv'), index=True)
-pd.DataFrame(columns=data.X.columns).to_csv(os.path.join(args.outputdir, 'columns.csv'),index=False)
+model.feature_importance(estimator, data.X).to_csv(os.path.join(args.outputdir, 'features.csv'), index=False)
