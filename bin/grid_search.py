@@ -24,7 +24,7 @@ def params_dir(basedir, params, method):
     d = os.path.join(basedir, method, h + '/')
     return d
 
-def drake_step(basedir, params, method, inputs=None):
+def drake_step(basedir, params, method, inputs=None, tagdir=None):
     d = params_dir(basedir, params, method)
 
     if not os.path.exists(d):
@@ -37,13 +37,16 @@ def drake_step(basedir, params, method, inputs=None):
         with file(params_file, 'w') as f:
             yaml.dump(params, f)
 
+    if tagdir is not None and not os.path.exists(tagdir):
+        os.symlink(d, tagdir)
+
     inputs = ', !' + str.join(', !', inputs) if inputs is not None else ''
 
     return '!'+dirname + ' <- ' + '!'+params_file + inputs + ' [method:' + method + ']\n\n'
 
 # write the grid search drakefile to drakefile
 # drakein is the optional dependent drakefile
-def grid_search(params, outputdir, drakefile, drakein=None):
+def grid_search(params, outputdir, drakefile, drakein=None, tag=None):
     data = list_dict_product(params['data'])
     transforms = list_dict_product(params['transforms'])
     models = list_dict_product(params['models'])
@@ -69,6 +72,11 @@ model()
         p = {'data': d}
         drakefile.write(drake_step(outputdir, p, 'data'))
     
+    if tag is not None:
+        tagdir = os.path.join(outputdir, 'tag')
+        if not os.path.exists(tagdir):
+            os.makedirs(tagdir)
+
     # model steps
     i = 0
     for d,t,m in itertools.product(data,transforms,models):
@@ -76,8 +84,9 @@ model()
         p = {'data': d, 'transform':t, 'model':m, 'metrics':metrics}
         d = {'data': d}
         datadir = os.path.join(params_dir(outputdir, d, 'data'), 'output/') # use data dir for drake dependency
+        tagdir = os.path.join(outputdir, 'tag', tag) if tag is not None else None
     
-        drakefile.write(drake_step(outputdir, p, 'model', inputs=[datadir]))
+        drakefile.write(drake_step(outputdir, p, 'model', inputs=[datadir], tagdir=tagdir))
 
 parser = argparse.ArgumentParser(description='Use this script to generate a Drakefile for grid search')
 parser.add_argument('drakeoutput', type=str, help='output drakefile')
@@ -85,6 +94,7 @@ parser.add_argument('params', type=str, help='yaml params filename')
 parser.add_argument('outputdir', type=str, help='output directory')
 parser.add_argument('--Drakeinput', type=str, default=None, help='dependent drakefile')
 parser.add_argument('--drakeargs', type=str, default=None, help='parameters to pass to drake (via stdout)')
+parser.add_argument('--tag', type=str, default=None, help='tag name for model outputs')
 args = parser.parse_args()
 
 with open(args.params) as f:
@@ -93,6 +103,7 @@ with open(args.params) as f:
 outputdir = os.path.abspath(args.outputdir)
 
 with open(args.drakeoutput, 'w') as drakefile:
-    grid_search(params, outputdir, drakefile, args.Drakeinput)
+    grid_search(params, outputdir, drakefile, args.Drakeinput, args.tag)
 
-print args.drakeargs
+if args.drakeargs is not None:
+    print args.drakeargs
