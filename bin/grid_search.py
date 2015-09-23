@@ -73,7 +73,7 @@ model()
         drakefile.write(drake_step(outputdir, p, 'data'))
     
     if tag is not None:
-        tagdir = os.path.join(outputdir, 'tag')
+        tagdir = os.path.join(outputdir, 'tag', tag)
         if not os.path.exists(tagdir):
             os.makedirs(tagdir)
 
@@ -84,7 +84,7 @@ model()
         p = {'data': d, 'transform':t, 'model':m, 'metrics':metrics}
         d = {'data': d}
         datadir = os.path.join(params_dir(outputdir, d, 'data'), 'output/') # use data dir for drake dependency
-        tagdir = os.path.join(outputdir, 'tag', tag) if tag is not None else None
+        tagdir = os.path.join(outputdir, 'tag', tag, util.hash_yaml_dict(d)) if tag is not None else None
     
         drakefile.write(drake_step(outputdir, p, 'model', inputs=[datadir], tagdir=tagdir))
 
