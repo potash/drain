@@ -39,12 +39,52 @@ def drake_step(basedir, params, method, inputs=None):
 
     inputs = ', !' + str.join(', !', inputs) if inputs is not None else ''
 
-    return '!'+dirname + ' <- ' + '!'+params_file + inputs + ' [method:' + method + ']'
+    return '!'+dirname + ' <- ' + '!'+params_file + inputs + ' [method:' + method + ']\n\n'
+
+# write the grid search drakefile to drakefile
+# drakein is the optional dependent drakefile
+def grid_search(params, outputdir, drakefile, drakein=None):
+    data = list_dict_product(params['data'])
+    transforms = list_dict_product(params['transforms'])
+    models = list_dict_product(params['models'])
+    metrics = list_dict_product(params['metrics'])
+    
+    if drakein is not None:
+        dirname, basename = os.path.split(os.path.abspath(drakein))
+        drakefile.write("BASE={}\n".format(dirname))
+        drakefile.write("%include $[BASE]/{}\n".format(basename))
+    
+    #TODO include a project specific Drakefile via cmd arg
+    bindir = os.path.abspath(os.path.dirname(sys.argv[0]))
+    drakefile.write("""
+PYTHONUNBUFFERED=Y
+data()
+    python {bindir}/read_write_data.py $INPUT $OUTPUT
+model()
+    python {bindir}/run_model.py $INPUT $OUTPUT $INPUT1\n
+""".format(bindir=bindir))
+    
+    # data steps
+    for d in data:
+        p = {'data': d}
+        drakefile.write(drake_step(outputdir, p, 'data'))
+    
+    # model steps
+    i = 0
+    for d,t,m in itertools.product(data,transforms,models):
+        i = i + 1
+        p = {'data': d, 'transform':t, 'model':m, 'metrics':metrics}
+        d = {'data': d}
+        datadir = os.path.join(params_dir(outputdir, d, 'data'), 'output/') # use data dir for drake dependency
+    
+        drakefile.write(drake_step(outputdir, p, 'model', inputs=[datadir]))
 
 parser = argparse.ArgumentParser(description='Use this script to generate a Drakefile for grid search')
+parser.add_argument('drakeoutput', type=str, help='output drakefile')
 parser.add_argument('params', type=str, help='yaml params filename')
 parser.add_argument('outputdir', type=str, help='output directory')
-parser.add_argument('drakefile', type=str, nargs='?', default=None, help='output directory')
+parser.add_argument('--Drakeinput', type=str, default=None, help='dependent drakefile')
+parser.add_argument('--drakeargs', type=str, default=None, help='parameters to pass to drake (via stdout)')
 args = parser.parse_args()
 
 with open(args.params) as f:
@@ -52,39 +92,7 @@ with open(args.params) as f:
 
 outputdir = os.path.abspath(args.outputdir)
 
-runs = []
+with open(args.drakeoutput, 'w') as drakefile:
+    grid_search(params, outputdir, drakefile, args.Drakeinput)
 
-data = list_dict_product(params['data'])
-transforms = list_dict_product(params['transforms'])
-models = list_dict_product(params['models'])
-metrics = list_dict_product(params['metrics'])
-
-if args.drakefile is not None:
-    dirname, basename = os.path.split(os.path.abspath(args.drakefile))
-    print "BASE={}".format(dirname)
-    print "%include $[BASE]/{}".format(basename)
-
-#TODO include a project specific Drakefile via cmd arg
-bindir = os.path.abspath(os.path.dirname(sys.argv[0]))
-print """
-data()
-    python {bindir}/read_write_data.py $INPUT $OUTPUT
-model()
-    python {bindir}/run_model.py $INPUT $OUTPUT $INPUT1
-""".format(bindir=bindir)
-
-# data steps
-for d in data:
-    p = {'data': d}
-    print drake_step(outputdir, p, 'data')
-
-# model steps
-runs = []
-i = 0
-for d,t,m in itertools.product(data,transforms,models):
-    i = i + 1
-    p = {'data': d, 'transform':t, 'model':m, 'metrics':metrics}
-    d = {'data': d}
-    datadir = os.path.join(params_dir(outputdir, d, 'data'), 'output/') # use data dir for drake dependency
-
-    print drake_step(outputdir, p, 'model', inputs=[datadir])
+print args.drakeargs

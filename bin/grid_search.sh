@@ -3,4 +3,5 @@
 
 basename=$(dirname $0)
 TMPFILE=`mktemp` || exit 1
-python $basename/grid_search.py "$@" > $TMPFILE && drake -w $TMPFILE
+params=$(python $basename/grid_search.py $TMPFILE "$@")
+drake -w $TMPFILE $params
