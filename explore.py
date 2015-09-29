@@ -22,6 +22,12 @@ def dict_to_df(d):
             df[k] = [d[k]]
     return df
 
+def read_data(row, basedir):
+    params = {'data': row['params']['data']}
+    h = util.hash_yaml_dict(params)
+    datadir = os.path.join(basedir, 'data', h, 'output')
+    row['data'].read(datadir)
+
 def read_model(dirname, estimator=True):
     dirname = os.path.join(dirname, 'output/')
     if not os.path.isdir(dirname):
