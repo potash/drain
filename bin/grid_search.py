@@ -24,7 +24,7 @@ def params_dir(basedir, params, method):
     d = os.path.join(basedir, method, h + '/')
     return d
 
-def drake_step(basedir, params, method, inputs=None, tagdir=None):
+def drake_step(basedir, params, method, inputs=[], tagdir=None):
     d = params_dir(basedir, params, method)
 
     if not os.path.exists(d):
@@ -40,7 +40,11 @@ def drake_step(basedir, params, method, inputs=None, tagdir=None):
     if tagdir is not None and not os.path.exists(tagdir):
         os.symlink(d, tagdir)
 
-    inputs = ', !' + str.join(', !', inputs) if inputs is not None else ''
+    cls = util.get_attr(params[method]['name'])
+    if hasattr(cls, 'DEPENDENCIES'):
+        inputs = inputs + cls.DEPENDENCIES
+
+    inputs = ', !' + str.join(', !', inputs) if len(inputs) > 0 else ''
 
     return '!'+dirname + ' <- ' + '!'+params_file + inputs + ' [method:' + method + ']\n\n'
 
@@ -84,7 +88,7 @@ model()
         p = {'data': d, 'transform':t, 'model':m, 'metrics':metrics}
         d = {'data': d}
         datadir = os.path.join(params_dir(outputdir, d, 'data'), 'output/') # use data dir for drake dependency
-        tagdir = os.path.join(outputdir, 'tag', tag, util.hash_yaml_dict(d)) if tag is not None else None
+        tagdir = os.path.join(outputdir, 'tag', tag, util.hash_yaml_dict(p)) if tag is not None else None
     
         drakefile.write(drake_step(outputdir, p, 'model', inputs=[datadir], tagdir=tagdir))
 
