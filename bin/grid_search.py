@@ -12,8 +12,12 @@ def dict_product(d):
     if len(items) == 0:
         return [{}]
     keys, values = zip(*items)
-    a = [dict(zip(keys, v)) for v in itertools.product(*values)]
+    a = [dict_filter_none(dict(zip(keys, v))) for v in itertools.product(*values)]
     return a
+
+# filter none values from dict
+def dict_filter_none(d):
+    return {k:v for k,v in d.items() if v is not None}
 
 # concatenate a list of dict products
 def list_dict_product(l):
