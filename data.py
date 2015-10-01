@@ -146,7 +146,7 @@ def Xy(df, y_column, include=None, exclude=None, train=None, category_classes={}
     y = df[y_column]
     exclude.add(y_column)
 
-    X = select_features(df, include, exclude)
+    X = select_features(df=df, exclude=exclude, include=include)
     
     X = binarize(X, category_classes)
     
@@ -176,17 +176,27 @@ def normalize(X, train=None):
 
     return X
 
-def select_features(df, include=None, exclude=None, regex=True):
-
-    if isinstance(include, collections.Iterable):
-        columns = set.union(*[set(filter(re.compile('^' + feature + '$').match, df.columns)) for feature in include])
-    else: 
-        columns = set(df.columns)
+# select subset of strings matching a regex
+# treats strings as a set!
+def select_regexes(strings, regexes):
+    strings = set(strings)
+    select = set()
+    if isinstance(strings, collections.Iterable):
+        for r in regexes:
+            s = set(filter(re.compile('^'  + r + '$').search, strings))
+            strings -= s
+            select |= s
+        return select
+    else:
+        raise ValueError("exclude should be iterable")
         
-    if isinstance(exclude, collections.Iterable):
-        d = set.union(*[set(filter(re.compile('^'  + feature + '$').search, df.columns)) for feature in exclude])
-        columns = columns.difference(d)
-    
+def exclude_regexes(strings, exclude, include=None):
+    e = select_regexes(strings, exclude)
+    i = select_regexes(strings, include) if include is not None else set()
+    return set(strings).difference(e).union(i)
+
+def select_features(df, exclude, include=None):
+    columns = exclude_regexes(strings=df.columns, exclude=exclude, include=include)
     df = df.reindex(columns = columns, copy=False)
     return df
 

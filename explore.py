@@ -3,8 +3,7 @@ from sklearn.externals import joblib
 import pickle
 import yaml
 import pandas as pd
-from drain import model
-from drain import util
+from drain import model, util, metrics
 import numpy as np
 from copy import deepcopy
 import matplotlib.colors
@@ -22,11 +21,24 @@ def dict_to_df(d):
             df[k] = [d[k]]
     return df
 
-def read_data(row, basedir):
+def read_data(row, basedir, transform=True):
     params = {'data': row['params']['data']}
     h = util.hash_yaml_dict(params)
     datadir = os.path.join(basedir, 'data', h, 'output')
     row['data'].read(datadir)
+
+    if transform:
+        row['data'].transform(**row['params']['transform'])
+
+def precision_series(row, k, masks=None):
+    y = row['y'][row['y']['test']]
+    y_true, y_score = y['true'], y['score']
+    if masks is not None:
+        y_true, y_score = metrics._mask(y_true, y_score, y[masks])
+    return metrics.precision_series(y_true.values, y_score.values, k)
+
+def precision(df, k, masks=None):
+    return df.apply(lambda row: precision_series(row, k, masks), axis=1).T
 
 def read_model(dirname, estimator=True):
     dirname = os.path.join(dirname, 'output/')
@@ -79,11 +91,6 @@ def calculate_metrics(df):
 def get_subdirs(directory):
      return [os.path.join(directory, name) for name in os.listdir(directory) 
              if os.path.isdir(os.path.join(directory, name))]
-
-def precision(y_true, y_score, p):
-    count = int(p*len(y_true))
-    ydf = pd.DataFrame({'y':y_true, 'risk':y_score}).sort('risk', ascending=False)
-    return ydf.head(count).y.sum()/float(count)
 
 def mask(df, key, value):
     return df[df[key] == value]

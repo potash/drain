@@ -54,8 +54,16 @@ print '    on ' + str(test.sum()) + ' examples'
 
 y_score = pd.Series(model.y_score(estimator, data.X), index=data.X.index)
 
+# create a single y dataframe with train and test and other masks
+y = pd.DataFrame({'score':y_score, 'true': data.y})
+if hasattr(data, 'masks'):
+    y = y.join(data.masks)
+y = y.join(pd.DataFrame({'train': train, 'test':test}))
+
+run = {'data': data, 'estimator': estimator, 'y': y}
+
 # print metrics
-common_params = {'data':data, 'estimator':estimator, 'y_score':y_score[test], 'y_true':data.y[test]} # stuff passed to every metric
+common_params = {'run': run} # stuff passed to every metric
 for metric in params['metrics']:
     metric_name = metric.pop('name')
     metric_fn = util.get_attr(metric_name)
@@ -78,10 +86,6 @@ if not os.path.exists(args.outputdir):
 #joblib.dump(estimator, os.path.join(args.outputdir, 'estimator.pkl'))
 
 # write output
-y = pd.DataFrame({'score':y_score, 'true': data.y})
-if hasattr(data, 'masks'):
-    y = y.join(data.masks)
-y = y.join(pd.DataFrame({'train': train, 'test':test}))
 y.to_csv(os.path.join(args.outputdir, 'y.csv'), index=True)
 
 model.feature_importance(estimator, data.X).to_csv(os.path.join(args.outputdir, 'features.csv'), index=False)
