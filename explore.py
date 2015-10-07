@@ -1,6 +1,5 @@
 import os
 from sklearn.externals import joblib
-import pickle
 import yaml
 import pandas as pd
 from drain import model, util, metrics
@@ -34,7 +33,7 @@ def precision_series(row, k, masks=None):
     y = row['y'][row['y']['test']]
     y_true, y_score = y['true'], y['score']
     if masks is not None:
-        y_true, y_score = metrics._mask(y_true, y_score, y[masks])
+        y_true, y_score = metrics._mask(row, masks, test=True)
     return metrics.precision_series(y_true.values, y_score.values, k)
 
 def precision(df, k, masks=None):
@@ -45,10 +44,7 @@ def read_model(dirname, estimator=True):
     if not os.path.isdir(dirname):
         return
  
-#    estimator = (joblib.load(os.path.join(dirname, 'estimator.pkl'))) if estimator else None
-#    if estimator:
-#        with open(os.path.join(dirname, 'estimator.pkl')) as f:
-#            estimator = pickle.load(f)
+    estimator = (joblib.load(os.path.join(dirname, 'estimator.pkl'))) if estimator else None
     
     y = (pd.read_csv(os.path.join(dirname, 'y.csv'), index_col=0))
     features = pd.read_csv(os.path.join(dirname, 'features.csv'))
@@ -57,7 +53,7 @@ def read_model(dirname, estimator=True):
     estimator_name = params['model']['name']
 
     df = dict_to_df(params)
-#    df['estimator'] = [estimator]
+    df['estimator'] = [estimator]
     df['estimator_name'] = [estimator_name]
     df['y'] = [y]
     df['features'] = [features]

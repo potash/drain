@@ -7,7 +7,7 @@ transforms:
 models:
   - name: [sklearn.ensemble.RandomForestClassifier]
     n_estimators: [10,100]
-    balanced : [True]
+#    balanced : [True]
   - name: [sklearn.linear_model.LogisticRegression]
     C: [.01, .1]
 metrics:
