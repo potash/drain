@@ -29,6 +29,11 @@ def read_data(row, basedir, transform=True):
     if transform:
         row['data'].transform(**row['params']['transform'])
 
+def read_estimator(row, basedir):
+    h = util.hash_yaml_dict(row['params'])
+    modeldir = os.path.join(basedir, 'model', h, 'output')
+    row['estimator'] = joblib.load(os.path.join(modeldir, 'estimator.pkl'))
+
 def precision_series(row, k, masks=None):
     y = row['y'][row['y']['test']]
     y_true, y_score = y['true'], y['score']
@@ -39,7 +44,7 @@ def precision_series(row, k, masks=None):
 def precision(df, k, masks=None):
     return df.apply(lambda row: precision_series(row, k, masks), axis=1).T
 
-def read_model(dirname, estimator=True):
+def read_model(dirname, estimator=False):
     dirname = os.path.join(dirname, 'output/')
     if not os.path.isdir(dirname):
         return
@@ -62,7 +67,7 @@ def read_model(dirname, estimator=True):
 
     return df
 
-def read_models(dirname, tagname=None, estimator=True):
+def read_models(dirname, tagname=None, estimator=False):
     if tagname is not None:
         dirname = os.path.join(dirname, 'tag', tagname)
     else:
