@@ -9,6 +9,7 @@ import matplotlib.colors
 from matplotlib import cm
 import matplotlib.pyplot as plt
 from sklearn import tree
+from tempfile import NamedTemporaryFile
 
 def dict_to_df(d):
     df = pd.DataFrame(index=[0])
@@ -62,6 +63,7 @@ def read_model(dirname, estimator=False):
     df['estimator_name'] = [estimator_name]
     df['y'] = [y]
     df['features'] = [features]
+    df['n_features'] = [len(features)]
     df['params'] = [params]
     df['data'] = [util.init_object(**params['data'])]
 
@@ -75,6 +77,7 @@ def read_models(dirname, tagname=None, estimator=False):
     df = pd.concat((read_model(subdir, estimator) for subdir in get_subdirs(dirname)), ignore_index=True)
     #calculate_metrics(df)
 
+    df.index = [str(d) for d in dict_diff(df.params.values)]
     return df
 
 def calculate_metrics(df):
@@ -166,7 +169,7 @@ def jenks_labels(breaks):
 def show_tree(tree, feature_names,max_depth=None):
     import wand.image
 
-    filename ="tree.pdf"
+    filename = NamedTemporaryFile(delete=False).name
     export_tree(tree, filename, [c.encode('ascii') for c in feature_names],max_depth)
     img = wand.image.Image(filename=filename)
     return img
@@ -180,3 +183,23 @@ def export_tree(clf, filename, feature_names=None, max_depth=None):
     graph = pydot.graph_from_dot_data(dot_data.getvalue())
     graph.write_pdf(filename)
 
+def dict_diff(dictionaries):
+    diffs = [{} for d in dictionaries]
+    for top_key in ['data','model', 'transform']:
+        dicts = [d[top_key] for d in dictionaries]
+        keys = map(lambda d: set(d.keys()), dicts)
+        intersection = reduce(lambda a,b: a&b, keys)
+        
+        # uncommon keys
+        diff = [{k:d[k] for k in d if k not in intersection} for d in dicts]
+        
+        # common keys
+        for key in intersection:
+            if len(set(yaml.dump(d[key]) for d in dicts)) > 1:
+                for d1, d2 in zip(diff, dicts):
+                    d1[key] = d2[key]
+        
+        if len(diff[0]) > 0: # add to total diff if non-empty
+            for d1, d2 in zip(diffs, diff):
+                d1.update(d2)
+    return diffs
