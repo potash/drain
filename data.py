@@ -48,19 +48,31 @@ class ClassificationData(ModelData):
         train_len = int(len(self.X)/2)
         train = pd.Series([True]*train_len + [False]*(len(self.X)-train_len))
         self.cv = (train, ~train)
+# produces a query returning left at the given level in sql
+def aggregation_left_sql(left, level):
+    if 'aggregation_end' in left.columns:
+        left = left[[level, 'aggregation_end']].dropna().drop_duplicates()
+        left[level] = left[level].astype(np.int64)
+        left = str.join(',', map(lambda a: "({i},'{d}')".format(i=a[0],d=a[1]), left.values))
+        return 'select * from unnest(ARRAY[{left}]::aggregation_type[])'.format(left=left)
+    else:
+        left = left[level].dropna().drop_duplicates()
+        left = left.astype(np.int64)
+        left = str.join(',', map(str, left))
+        return 'select * from unnest(ARRAY[{left}]) aggregation_id'.format(left=left)
+    
+def get_aggregate(table_name, level, engine, left):
+    left_sql = aggregation_left_sql(left, level)
+    join_columns = 'aggregation_id, aggregation_end' if 'aggregation_end' in left.columns else 'aggregation_id'
 
-def get_aggregate(table_name, level, engine, end_dates=None, deltas=None):
-    sql = "select * from {table_name} where aggregation_level='{level}' ".format(table_name=table_name, level=level)
-
-    if end_dates is not None:
-        end_dates = str.join(',', map(lambda d: "'" + str(d) + "'", end_dates))
-        deltas = str.join(',', map(str, deltas))
-        sql = sql + " and aggregation_end in ({end_dates}) and aggregation_delta in ({deltas})".format(end_dates=end_dates, deltas=deltas)
-
-    print sql
-
-    t = pd.read_sql(sql, engine)
-    return t
+    sql = """
+    with addresses as ({left_sql})
+    select * from addresses
+    join {table_name} using ({join_columns}) 
+    where aggregation_level='{level}'
+    """.format(left_sql=left_sql, table_name=table_name, level=level, join_columns=join_columns)
+    
+    return pd.read_sql(sql, engine)
 
 def prefix_column(level, column, prefix=None, delta=None):
     column_prefix = level[:-3] + '_'
@@ -71,12 +83,13 @@ def prefix_column(level, column, prefix=None, delta=None):
         column_prefix += delta_prefix + '_'
     return column_prefix + column
 
-def get_aggregation(table_name, level_deltas, engine, end_dates=None, left=None, prefix=None):
-    for level in level_deltas:
-        deltas = level_deltas[level] if type(level_deltas) is dict else None
-        t = get_aggregate(table_name, level, engine, end_dates, deltas)
+def get_aggregation(table_name, levels, engine, left, prefix=None):
+    temporal = 'aggregation_end' in left.columns
+
+    for level in levels:
+        t = get_aggregate(table_name, level, engine, left)
         t.drop(['aggregation_level'],inplace=True,axis=1)
-        if deltas is not None:
+        if temporal:
             t.set_index(['aggregation_end', 'aggregation_id', 'aggregation_delta'], inplace=True)
             t = t.unstack()
             t.columns = [prefix_column(level, column, prefix, delta) for column, delta in product(*t.columns.levels)]
@@ -86,11 +99,9 @@ def get_aggregation(table_name, level_deltas, engine, end_dates=None, left=None,
 
         t.reset_index(inplace=True) # should add exclude arg to prefix_columns
         t.rename(columns={'aggregation_id':level}, inplace=True)
-        if left is None:
-            left = t
-        else:
-            index = [level, 'aggregation_end'] if deltas is not None else level
-            left = left.merge(t, on=index, how='left', copy=False)
+
+        index = [level, 'aggregation_end'] if temporal else level
+        left = left.merge(t, on=index, how='left', copy=False)
 
     return left
 
@@ -149,8 +160,10 @@ def Xy(df, y_column, include=None, exclude=None, train=None, category_classes={}
     X = select_features(df=df, exclude=exclude, include=include)
     
     X = binarize(X, category_classes)
+
+    X = X.astype(np.float32, copy=False)
     
-    nulcols = null_columns(X)
+    nulcols = null_columns(X, train)
     if len(nulcols) > 0:
         print 'Warning: null columns ' + str(nulcols)
     
@@ -160,20 +173,19 @@ def Xy(df, y_column, include=None, exclude=None, train=None, category_classes={}
     
     return (X,y)
 
-def impute(X, train=None, strategy='mean'):
-    imputer = preprocessing.Imputer(strategy=strategy, copy=False)
+def normalize(X, train=None):
     Xfit = X[train] if train is not None else X
-    imputer.fit(Xfit)
-    X = pd.DataFrame(imputer.transform(X), index=X.index, columns = X.columns)
+    sigma = X[train].std(ddof=0)
+    sigma.loc[sigma==0]=1
+    mu = X[train].mean()
+
+    X = (X - mu) / sigma
         
     return X
 
-def normalize(X, train=None):
-    scaler = preprocessing.StandardScaler(copy=False)
+def impute(X, train=None):
     Xfit = X[train] if train is not None else X
-    scaler.fit(Xfit)
-    X = pd.DataFrame(scaler.transform(X), index=X.index, columns = X.columns)
-
+    X.fillna(Xfit.mean(), inplace=True)
     return X
 
 # select subset of strings matching a regex
@@ -200,7 +212,9 @@ def select_features(df, exclude, include=None):
     df = df.reindex(columns = columns, copy=False)
     return df
 
-def null_columns(df):
+def null_columns(df, train=None):
+    if train is not None:
+        df = df[train]
     nulcols = df.isnull().sum() == len(df)
     return nulcols[nulcols==True].index
 

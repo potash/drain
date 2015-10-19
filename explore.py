@@ -52,7 +52,7 @@ def read_model(dirname, estimator=False):
  
     estimator = (joblib.load(os.path.join(dirname, 'estimator.pkl'))) if estimator else None
     
-    y = (pd.read_csv(os.path.join(dirname, 'y.csv'), index_col=0))
+    y = pd.read_hdf(os.path.join(dirname, 'y.hdf'), 'y')
     features = pd.read_csv(os.path.join(dirname, 'features.csv'))
     params = yaml.load(open(os.path.join(dirname, '../params.yaml')))
 

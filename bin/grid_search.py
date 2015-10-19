@@ -54,7 +54,7 @@ def drake_step(basedir, params, method, inputs=[], tagdir=None):
 
 # write the grid search drakefile to drakefile
 # drakein is the optional dependent drakefile
-def grid_search(params, outputdir, drakefile, drakein=None, tag=None):
+def grid_search(params, outputdir, drakefile, drakein=None, tag=None, python_args=None):
     data = list_dict_product(params['data'])
     transforms = list_dict_product(params['transforms'])
     models = list_dict_product(params['models'])
@@ -70,10 +70,10 @@ def grid_search(params, outputdir, drakefile, drakein=None, tag=None):
     drakefile.write("""
 PYTHONUNBUFFERED=Y
 data()
-    python {bindir}/read_write_data.py $INPUT $OUTPUT
+    python {python_args} {bindir}/read_write_data.py $INPUT $OUTPUT
 model()
-    python {bindir}/run_model.py $INPUT $OUTPUT $INPUT1\n
-""".format(bindir=bindir))
+    python {python_args} {bindir}/run_model.py $INPUT $OUTPUT $INPUT1\n
+""".format(bindir=bindir, python_args=python_args))
     
     # data steps
     for d in data:
@@ -103,6 +103,7 @@ parser.add_argument('outputdir', type=str, help='output directory')
 parser.add_argument('--Drakeinput', type=str, default=None, help='dependent drakefile')
 parser.add_argument('--drakeargs', type=str, default=None, help='parameters to pass to drake (via stdout)')
 parser.add_argument('--tag', type=str, default=None, help='tag name for model outputs')
+parser.add_argument('--pyargs', type=str, default='', help='python arguments')
 args = parser.parse_args()
 
 with open(args.params) as f:
@@ -111,7 +112,7 @@ with open(args.params) as f:
 outputdir = os.path.abspath(args.outputdir)
 
 with open(args.drakeoutput, 'w') as drakefile:
-    grid_search(params, outputdir, drakefile, args.Drakeinput, args.tag)
+    grid_search(params, outputdir, drakefile, args.Drakeinput, args.tag, python_args=args.pyargs)
 
 if args.drakeargs is not None:
     print args.drakeargs

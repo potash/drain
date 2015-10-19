@@ -51,15 +51,17 @@ else:
 print 'Validating model'
 print '    on ' + str(test.sum()) + ' examples'
 
-y_score = pd.Series(model.y_score(estimator, data.X), index=data.X.index)
+y_score = pd.Series(model.y_score(estimator, data.X[test]), index=data.X[test].index)
 
 # create a single y dataframe with train and test and other masks
-y = pd.DataFrame({'score':y_score, 'true': data.y})
+y = pd.DataFrame({'true': data.y})
+y['score'] = y_score
 if hasattr(data, 'masks'):
     y = y.join(data.masks)
-y = y.join(pd.DataFrame({'train': train, 'test':test}))
+y['train'] = train
+y['test'] = test
 
-run = {'data': data, 'estimator': estimator, 'y': y}
+run = {'data': data, 'estimator': estimator, 'y': y.reset_index()}
 
 # print metrics
 common_params = {'run': run} # stuff passed to every metric
@@ -83,6 +85,6 @@ if not os.path.exists(args.outputdir):
 joblib.dump(estimator, os.path.join(args.outputdir, 'estimator.pkl'))
 
 # write output
-y.to_csv(os.path.join(args.outputdir, 'y.csv'), index=True)
+y.to_hdf(os.path.join(args.outputdir, 'y.hdf'), 'y', mode='w')
 
 model.feature_importance(estimator, data.X).to_csv(os.path.join(args.outputdir, 'features.csv'), index=False)

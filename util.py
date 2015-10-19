@@ -8,9 +8,13 @@ import pandas as pd
 from sklearn import preprocessing
 from scipy import stats
 
-def create_engine(**kwargs):
+def create_engine():
     return sqlalchemy.create_engine('postgresql://{user}:{pwd}@{host}:5432/{db}'.format(
             host=os.environ['PGHOST'], db=os.environ['PGDATABASE'], user=os.environ['PGUSER'], pwd=os.environ['PGPASSWORD']))
+
+def create_db():
+    engine = create_engine()
+    return PgSQLDatabase(engine)
 
 def execute_sql(sql, engine):
     conn = engine.connect()
@@ -54,8 +58,23 @@ def randdates(start,end, size):
         d[i] = start + r[i]
     return d
 
+# return the index (given level) as a series with the original index
+def index_as_series(df, level=None):
+    if level is not None:
+        values = df.index.get_level_values(level)
+    else:
+        values = df.index.values
+
+    return pd.Series(values, index=df.index) 
+
 def count_unique(series):
     return series.nunique()
+
+def mode(series):
+    if series.notnull().sum() == 0:
+        return np.nan
+    else:
+        return series.value_counts().idxmax()
 
 # normalize a dataframes columns
 # method = 'normalize': use standard score i.e. (X - \mu) / \sigma
