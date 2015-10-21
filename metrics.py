@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 import sklearn.metrics
+from drain import util
 
 def baseline(run, masks=[], test=True):
     y_true,y_score = _mask(run, masks, test)
@@ -42,5 +43,13 @@ def precision_series(y_true, y_score, k):
 def _mask(run, masks, test):
     if test:
         masks = masks + ['test']
-    mask = reduce(lambda a,b: a & b, (run['y'][mask] for mask in masks))
+
+    masks2 = []
+    for mask in masks:
+        if mask in run['y'].columns:
+            masks2.append(run['y'][mask])
+        else:
+            masks2.append(util.index_as_series(run['y'], mask))
+
+    mask = reduce(lambda a,b: a & b, masks2)
     return run['y'][mask]['true'], run['y'][mask]['score']
