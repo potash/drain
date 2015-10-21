@@ -133,6 +133,13 @@ def binarize(df, category_classes, all_classes=False):
     df.drop(columns, axis=1, inplace=True)                                      
     return df
 
+def binarize_set(df, column, values=None):
+    if values is None:
+        values = reduce(lambda a,b: a | b, df[column])
+    for value in values:
+        name = values[value] if type(values) is dict else str(value)
+        df[column + '_'+ name.replace(' ', '_')] = df[column].apply(lambda d: value in d)
+
 def binarize_clusters(df, column, n_clusters, train=None):
     series = df[column]
     series = series.dropna()
