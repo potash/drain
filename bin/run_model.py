@@ -1,5 +1,6 @@
 import yaml
 import pandas as pd
+from pandas.io.pytables import PerformanceWarning
 from sklearn.externals import joblib
 import os
 import argparse
@@ -11,6 +12,7 @@ from drain import util
 
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=PerformanceWarning)
 
 parser = argparse.ArgumentParser(description='Use this script to run a single model.')
 parser.add_argument('params', type=str, help='yaml params filename')

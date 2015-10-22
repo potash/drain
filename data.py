@@ -157,6 +157,15 @@ def binarize_clusters(df, column, n_clusters, train=None):
     
     return df
 
+# narrows df to train | test
+# then narrows train and test to that
+def train_test_subset(df, train, test):
+    df.drop(df.index[~(train | test)], inplace=True)
+    train = train.loc[df.index]
+    test = test.loc[df.index]
+
+    return df, train, test
+
 # returns endogenous and exogenous variables
 # normalization requires imputation (can't normalize null values)
 # training mask is used for normalization

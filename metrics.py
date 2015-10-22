@@ -3,20 +3,20 @@ import pandas as pd
 import sklearn.metrics
 from drain import util
 
-def baseline(run, masks=[], test=True):
-    y_true,y_score = _mask(run, masks, test)
+def baseline(run, masks=[], test=True, outcome='true'):
+    y_true,y_score = _mask(run, masks, test, outcome)
     if len(y_true) > 0:
         return y_true.sum()*1.0/len(y_true)
     else:
         return 0.0
 
-def auc(run, masks=[], test=True):
-    y_true, y_score = _mask(run, masks, test)
+def auc(run, masks=[], test=True, outcome='true'):
+    y_true, y_score = _mask(run, masks, test, outcome)
     fpr, tpr, thresholds = sklearn.metrics.roc_curve(y_true, y_score)
     return sklearn.metrics.auc(fpr, tpr)
 
-def precision(run, k=None, p=None, masks=[], test=True):
-    y_true, y_score = _mask(run, masks, test)
+def precision(run, k=None, p=None, masks=[], test=True, outcome='true'):
+    y_true, y_score = _mask(run, masks, test, outcome)
 
     # deal with k or p
     if k is not None and p is not None:
@@ -40,7 +40,7 @@ def precision_series(y_true, y_score, k):
     top_k = ranks[::-1][0:k]
     return pd.Series(y_true[top_k].cumsum()*1.0/np.arange(1,k+1), index=np.arange(1,k+1))
 
-def _mask(run, masks, test):
+def _mask(run, masks, test, outcome='true'):
     if test:
         masks = masks + ['test']
 
@@ -52,4 +52,4 @@ def _mask(run, masks, test):
             masks2.append(util.index_as_series(run['y'], mask))
 
     mask = reduce(lambda a,b: a & b, masks2)
-    return run['y'][mask]['true'], run['y'][mask]['score']
+    return run['y'][mask][outcome], run['y'][mask]['score']
