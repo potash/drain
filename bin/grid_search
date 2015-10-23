@@ -3,7 +3,13 @@
 DIR="$(dirname "$(readlink -f "$0")")"
 DRAKE_FILE=`mktemp` || exit 1
 DRAKE_ARGS_FILE=`mktemp` || exit 1
+args="$@"
 
-python $DIR/grid_search.py --drakeargsfile $DRAKE_ARGS_FILE --drakeoutput $DRAKE_FILE "$@" || exit
+if [ -f 'default_profile' ]; then
+    set -a .
+    source default_profile
+fi
+
+python $DIR/grid_search.py --drakeargsfile $DRAKE_ARGS_FILE --drakeoutput $DRAKE_FILE $args || exit
 drake_args=$(cat $DRAKE_ARGS_FILE)
 drake -w $DRAKE_FILE $drake_args
