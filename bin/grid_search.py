@@ -34,20 +34,20 @@ def check_tag(tag):
     else:
         return tag
 
-def drake_step(basedir, params, method, inputs=[], tagdir=None):
+def drake_step(basedir, params, method, inputs=[], tagdir=None, preview=False):
     d = params_dir(basedir, params, method)
 
-    if not os.path.exists(d):
+    if not os.path.exists(d) and not preview:
         os.makedirs(d)
     
     dirname = os.path.join(d, 'output/')
     params_file = os.path.join(d, 'params.yaml')
 
-    if not os.path.isfile(params_file):
+    if not os.path.isfile(params_file) and not preview:
         with file(params_file, 'w') as f:
             yaml.dump(params, f)
 
-    if tagdir is not None and not os.path.exists(tagdir):
+    if tagdir is not None and not os.path.exists(tagdir) and not preview:
         os.symlink(d, tagdir)
 
     cls = util.get_attr(params[method]['name'])
@@ -60,7 +60,7 @@ def drake_step(basedir, params, method, inputs=[], tagdir=None):
 
 # write the grid search drakefile to drakefile
 # drakein is the optional dependent drakefile
-def grid_search(params, outputdir, drakefile, drakein=None, tag=None, python_args=None, overwrite_tag=False):
+def grid_search(params, outputdir, drakefile, drakein=None, tag=None, python_args=None, overwrite_tag=False, preview=False):
     data = list_dict_product(params['data'])
     transforms = list_dict_product(params['transforms'])
     models = list_dict_product(params['models'])
@@ -84,13 +84,13 @@ model()
     # data steps
     for d in data:
         p = {'data': d}
-        drakefile.write(drake_step(outputdir, p, 'data'))
+        drakefile.write(drake_step(outputdir, p, 'data', preview=preview))
     
     if tag is not None:
         tagdir = os.path.join(outputdir, 'tag', tag)
-        if overwrite_tag:
+        if overwrite_tag and not preview:
             shutil.rmtree(tagdir)
-        if not os.path.exists(tagdir):
+        if not os.path.exists(tagdir) and not preview:
             os.makedirs(tagdir)
             
 
@@ -113,10 +113,11 @@ parser.add_argument('-D', '--Drakeinput', type=str, default=None, help='dependen
 parser.add_argument('-t', '--tag', default=None, help='tag name for model outputs', type=check_tag)
 parser.add_argument('-o', '--overwrite', action='store_true', help='overwrite tag')
 parser.add_argument('-p', '--pyargs', type=str, default='', help='python arguments')
+parser.add_argument('-P', '--preview', action='store_true', help='Preview Drakefile and pass --preview to drake')
 
 parser.add_argument('params', type=str, help='yaml params filename')
 parser.add_argument('outputdir', type=str, help='output directory')
-parser.add_argument('drakeargs', nargs='?', type=str, default=None, help='parameters to pass to drake (via stdout)')
+parser.add_argument('drakeargs', nargs='?', type=str, default=None, help='parameters to pass to drake via --drakeargsfile')
 args = parser.parse_args()
 
 with open(args.params) as f:
@@ -124,9 +125,14 @@ with open(args.params) as f:
 
 outputdir = os.path.abspath(args.outputdir)
 
-with open(args.drakeoutput, 'w') as drakefile:
-    grid_search(params, outputdir, drakefile, args.Drakeinput, args.tag, python_args=args.pyargs, overwrite_tag=args.overwrite)
+if args.Drakeinput is None and os.path.exists('Drakefile'):
+    args.Drakeinput = 'Drakefile'
 
-if args.drakeargs is not None and args.drakeargsfile is not None:
+with open(args.drakeoutput, 'w') as drakefile:
+    if args.preview:
+        drakefile = sys.stdout
+    grid_search(params, outputdir, drakefile, args.Drakeinput, args.tag, python_args=args.pyargs, overwrite_tag=args.overwrite, preview=args.preview)
+
+if args.drakeargs is not None and args.drakeargsfile is not None and not preview:
     with open(args.drakeargsfile, 'w') as drakeargsfile:
         drakeargsfile.write(args.drakeargs)
