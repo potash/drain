@@ -1,6 +1,7 @@
 import os
 import datetime
 import math
+from copy import deepcopy
 
 import pandas as pd
 import numpy as np
@@ -21,6 +22,10 @@ def y_score(estimator, X):
 # where '#' is the hash of the yaml dump of the params dict
 # in the special case of method='model', the metrics key is dropped before hashing
 def params_dir(basedir, params, method):
+    if method == 'model' and 'metrics' in params:
+        params = deepcopy(params)
+        params.pop('metrics')
+
     h = util.hash_yaml_dict(params)
     d = os.path.join(basedir, method, h + '/')
     return d

@@ -30,6 +30,19 @@ def check_tag(tag):
     else:
         return tag
 
+# return True if params_file does not exist
+# or if params_file content is different from params
+# that is possible if the params_file was corrupted
+# or if metrics changed (because those don't count for hash)
+def params_new(params, params_file):
+    if not os.path.isfile(params_file):
+        return True
+    else:
+        with open(params_file) as params2:
+            if yaml.load(params2) != params:
+                return True
+    return False
+
 def drake_step(basedir, params, method, inputs=[], tagdir=None, preview=False):
     d = params_dir(basedir, params, method)
 
@@ -39,8 +52,8 @@ def drake_step(basedir, params, method, inputs=[], tagdir=None, preview=False):
     dirname = os.path.join(d, 'output/')
     params_file = os.path.join(d, 'params.yaml')
 
-    if not os.path.isfile(params_file) and not preview:
-        with file(params_file, 'w') as f:
+    if params_new(params, params_file) and not preview:
+        with open(params_file, 'w') as f:
             yaml.dump(params, f)
 
     if tagdir is not None and not os.path.exists(tagdir) and not preview:
