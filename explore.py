@@ -1,15 +1,19 @@
 import os
-from sklearn.externals import joblib
 import yaml
-import pandas as pd
-from drain import model, util, metrics
-import numpy as np
 from copy import deepcopy
+from tempfile import NamedTemporaryFile
+
+from sklearn.externals import joblib
+from sklearn import tree
+import pandas as pd
+import numpy as np
+
 import matplotlib.colors
 from matplotlib import cm
 import matplotlib.pyplot as plt
-from sklearn import tree
-from tempfile import NamedTemporaryFile
+
+from drain import model, util, metrics
+from drain.model import params_dir
 
 def dict_to_df(d):
     df = pd.DataFrame(index=[0])
@@ -23,16 +27,14 @@ def dict_to_df(d):
 
 def read_data(row, basedir, transform=True):
     params = {'data': row['params']['data']}
-    h = util.hash_yaml_dict(params)
-    datadir = os.path.join(basedir, 'data', h, 'output')
+    datadir = os.path.join(params_dir(basedir, params, 'data'), 'output')
     row['data'].read(datadir)
 
     if transform:
         row['data'].transform(**row['params']['transform'])
 
 def read_estimator(row, basedir):
-    h = util.hash_yaml_dict(row['params'])
-    modeldir = os.path.join(basedir, 'model', h, 'output')
+    modeldir = os.path.join(params_dir(basedir, row['params'], 'model'), 'output')
     row['estimator'] = joblib.load(os.path.join(modeldir, 'estimator.pkl'))
 
 def precision_series(row, k, masks=None):

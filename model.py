@@ -1,9 +1,13 @@
+import os
 import datetime
-from sklearn import metrics
+import math
+
 import pandas as pd
 import numpy as np
-import math
+from sklearn import metrics
 from statsmodels.discrete.discrete_model import Logit
+
+from drain import util
 
 def y_score(estimator, X):
     if hasattr(estimator, 'decision_function'):
@@ -11,6 +15,15 @@ def y_score(estimator, X):
     else:
         y = estimator.predict_proba(X)
         return y[:,1]
+
+# given a params dict and a basedir and a method, return a directory for storing the method output
+# generally this is basedir/method/#/
+# where '#' is the hash of the yaml dump of the params dict
+# in the special case of method='model', the metrics key is dropped before hashing
+def params_dir(basedir, params, method):
+    h = util.hash_yaml_dict(params)
+    d = os.path.join(basedir, method, h + '/')
+    return d
 
 def sk_tree(X,y, params={'max_depth':3}):
     clf = tree.DecisionTreeClassifier(**params)

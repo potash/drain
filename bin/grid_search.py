@@ -5,6 +5,7 @@ import sys
 import yaml
 import argparse
 from drain import util
+from drain.model import params_dir
     
 # cartesian product of dict whose values are lists
 def dict_product(d):
@@ -22,11 +23,6 @@ def dict_filter_none(d):
 # concatenate a list of dict products
 def list_dict_product(l):
     return list(itertools.chain(*[dict_product(d) for d in l]))
-
-def params_dir(basedir, params, method):
-    h = util.hash_yaml_dict(params)
-    d = os.path.join(basedir, method, h + '/')
-    return d
 
 def check_tag(tag):
     if tag.find('.') > -1:
@@ -105,34 +101,36 @@ model()
     
         drakefile.write(drake_step(outputdir, p, 'model', inputs=[datadir], tagdir=tagdir))
 
-parser = argparse.ArgumentParser(description='Use this script to generate a Drakefile for grid search')
-
-parser.add_argument('--drakeoutput', type=str, help='internally used temp file for drake workflow')
-parser.add_argument('--drakeargsfile', type=str, help='internally used temp file for drake arguments')
-parser.add_argument('-D', '--Drakeinput', type=str, default=None, help='dependent drakefile')
-parser.add_argument('-t', '--tag', default=None, help='tag name for model outputs', type=check_tag)
-parser.add_argument('-o', '--overwrite', action='store_true', help='overwrite tag')
-parser.add_argument('-p', '--pyargs', type=str, default='', help='python arguments')
-parser.add_argument('-P', '--preview', action='store_true', help='Preview Drakefile and pass --preview to drake')
-
-parser.add_argument('params', type=str, help='yaml params filename')
-parser.add_argument('outputdir', type=str, help='output directory')
-parser.add_argument('drakeargs', nargs='?', type=str, default=None, help='parameters to pass to drake via --drakeargsfile')
-args = parser.parse_args()
-
-with open(args.params) as f:
-    params = yaml.load(f)
-
-outputdir = os.path.abspath(args.outputdir)
-
-if args.Drakeinput is None and os.path.exists('Drakefile'):
-    args.Drakeinput = 'Drakefile'
-
-with open(args.drakeoutput, 'w') as drakefile:
-    if args.preview:
-        drakefile = sys.stdout
-    grid_search(params, outputdir, drakefile, args.Drakeinput, args.tag, python_args=args.pyargs, overwrite_tag=args.overwrite, preview=args.preview)
-
-if args.drakeargs is not None and args.drakeargsfile is not None and not preview:
-    with open(args.drakeargsfile, 'w') as drakeargsfile:
-        drakeargsfile.write(args.drakeargs)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description='Use this script to generate a Drakefile for grid search')
+    
+    parser.add_argument('--drakeoutput', type=str, help='internally used temp file for drake workflow')
+    parser.add_argument('--drakeargsfile', type=str, help='internally used temp file for drake arguments')
+    parser.add_argument('-D', '--Drakeinput', type=str, default=None, help='dependent drakefile')
+    parser.add_argument('-t', '--tag', default=None, help='tag name for model outputs', type=check_tag)
+    parser.add_argument('-o', '--overwrite', action='store_true', help='overwrite tag')
+    parser.add_argument('-p', '--pyargs', type=str, default='', help='python arguments')
+    parser.add_argument('-P', '--preview', action='store_true', help='Preview Drakefile and pass --preview to drake')
+    
+    parser.add_argument('params', type=str, help='yaml params filename')
+    parser.add_argument('outputdir', type=str, help='output directory')
+    parser.add_argument('drakeargs', nargs='?', type=str, default=None, help='parameters to pass to drake via --drakeargsfile')
+    args = parser.parse_args()
+    
+    with open(args.params) as f:
+        params = yaml.load(f)
+    
+    outputdir = os.path.abspath(args.outputdir)
+    
+    if args.Drakeinput is None and os.path.exists('Drakefile'):
+        args.Drakeinput = 'Drakefile'
+    
+    with open(args.drakeoutput, 'w') as drakefile:
+        if args.preview:
+            drakefile = sys.stdout
+        grid_search(params, outputdir, drakefile, args.Drakeinput, args.tag, 
+                python_args=args.pyargs, overwrite_tag=args.overwrite, preview=args.preview)
+    
+    if args.drakeargs is not None and args.drakeargsfile is not None and not preview:
+        with open(args.drakeargsfile, 'w') as drakeargsfile:
+            drakeargsfile.write(args.drakeargs)
