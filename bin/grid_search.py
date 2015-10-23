@@ -107,7 +107,8 @@ model()
 
 parser = argparse.ArgumentParser(description='Use this script to generate a Drakefile for grid search')
 
-parser.add_argument('-d', '--drakeoutput', type=str, help='output drakefile, usually a temp file')
+parser.add_argument('--drakeoutput', type=str, help='internally used temp file for drake workflow')
+parser.add_argument('--drakeargsfile', type=str, help='internally used temp file for drake arguments')
 parser.add_argument('-D', '--Drakeinput', type=str, default=None, help='dependent drakefile')
 parser.add_argument('-t', '--tag', default=None, help='tag name for model outputs', type=check_tag)
 parser.add_argument('-o', '--overwrite', action='store_true', help='overwrite tag')
@@ -126,5 +127,6 @@ outputdir = os.path.abspath(args.outputdir)
 with open(args.drakeoutput, 'w') as drakefile:
     grid_search(params, outputdir, drakefile, args.Drakeinput, args.tag, python_args=args.pyargs, overwrite_tag=args.overwrite)
 
-if args.drakeargs is not None:
-    print args.drakeargs
+if args.drakeargs is not None and args.drakeargsfile is not None:
+    with open(args.drakeargsfile, 'w') as drakeargsfile:
+        drakeargsfile.write(args.drakeargs)
