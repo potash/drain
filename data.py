@@ -1,5 +1,6 @@
 import pandas as pd
 from sklearn import preprocessing
+from sklearn.utils.validation import _assert_all_finite
 import re
 import os
 import numpy as np
@@ -48,59 +49,84 @@ class ClassificationData(ModelData):
         train_len = int(len(self.X)/2)
         train = pd.Series([True]*train_len + [False]*(len(self.X)-train_len))
         self.cv = (train, ~train)
+
 # produces a query returning left at the given level in sql
-def aggregation_left_sql(left, level):
+def aggregation_left_sql(left, index):
     if 'aggregation_end' in left.columns:
-        left = left[[level, 'aggregation_end']].dropna().drop_duplicates()
-        left[level] = left[level].astype(np.int64)
+        left = left[[index, 'aggregation_end']].dropna().drop_duplicates()
+        left[index] = left[index].astype(np.int64)
         left = str.join(',', map(lambda a: "({i},'{d}')".format(i=a[0],d=a[1]), left.values))
         return 'select * from unnest(ARRAY[{left}]::aggregation_type[])'.format(left=left)
     else:
-        left = left[level].dropna().drop_duplicates()
+        left = left[index].dropna().drop_duplicates()
         left = left.astype(np.int64)
         left = str.join(',', map(str, left))
         return 'select * from unnest(ARRAY[{left}]) aggregation_id'.format(left=left)
     
-def get_aggregate(table_name, level, engine, left):
-    left_sql = aggregation_left_sql(left, level)
+def get_aggregate(table_name, index, engine, left):
+    left_sql = aggregation_left_sql(left, index)
     join_columns = 'aggregation_id, aggregation_end' if 'aggregation_end' in left.columns else 'aggregation_id'
 
     sql = """
     with addresses as ({left_sql})
     select * from addresses
     join {table_name} using ({join_columns}) 
-    where aggregation_level='{level}'
-    """.format(left_sql=left_sql, table_name=table_name, level=level, join_columns=join_columns)
+    where aggregation_level='{index}'
+    """.format(left_sql=left_sql, table_name=table_name, index=index, join_columns=join_columns)
     
     return pd.read_sql(sql, engine)
 
-def prefix_column(level, column, prefix=None, delta=None):
-    column_prefix = level[:-3] + '_'
-    if prefix is not None:
-        column_prefix += prefix + '_'
+# convenience function for getting level index from name
+# tract -> census_tract_id, building -> building_id, etc.
+def level_index(level):
+    if level in ('tract', 'block'):
+        level = 'census_' + level
+    if level == 'community':
+        level = 'community_area'
+    return level + '_id'
+
+def aggregate_prefix_column(level, column, prefix=None, delta=None):
+    column_prefix = 'st_' + level + '_'
     if delta is not None:
         delta_prefix = str(delta) + 'y' if delta != -1 else 'all'
         column_prefix += delta_prefix + '_'
+    if prefix is not None:
+        column_prefix += prefix + '_'
     return column_prefix + column
+
+def include_aggregations(aggregations, prefix, options):
+    include = set()
+    for level in aggregations:
+        if level not in options:
+            raise ValueError('Invalid level for {0} aggregation: {1}'.format(prefix, level))
+        if isinstance(aggregations, dict):
+            for delta in aggregations[level]:
+                if delta not in options[level]:
+                    raise ValueError('Invalid delta for {0} {1} aggregation: {2}'.format(level, prefix, delta))
+                include.add(aggregate_prefix_column(level=level, delta=delta, prefix=prefix, column='') + '.*')
+        else:
+             include.add(aggregate_prefix_column(level=level, prefix=prefix, column=''))
+    return include
 
 def get_aggregation(table_name, levels, engine, left, prefix=None):
     temporal = 'aggregation_end' in left.columns
 
     for level in levels:
-        t = get_aggregate(table_name, level, engine, left)
+        index = level_index(level)
+        t = get_aggregate(table_name, index, engine, left) # change to level after re-running things
         t.drop(['aggregation_level'],inplace=True,axis=1)
         if temporal:
             t.set_index(['aggregation_end', 'aggregation_id', 'aggregation_delta'], inplace=True)
             t = t.unstack()
-            t.columns = [prefix_column(level, column, prefix, delta) for column, delta in product(*t.columns.levels)]
+            t.columns = [aggregate_prefix_column(level, column, prefix, delta) for column, delta in product(*t.columns.levels)]
         else:
             t.set_index('aggregation_id', inplace=True)
-            t.columns = [prefix_column(level, column, prefix) for column in t.columns]
+            t.columns = [aggregate_prefix_column(level, column, prefix) for column in t.columns]
 
         t.reset_index(inplace=True) # should add exclude arg to prefix_columns
-        t.rename(columns={'aggregation_id':level}, inplace=True)
+        t.rename(columns={'aggregation_id':index}, inplace=True)
 
-        index = [level, 'aggregation_end'] if temporal else level
+        index = [index, 'aggregation_end'] if temporal else index
         left = left.merge(t, on=index, how='left', copy=False)
 
     return left
@@ -177,8 +203,6 @@ def Xy(df, y_column, include=None, exclude=None, train=None, category_classes={}
     
     X = binarize(X, category_classes)
 
-    X = X.astype(np.float32, copy=False)
-    
     nulcols = null_columns(X, train)
     if len(nulcols) > 0:
         print 'Warning: null columns ' + str(nulcols)
@@ -186,6 +210,12 @@ def Xy(df, y_column, include=None, exclude=None, train=None, category_classes={}
     nonnum = non_numeric_columns(X)
     if len(nonnum) > 0:
         print 'Warning: non-numeric columns ' + str(nonnum)
+
+#    X = X.astype(np.float32, copy=False)
+
+    inf = infinite_columns(X)
+    if len(inf) > 0:
+        print 'Warning: columns contain infinite values' + str(inf)
     
     return (X,y)
 
@@ -233,6 +263,15 @@ def null_columns(df, train=None):
         df = df[train]
     nulcols = df.isnull().sum() == len(df)
     return nulcols[nulcols==True].index
+
+def infinite_columns(df):
+    columns = []
+    for c in df.columns:
+        try:
+            _assert_all_finite(df[c])
+        except:
+            columns.append(c)
+    return columns
 
 def non_numeric_columns(df):
     columns = []

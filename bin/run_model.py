@@ -14,6 +14,10 @@ import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=PerformanceWarning)
 
+from pprint import pformat
+def pformat_indent(o, indent):
+    return ' '*indent + pformat(o).replace('\n', '\n'+' '*indent)
+
 parser = argparse.ArgumentParser(description='Use this script to run a single model.')
 parser.add_argument('params', type=str, help='yaml params filename')
 parser.add_argument('outputdir', type=str, help='output directory')
@@ -26,16 +30,16 @@ with open(args.params) as f:
 data_name = params['data'].pop('name')
 model_name = params['model'].pop('name')
 
-print 'Loading ' + data_name
-print '    with parameters ' + str(params['data'])
+print 'Reading ' + data_name + ' with parameters:' 
+print pformat_indent(params['data'], 4)
 
 data = util.get_attr(data_name)(**params['data'])
-
 data.read(args.datadir)
 
-print 'Tranforming with parameters ' + str(params['transform'])
-data.transform(**params['transform'])
+print 'Tranforming with parameters:'
+print pformat_indent(params['transform'], 4)
 
+data.transform(**params['transform'])
 train,test = data.cv
 
 print 'Training ' + model_name

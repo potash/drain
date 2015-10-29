@@ -37,15 +37,15 @@ def read_estimator(row, basedir):
     modeldir = os.path.join(params_dir(basedir, row['params'], 'model'), 'output')
     row['estimator'] = joblib.load(os.path.join(modeldir, 'estimator.pkl'))
 
-def precision_series(row, k, masks=None):
+def precision_series(row, k, masks=[], outcome='true'):
     y = row['y'][row['y']['test']]
-    y_true, y_score = y['true'], y['score']
-    if masks is not None:
-        y_true, y_score = metrics._mask(row, masks, test=True)
+    #y_true, y_score = y['true'], y['score']
+    #if masks is not None:
+    y_true, y_score = metrics._mask(row, masks, test=True, outcome=outcome)
     return metrics.precision_series(y_true.values, y_score.values, k)
 
-def precision(df, k, masks=None):
-    return df.apply(lambda row: precision_series(row, k, masks), axis=1).T
+def precision(df, k, masks=[], outcome='true'):
+    return df.apply(lambda row: precision_series(row, k, masks=masks, outcome=outcome), axis=1).T
 
 def read_model(dirname, estimator=False):
     dirname = os.path.join(dirname, 'output/')
@@ -79,7 +79,7 @@ def read_models(dirname, tagname=None, estimator=False):
     df = pd.concat((read_model(subdir, estimator) for subdir in get_subdirs(dirname)), ignore_index=True)
     #calculate_metrics(df)
 
-    df.index = [str(d) for d in dict_diff(df.params.values)]
+    df.index = [yaml.dump(d).replace('\n', '') for d in dict_diff(df.params.values)]
     return df
 
 def calculate_metrics(df):

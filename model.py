@@ -55,3 +55,30 @@ class LogisticRegression(object):
     
     def predict_proba(self, X):
         return self.result.predict(X)
+
+from sklearn.externals.joblib import Parallel, delayed
+from sklearn.ensemble.forest import _parallel_helper
+
+def _proximity_parallel_helper(train_nodes, t, k):
+    d = (train_nodes == t).sum(axis=1)
+    n = d.argsort()[::-1][:k]
+    
+    return d[n], n #distance, neighbors
+
+def _proximity_helper(train_nodes, test_nodes, k):
+    results = Parallel(n_jobs=16, backend='threading')(delayed(_proximity_parallel_helper)(train_nodes, t, k) for t in test_nodes)
+    distance, neighbors = zip(*results)
+    return np.array(distance), np.array(neighbors)
+
+# store nodes in run
+def apply_forest(run):
+    run['nodes'] = pd.DataFrame(run.estimator.apply(run['data'].X), index=run['data'].X.index)
+    
+# look for nodes in training set proximal to the given nodes
+def proximity(run, ix, k):
+    if 'nodes' not in run:
+        apply_forest(run)
+    distance, neighbors = _proximity_helper(run['nodes'][run.y.train].values, run['nodes'].loc[ix].values, k)
+    neighbors = run['nodes'][run.y.train].irow(neighbors.flatten()).index
+    neighbors = [neighbors[k*i:k*(i+1)] for i in range(len(ix))]
+    return distance, neighbors

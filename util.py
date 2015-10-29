@@ -67,9 +67,8 @@ def index_as_series(df, level=None):
 
     return pd.Series(values, index=df.index) 
 
-def count_unique(series):
-    return series.nunique()
-
+# pandas mode is "empty if nothing has 2+ occurrences."
+# this method always returns something (nan if the series is empty/nan), breaking ties arbitrarily
 def mode(series):
     if series.notnull().sum() == 0:
         return np.nan
