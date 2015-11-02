@@ -71,3 +71,9 @@ def censor(df, date_column, end_date, delta):
         df = df[ df[date_column] > start_date ]
 
     return df
+
+def aggregate_list(l):
+    return list(np.concatenate(l.values))
+
+def aggregate_set(s):
+    return set(np.concatenate(s.values))
