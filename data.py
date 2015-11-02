@@ -165,6 +165,16 @@ def binarize_set(df, column, values=None):
     for value in values:
         name = values[value] if type(values) is dict else str(value)
         df[column + '_'+ name.replace(' ', '_')] = df[column].apply(lambda d: value in d)
+    df.drop(column, axis=1, inplace=True)
+
+# given a column whose entries are lists, create columns counting each element
+def binarize_list(df, column, values=None):
+    if values is None:
+        values = set(np.concatenate(df[column].values))
+    for value in values:
+        name = values[value] if type(values) is dict else str(value)
+        df[column + '_'+ name.replace(' ', '_')] = df[column].apply(lambda d: (d == value).sum())
+    df.drop(column, axis=1, inplace=True)
 
 def binarize_clusters(df, column, n_clusters, train=None):
     series = df[column]
@@ -203,19 +213,19 @@ def Xy(df, y_column, include=None, exclude=None, train=None, category_classes={}
     
     X = binarize(X, category_classes)
 
-    nulcols = null_columns(X, train)
-    if len(nulcols) > 0:
-        print 'Warning: null columns ' + str(nulcols)
+    #nulcols = null_columns(X, train)
+    #if len(nulcols) > 0:
+    #    print 'Warning: null columns ' + str(nulcols)
     
-    nonnum = non_numeric_columns(X)
-    if len(nonnum) > 0:
-        print 'Warning: non-numeric columns ' + str(nonnum)
+    #nonnum = non_numeric_columns(X)
+    #if len(nonnum) > 0:
+    #    print 'Warning: non-numeric columns ' + str(nonnum)
 
-#    X = X.astype(np.float32, copy=False)
+    X = X.astype(np.float32, copy=False)
 
-    inf = infinite_columns(X)
-    if len(inf) > 0:
-        print 'Warning: columns contain infinite values' + str(inf)
+    #inf = infinite_columns(X)
+    #if len(inf) > 0:
+    #    print 'Warning: columns contain infinite values' + str(inf)
     
     return (X,y)
 
