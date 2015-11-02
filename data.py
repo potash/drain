@@ -173,7 +173,7 @@ def binarize_list(df, column, values=None):
         values = set(np.concatenate(df[column].values))
     for value in values:
         name = values[value] if type(values) is dict else str(value)
-        df[column + '_'+ name.replace(' ', '_')] = df[column].apply(lambda d: (d == value).sum())
+        df[column + '_'+ name.replace(' ', '_')] = df[column].apply(lambda d: d.count(value))
     df.drop(column, axis=1, inplace=True)
 
 def binarize_clusters(df, column, n_clusters, train=None):
