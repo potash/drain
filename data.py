@@ -168,7 +168,7 @@ def binarize_set(df, column, values=None):
     df.drop(column, axis=1, inplace=True)
 
 # given a column whose entries are lists, create columns counting each element
-def binarize_list(df, column, values=None):
+def count_list(df, column, values=None):
     if values is None:
         values = set(np.concatenate(df[column].values))
     for value in values:
