@@ -310,8 +310,11 @@ def undersample_to(y, train, p):
     q = p*T/((1-p)*F)
     return undersample_by(y, train, q)
 
-def count_unique(series):
-    return series.nunique()
+def censor_column(date_column, today, column = None):
+    if column is None:
+        column = date_column
+    return "(CASE WHEN {date_column} < '{today}' THEN {column} ELSE null END)".format(
+            date_column=date_column, today=today, column=column)
 
 def nearest_neighbors_impute(df, coordinate_columns, data_columns, knr_params={}):
     from sklearn.neighbors import KNeighborsRegressor
