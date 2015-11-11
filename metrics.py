@@ -28,12 +28,46 @@ def precision(run, k=None, p=None, masks=[], test=True, outcome='true'):
     else:
         raise ValueError("precision must specify either k or p")
 
+    k = max(k, len(y_true))
+
     return precision_at_k(y_true.values, y_score.values, k)
 
-def precision_at_k(y_true, y_score, k):
-    ranks = y_score.argsort()
-    top_k = ranks[-k:]
-    return y_true[top_k].sum()*1.0/k
+def top_k(y_true, y_score, k, extrapolate=False):
+    if len(y_true) != len(y_score):
+        raise ValueError('Labels and scores must have same lengths: %s != %s' 
+                 % (len(y_true), len(y_score)))
+
+    if k == 0:
+        return (0,0)
+
+    labeled = ~np.isnan(y_true)
+    n = labeled.sum()
+    if not extrapolate and k > n:
+        raise ValueError('Cannot calculate precision at %d > %d'% (k,n))
+
+    if extrapolate:
+        ranks = y_score.argsort()
+        top = ranks[-k:]
+        labeled_top = ~np.isnan(y_true[top])
+
+        return y_true[top][labeled_top].sum(), labeled_top.sum()
+
+    else:
+        y_true, y_score = y_true[labeled], y_score[labeled]
+        ranks = y_score.argsort()
+        top = ranks[-k:]
+
+        return y_true[top].sum(), k
+
+def precision_at_k(y_true, y_score, k, extrapolate=False):
+    n,d = top_k(y_true, y_score, k, extrapolate)
+    p = n*1.0/d
+
+    if extrapolate:
+        s = np.sqrt(p*(1 - p) / d)
+        return p,s
+    else:
+        return p
 
 def precision_series(y_true, y_score, k):
     ranks = y_score.argsort()

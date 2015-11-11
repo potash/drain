@@ -176,6 +176,25 @@ def count_list(df, column, values=None):
         df[column + '_'+ name.replace(' ', '_')] = df[column].apply(lambda d: d.count(value))
     df.drop(column, axis=1, inplace=True)
 
+# given values, counts (as returned by np.unique(return_counts=True), find the count of a given value
+# used by expand_counts below
+def countsorted(values, counts, value):
+    if len(values) == 0: # when values is empty is has float dtype and searchsorted will fail
+        return 0
+    i = np.searchsorted(values, value)
+    if i != len(values) and values[i] == value:
+        return counts[i]
+    else:
+        return 0
+
+def expand_counts(df, column, values=None):
+    if values is None:
+        values = set(np.concatenate(df[column].apply(lambda c: c[0])))
+    for value in values:
+        name = values[value] if type(values) is dict else str(value)
+        df[column + '_'+ name.replace(' ', '_')] = df[column].apply(lambda c: countsorted(c[0], c[1], value))
+    df.drop(column, axis=1, inplace=True)
+
 def binarize_clusters(df, column, n_clusters, train=None):
     series = df[column]
     series = series.dropna()

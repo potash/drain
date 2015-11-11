@@ -75,5 +75,8 @@ def censor(df, date_column, end_date, delta):
 def aggregate_list(l):
     return list(np.concatenate(l.values))
 
-def aggregate_set(s):
-    return set(np.concatenate(s.values))
+def aggregate_set(l):
+    return set(np.concatenate(l.values))
+
+def aggregate_counts(l):
+    return np.unique(np.concatenate(l.values), return_counts=True)
