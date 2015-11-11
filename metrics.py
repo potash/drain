@@ -28,7 +28,7 @@ def precision(run, k=None, p=None, masks=[], test=True, outcome='true'):
     else:
         raise ValueError("precision must specify either k or p")
 
-    k = max(k, len(y_true))
+    k = min(k, len(y_true))
 
     return precision_at_k(y_true.values, y_score.values, k)
 
@@ -41,7 +41,7 @@ def top_k(y_true, y_score, k, extrapolate=False):
         return (0,0)
 
     labeled = ~np.isnan(y_true)
-    n = labeled.sum()
+    n = len(y_true) if extrapolate else labeled.sum()
     if not extrapolate and k > n:
         raise ValueError('Cannot calculate precision at %d > %d'% (k,n))
 
@@ -53,7 +53,8 @@ def top_k(y_true, y_score, k, extrapolate=False):
         return y_true[top][labeled_top].sum(), labeled_top.sum()
 
     else:
-        y_true, y_score = y_true[labeled], y_score[labeled]
+        y_true = y_true[labeled]
+        y_score = y_score[labeled]
         ranks = y_score.argsort()
         top = ranks[-k:]
 

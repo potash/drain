@@ -5,10 +5,10 @@ from numpy.testing import assert_almost_equal
 import pytest
 
 def test_top_k():
-    y_true = np.array([True, True, False])
-    y_score = np.array([1, 0, .5])
+    y_true = np.array([True, True, False, False])
+    y_score = np.array([.25, 1, 0, .5])
 
-    assert top_k(y_true, y_score,2) == (1,2)
+    assert top_k(y_true, y_score,3) == (2,3)
 
 # missing labels with extrapolate=False
 def test_top_k_null():
