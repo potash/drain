@@ -15,7 +15,7 @@ def auc(run, masks=[], test=True, outcome='true'):
     fpr, tpr, thresholds = sklearn.metrics.roc_curve(y_true, y_score)
     return sklearn.metrics.auc(fpr, tpr)
 
-def precision(run, k=None, p=None, masks=[], test=True, outcome='true'):
+def precision(run, k=None, p=None, masks=[], test=True, outcome='true', extrapolate=False):
     y_true, y_score = _mask(run, masks, test, outcome)
 
     # deal with k or p
@@ -30,7 +30,7 @@ def precision(run, k=None, p=None, masks=[], test=True, outcome='true'):
 
     k = min(k, len(y_true))
 
-    return precision_at_k(y_true.values, y_score.values, k)
+    return precision_at_k(y_true.values, y_score.values, k, extrapolate)
 
 def top_k(y_true, y_score, k, extrapolate=False):
     if len(y_true) != len(y_score):
