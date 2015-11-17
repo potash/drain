@@ -30,7 +30,7 @@ def precision(run, k=None, p=None, masks=[], test=True, outcome='true', extrapol
 
     k = min(k, len(y_true))
 
-    return precision_at_k(y_true.values, y_score.values, k, extrapolate)
+    return precision_at_k(y_true, y_score, k, extrapolate)
 
 def top_k(y_true, y_score, k, extrapolate=False):
     if len(y_true) != len(y_score):
@@ -39,6 +39,9 @@ def top_k(y_true, y_score, k, extrapolate=False):
 
     if k == 0:
         return (0,0)
+
+    y_true = np.array(y_true, dtype=np.bool)
+    y_score = np.array(y_score, dtype=np.float32)
 
     labeled = ~np.isnan(y_true)
     n = len(y_true) if extrapolate else labeled.sum()
