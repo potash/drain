@@ -42,7 +42,7 @@ def precision_series(row, k, masks=[], outcome='true'):
     #y_true, y_score = y['true'], y['score']
     #if masks is not None:
     y_true, y_score = metrics._mask(row, masks, test=True, outcome=outcome)
-    return metrics.precision_series(y_true.values, y_score.values, k)
+    return metrics.precision_series(y_true, y_score, k)
 
 def precision(df, k, masks=[], outcome='true'):
     return df.apply(lambda row: precision_series(row, k, masks=masks, outcome=outcome), axis=1).T
