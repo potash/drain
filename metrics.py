@@ -3,8 +3,13 @@ import pandas as pd
 import sklearn.metrics
 from drain import util
 
+def to_float(*args):
+    return [np.array(a, dtype=np.float32) for a in args]
+
 def baseline(run, masks=[], test=True, outcome='true'):
     y_true,y_score = _mask(run, masks, test, outcome)
+    y_true,y_score = to_float(y_true, y_score)
+
     if len(y_true) > 0:
         return y_true.sum()*1.0/(~np.isnan(y_true)).sum()
     else:
@@ -36,10 +41,10 @@ def top_k(y_true, y_score, k, extrapolate=False):
     if len(y_true) != len(y_score):
         raise ValueError('Labels and scores must have same lengths: %s != %s' 
                  % (len(y_true), len(y_score)))
-
     if k == 0:
         return (0,0)
 
+    y_true, y_score = to_float(y_true, y_score)
 
     labeled = ~np.isnan(y_true)
     n = len(y_true) if extrapolate else labeled.sum()
@@ -61,13 +66,16 @@ def top_k(y_true, y_score, k, extrapolate=False):
 
         return y_true[top].sum(), k
 
+# when extrapolate is True, return a triple
+# first element is lower bound (assuming unlabeled examples are all False)
+# second is precision of labeled examples only
+# third is upper bound (assuming unlabeled examples are all True) 
 def precision_at_k(y_true, y_score, k, extrapolate=False):
     n,d = top_k(y_true, y_score, k, extrapolate)
     p = n*1.0/d
 
     if extrapolate:
-        s = np.sqrt(p*(1 - p) / d)
-        return p,s
+        return n/k,p,(n+k-d)/k
     else:
         return p
 
@@ -90,8 +98,5 @@ def _mask(run, masks, test, outcome='true'):
     mask = reduce(lambda a,b: a & b, masks2)
     y_true = run['y'][mask][outcome]
     y_score = run['y'][mask]['score']
-
-    y_true = np.array(y_true, dtype=np.float32)
-    y_score = np.array(y_score, dtype=np.float32)
 
     return y_true, y_score
