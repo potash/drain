@@ -79,7 +79,9 @@ def precision_at_k(y_true, y_score, k, extrapolate=False):
     else:
         return p
 
+# TODO extrapolate here
 def precision_series(y_true, y_score, k):
+    y_true, y_score = to_float(y_true, y_score)
     ranks = y_score.argsort()
     top_k = ranks[::-1][0:k]
     return pd.Series(y_true[top_k].cumsum()*1.0/np.arange(1,k+1), index=np.arange(1,k+1))
