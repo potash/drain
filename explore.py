@@ -39,9 +39,9 @@ def read_estimator(row, basedir):
 
 def precision_series(row, k, masks=[], outcome='true'):
     y = row['y'][row['y']['test']]
-    #y_true, y_score = y['true'], y['score']
-    #if masks is not None:
     y_true, y_score = metrics._mask(row, masks, test=True, outcome=outcome)
+    k = min(len(y_true), k)
+
     return metrics.precision_series(y_true, y_score, k)
 
 def precision(df, k, masks=[], outcome='true'):

@@ -65,7 +65,15 @@ def index_as_series(df, level=None):
     else:
         values = df.index.values
 
-    return pd.Series(values, index=df.index) 
+    return pd.Series(values, index=df.index)
+
+# get a column or index level as series
+# if name is none return the whole index
+def get_series(df, name):
+    if name in df.columns:
+        return df[name]
+    else:
+        return index_as_series(df, name)
 
 # pandas mode is "empty if nothing has 2+ occurrences."
 # this method always returns something (nan if the series is empty/nan), breaking ties arbitrarily

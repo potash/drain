@@ -87,15 +87,16 @@ def precision_series(y_true, y_score, k):
     return pd.Series(y_true[top_k].cumsum()*1.0/np.arange(1,k+1), index=np.arange(1,k+1))
 
 def _mask(run, masks, test, outcome='true'):
-    if test:
-        masks = masks + ['test']
-
     masks2 = []
+    d = isinstance(masks, dict)
     for mask in masks:
-        if mask in run['y'].columns:
-            masks2.append(run['y'][mask])
-        else:
-            masks2.append(util.index_as_series(run['y'], mask))
+        series = util.get_series(run['y'], mask)
+        if d:
+            series = series == masks[mask]
+        masks2.append(series)
+
+    if test:
+        masks2.append(run.y['test'])
 
     mask = reduce(lambda a,b: a & b, masks2)
     y_true = run['y'][mask][outcome]
