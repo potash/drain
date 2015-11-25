@@ -37,23 +37,27 @@ def read_estimator(row, basedir):
     modeldir = os.path.join(params_dir(basedir, row['params'], 'model'), 'output')
     row['estimator'] = joblib.load(os.path.join(modeldir, 'estimator.pkl'))
 
-def precision(row, k=None, masks=[], outcome='true', dropna=True, value=True):
-    y_true, y_score = metrics._mask(row, masks, test=True, outcome=outcome)
+def precision(row, outcome='true', k=None, **subset_args):
+    y_true, y_score = model.true_score(row.y, k=k, **subset_args)
 
-    # TODO implement dropna and value
-    if not dropna or not value:
-        raise ValueError('precision dropna and value not implemented')
-
-    labeled = ~np.isnan(metrics.to_float(y_true))
-    y_true, y_score = y_true[labeled], y_score[labeled]
     k = len(y_true) if k is None else min(len(y_true), k)
 
     return metrics.precision_series(y_true, y_score, k)
 
-def recall(row, k=None, masks=[], outcome='true', value=True, dropna=False):
-    y_true, y_score = metrics._mask(row, masks, test=True, outcome=outcome)
+def recall(row, k=None, value=True, **subset_args):
+    y_true, y_score = model.true_score(row.y, k=k, **subset_args)
 
-    return metrics.recall_series(y_true, y_score, k=k, value=value, dropna=dropna)
+    return metrics.recall_series(y_true, y_score, k=k, value=value)
+
+# TODO: this is messy ,make it cleaner by refactoring mask
+def intersect(df, k=None, masks=[]):
+    rows = df.iterrows()
+    rcra_ids = set(util.index_as_series(metrics._mask(rows.next()[1], masks, test=True)[1].sort_values(ascending=False).head(k), 'rcra_id'))
+
+    for row in rows:
+        rcra_ids &= set(util.index_as_series(metrics._mask(row[1], masks, test=True)[1].sort_values(ascending=False).head(k), 'rcra_id'))
+
+    return rcra_ids
 
 def apply(df, fn, **kwargs):
     return df.apply(lambda row: fn(row=row, **kwargs), axis=1).T

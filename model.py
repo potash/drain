@@ -82,3 +82,42 @@ def proximity(run, ix, k):
     neighbors = run['nodes'][run.y.train].irow(neighbors.flatten()).index
     neighbors = [neighbors[k*i:k*(i+1)] for i in range(len(ix))]
     return distance, neighbors
+
+# subset a model "y" dataframe
+def y_subset(y, masks=[], filters={}, test=True, 
+        dropna=False, outcome='true',
+        k=None, p=None, ascending=False, score='score'):
+
+    masks2=[]
+    for mask in masks:
+        masks2.append(util.get_series(y, mask))
+
+    for column, value in filters.iteritems():
+        masks2.append(util.get_series(y, column) == value)
+
+    if test:
+        masks2.append(y['test'])
+
+    mask = reduce(lambda a,b: a & b, masks2)
+    y = y[mask]
+
+    if dropna:
+        y = y.dropna(subset=[outcome])
+
+    if k is not None and p is not None:
+        raise ValueError("precision: cannot specify both k and p")
+    elif k is not None:
+        k = k
+    elif p is not None:
+        k = int(p*len(y))
+    else:
+        k = None
+
+    if k is not None:
+        y = y.sort_values(score, ascending=ascending).head(k)
+
+    return y
+
+def true_score(y, outcome='true', score='score', **subset_args):
+    y = y_subset(y, outcome=outcome, score=score, **subset_args) 
+    return util.to_float(y[outcome], y[score])

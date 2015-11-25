@@ -1,20 +1,14 @@
 import numpy as np
 import pandas as pd
 import sklearn.metrics
-from drain import util
-
-# cast numpy arrays to float32
-# if there's more than one, return an array
-def to_float(*args):
-    floats = [np.array(a, dtype=np.float32) for a in args]
-    return floats[0] if len(floats) == 1 else floats
+from drain import util,model
+from drain.util import to_float
 
 def count_notnull(series):
     return (~np.isnan(to_float(series))).sum()
 
-def baseline(run, masks=[], test=True, outcome='true'):
-    y_true,y_score = _mask(run, masks, test, outcome)
-    y_true,y_score = to_float(y_true, y_score)
+def baseline(run, **subset_args):
+    y_true,y_score = model.true_score(run.y, **subset_args)
 
     if len(y_true) > 0:
         return np.nansum(y_true)/count_notnull(y_true)
@@ -23,34 +17,19 @@ def baseline(run, masks=[], test=True, outcome='true'):
 
 # return size of dataset
 # if dropna=True, only count rows where outcome is not nan
-def count(run, masks=[], test=True, outcome='true', dropna=False):
-    y_true,y_score = _mask(run, masks, test, outcome)
-    if dropna:
-        return count_notnull(y_true)
-    else:
-        return len(y_true)
+def count(run, **subset_args):
+    y_true,y_score = model.true_score(run.y, **subset_args)
+    return len(y_true)
 
-def auc(run, masks=[], test=True, outcome='true'):
-    y_true, y_score = _mask(run, masks, test, outcome)
+def auc(run, **subset_args):
+    y_true, y_score = model.true_score(run.y, **subset_args)
     fpr, tpr, thresholds = sklearn.metrics.roc_curve(y_true, y_score)
     return sklearn.metrics.auc(fpr, tpr)
 
-def precision(run, k=None, p=None, masks=[], test=True, outcome='true', extrapolate=False):
-    y_true, y_score = _mask(run, masks, test, outcome)
+def precision(run, dropna=True, **subset_args):
+    y_true, y_score = model.true_score(run.y, **subset_args)
 
-    # deal with k or p
-    if k is not None and p is not None:
-        raise ValueError("precision: cannot specify both k and p")
-    elif k is not None:
-        k = k
-    elif p is not None:
-        k = int(p*len(y_true))
-    else:
-        raise ValueError("precision must specify either k or p")
-
-    k = min(k, len(y_true) if extrapolate else count_notnull(y_true) )
-
-    return precision_at_k(y_true, y_score, k, extrapolate)
+    return precision_at_k(y_true, y_score, len(y_true), extrapolate=~dropna)
 
 def top_k(y_true, y_score, k, extrapolate=False):
     if len(y_true) != len(y_score):
@@ -85,13 +64,16 @@ def top_k(y_true, y_score, k, extrapolate=False):
 # first element is lower bound (assuming unlabeled examples are all False)
 # second is precision of labeled examples only
 # third is upper bound (assuming unlabeled examples are all True) 
-def precision_at_k(y_true, y_score, k, extrapolate=False):
+def precision_at_k(y_true, y_score, k, extrapolate=False, return_bounds=True):
     n,d = top_k(y_true, y_score, k, extrapolate)
     p = n*1./d if d != 0 else np.nan
 
     if extrapolate:
         bounds = (n/k, (n+k-d)/k) if k != 0 else (np.nan, np.nan)
-        return d, p, bounds
+        if return_bounds:
+            return p, d, bounds
+        else:
+            return p
     else:
         return p
 
@@ -104,16 +86,15 @@ def precision_series(y_true, y_score, k=None):
         k = len(y_true)
 
     top_k = ranks[::-1][0:k]
-    return pd.Series(y_true[top_k].cumsum()*1.0/np.arange(1,k+1), index=np.arange(1,k+1))
+
+    n = np.nan_to_num(y_true[top_k]).cumsum() # fill missing labels with 0
+    d = (~np.isnan(y_true[top_k])).cumsum()     # count number of labelsa
+    return pd.Series(n/d, index=np.arange(1,k+1))
 
 # TODO: should recall be proportion or absolute?
 # value is True or False, the label to recall
-def recall_series(y_true, y_score, k=None, value=True, dropna=False):
+def recall_series(y_true, y_score, k=None, value=True):
     y_true, y_score = to_float(y_true, y_score)
-    if dropna:
-        labeled = ~np.isnan(y_true)
-        y_true, y_score = y_true[labeled], y_score[labeled]
-
     ranks = y_score.argsort()
     
     if k is None:
@@ -124,21 +105,3 @@ def recall_series(y_true, y_score, k=None, value=True, dropna=False):
         y_true = 1-y_true
 
     return pd.Series(np.nan_to_num(y_true[top_k]).cumsum(), index=np.arange(1,k+1))
-
-def _mask(run, masks, test, outcome='true'):
-    masks2 = []
-    d = isinstance(masks, dict)
-    for mask in masks:
-        series = util.get_series(run['y'], mask)
-        if d:
-            series = series == masks[mask]
-        masks2.append(series)
-
-    if test:
-        masks2.append(run['y']['test'])
-
-    mask = reduce(lambda a,b: a & b, masks2)
-    y_true = run['y'][mask][outcome]
-    y_score = run['y'][mask]['score']
-
-    return y_true, y_score

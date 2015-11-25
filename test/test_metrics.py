@@ -65,6 +65,5 @@ def test_precision_at_k_extrapolate():
     y_true = np.array([True, False, np.nan])
     y_score = np.array([1, 0, .5])
 
-    p,s = precision_at_k(y_true, y_score,3, extrapolate=True)
+    p = precision_at_k(y_true, y_score,3, extrapolate=True, return_bounds=False)
     assert p == .5
-    assert_almost_equal(s, 1/np.sqrt(8))

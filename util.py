@@ -22,6 +22,13 @@ def execute_sql(sql, engine):
     conn.execute(sql)
     trans.commit()
 
+# cast numpy arrays to float32
+# if there's more than one, return an array
+def to_float(*args):
+    floats = [np.array(a, dtype=np.float32) for a in args]
+    return floats[0] if len(floats) == 1 else floats
+
+
 def hash_yaml_dict(params):
     h = hex(hash(yaml.dump(params)))
     return h[h.index('x')+1:]
