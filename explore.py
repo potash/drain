@@ -37,19 +37,26 @@ def read_estimator(row, basedir):
     modeldir = os.path.join(params_dir(basedir, row['params'], 'model'), 'output')
     row['estimator'] = joblib.load(os.path.join(modeldir, 'estimator.pkl'))
 
-def precision_series(row, k=None, masks=[], outcome='true'):
-    y = row['y'][row['y']['test']]
+def precision(row, k=None, masks=[], outcome='true', dropna=True, value=True):
     y_true, y_score = metrics._mask(row, masks, test=True, outcome=outcome)
 
-    # TODO this is not, extrapolated, need extrapolated precision too
+    # TODO implement dropna and value
+    if not dropna or not value:
+        raise ValueError('precision dropna and value not implemented')
+
     labeled = ~np.isnan(metrics.to_float(y_true))
     y_true, y_score = y_true[labeled], y_score[labeled]
     k = len(y_true) if k is None else min(len(y_true), k)
 
     return metrics.precision_series(y_true, y_score, k)
 
-def precision(df, k=None, masks=[], outcome='true'):
-    return df.apply(lambda row: precision_series(row, k, masks=masks, outcome=outcome), axis=1).T
+def recall(row, k=None, masks=[], outcome='true', value=True, dropna=False):
+    y_true, y_score = metrics._mask(row, masks, test=True, outcome=outcome)
+
+    return metrics.recall_series(y_true, y_score, k=k, value=value, dropna=dropna)
+
+def apply(df, fn, **kwargs):
+    return df.apply(lambda row: fn(row=row, **kwargs), axis=1).T
 
 def read_model(dirname, estimator=False):
     dirname = os.path.join(dirname, 'output/')

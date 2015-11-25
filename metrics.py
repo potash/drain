@@ -106,6 +106,25 @@ def precision_series(y_true, y_score, k=None):
     top_k = ranks[::-1][0:k]
     return pd.Series(y_true[top_k].cumsum()*1.0/np.arange(1,k+1), index=np.arange(1,k+1))
 
+# TODO: should recall be proportion or absolute?
+# value is True or False, the label to recall
+def recall_series(y_true, y_score, k=None, value=True, dropna=False):
+    y_true, y_score = to_float(y_true, y_score)
+    if dropna:
+        labeled = ~np.isnan(y_true)
+        y_true, y_score = y_true[labeled], y_score[labeled]
+
+    ranks = y_score.argsort()
+    
+    if k is None:
+        k = len(y_true)
+    top_k = ranks[::-1][0:k]
+
+    if not value:
+        y_true = 1-y_true
+
+    return pd.Series(np.nan_to_num(y_true[top_k]).cumsum(), index=np.arange(1,k+1))
+
 def _mask(run, masks, test, outcome='true'):
     masks2 = []
     d = isinstance(masks, dict)
