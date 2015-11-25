@@ -98,7 +98,7 @@ def y_subset(y, masks=[], filters={}, test=True,
     if test:
         masks2.append(y['test'])
 
-    mask = reduce(lambda a,b: a & b, masks2)
+    mask = util.intersect(masks2)
     y = y[mask]
 
     if dropna:

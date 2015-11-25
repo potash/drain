@@ -22,6 +22,9 @@ def execute_sql(sql, engine):
     conn.execute(sql)
     trans.commit()
 
+def intersect(sets):
+    return reduce(lambda a,b: a & b, sets)
+
 # cast numpy arrays to float32
 # if there's more than one, return an array
 def to_float(*args):

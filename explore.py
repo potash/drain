@@ -49,15 +49,10 @@ def recall(row, k=None, value=True, **subset_args):
 
     return metrics.recall_series(y_true, y_score, k=k, value=value)
 
-# TODO: this is messy ,make it cleaner by refactoring mask
-def intersect(df, k=None, masks=[]):
-    rows = df.iterrows()
-    rcra_ids = set(util.index_as_series(metrics._mask(rows.next()[1], masks, test=True)[1].sort_values(ascending=False).head(k), 'rcra_id'))
+def intersect(df, **subset_args):
+    indexes = map(lambda row: set(model.y_subset(row[1].y, **subset_args).index), df.iterrows())
 
-    for row in rows:
-        rcra_ids &= set(util.index_as_series(metrics._mask(row[1], masks, test=True)[1].sort_values(ascending=False).head(k), 'rcra_id'))
-
-    return rcra_ids
+    return util.intersect(indexes)
 
 def apply(df, fn, **kwargs):
     return df.apply(lambda row: fn(row=row, **kwargs), axis=1).T
