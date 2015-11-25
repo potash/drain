@@ -3,17 +3,32 @@ import pandas as pd
 import sklearn.metrics
 from drain import util
 
+# cast numpy arrays to float32
+# if there's more than one, return an array
 def to_float(*args):
-    return [np.array(a, dtype=np.float32) for a in args]
+    floats = [np.array(a, dtype=np.float32) for a in args]
+    return floats[0] if len(floats) == 1 else floats
+
+def count_notnull(series):
+    return (~np.isnan(to_float(series))).sum()
 
 def baseline(run, masks=[], test=True, outcome='true'):
     y_true,y_score = _mask(run, masks, test, outcome)
     y_true,y_score = to_float(y_true, y_score)
 
     if len(y_true) > 0:
-        return y_true.sum()*1.0/(~np.isnan(y_true)).sum()
+        return np.nansum(y_true)/count_notnull(y_true)
     else:
         return 0.0
+
+# return size of dataset
+# if dropna=True, only count rows where outcome is not nan
+def count(run, masks=[], test=True, outcome='true', dropna=False):
+    y_true,y_score = _mask(run, masks, test, outcome)
+    if dropna:
+        return count_notnull(y_true)
+    else:
+        return len(y_true)
 
 def auc(run, masks=[], test=True, outcome='true'):
     y_true, y_score = _mask(run, masks, test, outcome)
@@ -33,7 +48,7 @@ def precision(run, k=None, p=None, masks=[], test=True, outcome='true', extrapol
     else:
         raise ValueError("precision must specify either k or p")
 
-    k = min(k, len(y_true))
+    k = min(k, len(y_true) if extrapolate else count_notnull(y_true) )
 
     return precision_at_k(y_true, y_score, k, extrapolate)
 
@@ -72,17 +87,22 @@ def top_k(y_true, y_score, k, extrapolate=False):
 # third is upper bound (assuming unlabeled examples are all True) 
 def precision_at_k(y_true, y_score, k, extrapolate=False):
     n,d = top_k(y_true, y_score, k, extrapolate)
-    p = n*1.0/d
+    p = n*1./d if d != 0 else np.nan
 
     if extrapolate:
-        return n/k,p,(n+k-d)/k
+        bounds = (n/k, (n+k-d)/k) if k != 0 else (np.nan, np.nan)
+        return d, p, bounds
     else:
         return p
 
 # TODO extrapolate here
-def precision_series(y_true, y_score, k):
+def precision_series(y_true, y_score, k=None):
     y_true, y_score = to_float(y_true, y_score)
     ranks = y_score.argsort()
+
+    if k is None:
+        k = len(y_true)
+
     top_k = ranks[::-1][0:k]
     return pd.Series(y_true[top_k].cumsum()*1.0/np.arange(1,k+1), index=np.arange(1,k+1))
 
@@ -96,7 +116,7 @@ def _mask(run, masks, test, outcome='true'):
         masks2.append(series)
 
     if test:
-        masks2.append(run.y['test'])
+        masks2.append(run['y']['test'])
 
     mask = reduce(lambda a,b: a & b, masks2)
     y_true = run['y'][mask][outcome]

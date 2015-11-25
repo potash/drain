@@ -42,7 +42,7 @@ def feature_importance(estimator, X):
     else:
         i = [np.nan]*len(X.columns)
 
-    return pd.DataFrame({'feature': X.columns, 'importance': i}).sort('importance', ascending=False)
+    return pd.DataFrame({'feature': X.columns, 'importance': i}).sort_values('importance', ascending=False)
 
 
 class LogisticRegression(object):

@@ -137,6 +137,11 @@ def conditional_join(left, right, left_on, right_on, condition, lsuffix='_left',
     
     return df
 
+def merge_dicts(x, y):
+    z = x.copy()
+    z.update(y)
+    return z
+
 def join_years(left, years, period=None, column='year'):
     years = pd.DataFrame({column:years})
     if period is None:

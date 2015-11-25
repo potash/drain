@@ -1,5 +1,10 @@
+import os
+from datetime import date
+
 import pandas as pd
 import numpy as np
+
+from drain import util
 
 def aggregate(df, columns, weight=None, index=None):
     if index is not None:
@@ -80,3 +85,75 @@ def aggregate_set(l):
 
 def aggregate_counts(l):
     return np.unique(np.concatenate(l.values), return_counts=True)
+
+# spacetimes is a list of space names and deltas to aggregate,
+#     e.g. ['address' : [1,2,3], 'tract':[4,5,6]
+# spatial indexes the corresponding list of spatial index columns
+#     e.g. ['address_id', 'census_tract_id']
+# dates is a collection of dates to aggregate (all the spacetimes) to
+#     e.g. [date(2012,1,1), date(2013,1,1)]
+# basedir is the base directory for storing hdf files
+# prefix (e.g. 'tests') is used for:
+#     storing the hdf files (e.g. '{basedir}/tests/20130101.hdf')
+#     feature names (e.g. tests_tract_3y_{feature_name}
+
+# TODO write the aggregate function
+# TODO pivot based on delta
+# TODO prefix column
+# TODO test table vs fixed format, data_column
+class SpacetimeAggregator(object):
+    def __init__(self, spacetimes, spatial_indexes, dates, prefix, basedir):
+        self.spacetimes = spacetimes
+        self.spatial_indexes = spatial_indexes
+        self.prefix = prefix
+        self.dates = dates
+        self.dirname = os.path.join(basedir, prefix)
+        
+        self.filenames = {d: os.path.join(self.dirname, '%s.hdf' % d.strftime('%Y%m%d')) for d in dates}
+        
+    # should return DataFrame of aggregations for the given date
+    def aggregate(self, aggregation_date, **args):
+        raise NotImplementedError
+        
+    # should return the aggregations, pivoted and prefixed
+    # if left is specified then only returns those aggregations
+    def read(self, left=None):
+        dfs = []
+        for d in self.dates:
+            df = self.read_date(d, left)
+            dfs.append(df)
+        return pd.concat(dfs)
+    
+    # read the data for the specified date
+    def read_date(self, date, left=None):
+        hdf_kwargs = {}
+        if left is not None:
+            left = left[left.date == date]
+            if len(left) == 0:
+                return pd.DataFrame()            
+            #where = []
+            #n_values = 0
+            #for index in self.spatial_indexes:
+            #    values = left[index].unique()
+            #    n_values += len(values)
+            #    where.append('{0} = [{1}]'.format(index, str(str.join(',', values) )))
+                
+            #print n_values
+            #if n_values <= 20000:
+            #    hdf_kwargs['where'] = str.join(' | ', where)
+        print date
+        df = pd.read_hdf(self.filenames[date], key='df', **hdf_kwargs)
+        for index in self.spatial_indexes:
+            values = left[index].unique()
+            df.drop(df.index[~df[index].isin(values)], inplace=True)
+
+        df['date'] = date
+        return df
+    
+    # write the data for a specific date
+    # cast to dtype unless it's None
+    def write_date(self, df, date, dtype=np.float32):
+        if not os.path.isdir(self.dirname):
+            os.mkdir(self.dirname)
+        df = df.astype(np.float32) if dtype is not None else df
+        return df.to_hdf(self.filenames[date], key='df', mode='w')
