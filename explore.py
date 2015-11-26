@@ -37,12 +37,9 @@ def read_estimator(row, basedir):
     modeldir = os.path.join(params_dir(basedir, row['params'], 'model'), 'output')
     row['estimator'] = joblib.load(os.path.join(modeldir, 'estimator.pkl'))
 
-def precision(row, outcome='true', k=None, **subset_args):
-    y_true, y_score = model.true_score(row.y, k=k, **subset_args)
-
-    k = len(y_true) if k is None else min(len(y_true), k)
-
-    return metrics.precision_series(y_true, y_score, k)
+def precision(row, **subset_args):
+    y_true, y_score = model.true_score(row.y, **subset_args)
+    return metrics.precision_series(y_true, y_score)
 
 def recall(row, k=None, value=True, **subset_args):
     y_true, y_score = model.true_score(row.y, k=k, **subset_args)

@@ -67,7 +67,8 @@ if hasattr(data, 'masks'):
 y['train'] = train
 y['test'] = test
 
-run = {'data': data, 'estimator': estimator, 'y': y.reset_index()}
+#run = {'data': data, 'estimator': estimator, 'y': y.reset_index()}
+run = model.ModelRun(data=data, estimator=estimator, y=y.reset_index())
 
 # print metrics
 common_params = {'run': run} # stuff passed to every metric
@@ -76,13 +77,16 @@ for metric in params['metrics']:
     metric_fn = util.get_attr(metric_name)
 
     # get the subset of args that this metric wants
-    kwds = inspect.getargspec(metric_fn).args
-    mp = {k:v for k,v in metric.iteritems() if k in kwds and v is not None}
-    cp = {k:v for k,v in common_params.iteritems() if k in kwds}
-    p = dict(mp, **cp)
-    v = metric_fn(**dict(mp, **cp))
+    #kwds = inspect.getargspec(metric_fn).args
+    #mp = {k:v for k,v in metric.iteritems() if k in kwds and v is not None}
+    mp = {k:v for k,v in metric.iteritems()}
+    #cp = {k:v for k,v in common_params.iteritems() if k in kwds}
+    #p = dict(mp, **cp)
+    p = dict(common_params, **mp)
+    v = metric_fn(**p)
 
-    mp = map(lambda k: str(k) + '=' + str(mp[k]),mp)
+#    mp = map(lambda k: str(k) + '=' + str(mp[k]),mp)
+    mp = map(lambda k: str(k) + '=' + str(metric[k]),metric)
     print '    ' + metric_fn.__name__ + '(' + str.join(',', mp) + '): ' + str(v)
 
 if not os.path.exists(args.outputdir):

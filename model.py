@@ -10,6 +10,12 @@ from statsmodels.discrete.discrete_model import Logit
 
 from drain import util
 
+class ModelRun(object):
+    def __init__(self, estimator, y, data):
+        self.estimator = estimator
+        self.y = y
+        self.data = data
+
 def y_score(estimator, X):
     if hasattr(estimator, 'decision_function'):
         return estimator.decision_function(X)

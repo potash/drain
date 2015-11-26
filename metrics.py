@@ -27,9 +27,9 @@ def auc(run, **subset_args):
     return sklearn.metrics.auc(fpr, tpr)
 
 def precision(run, dropna=True, **subset_args):
-    y_true, y_score = model.true_score(run.y, **subset_args)
+    y_true, y_score = model.true_score(run.y, dropna=dropna, **subset_args)
 
-    return precision_at_k(y_true, y_score, len(y_true), extrapolate=~dropna)
+    return precision_at_k(y_true, y_score, len(y_true), extrapolate=(not dropna))
 
 def top_k(y_true, y_score, k, extrapolate=False):
     if len(y_true) != len(y_score):
