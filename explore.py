@@ -37,15 +37,6 @@ def read_estimator(row, basedir):
     modeldir = os.path.join(params_dir(basedir, row['params'], 'model'), 'output')
     row['estimator'] = joblib.load(os.path.join(modeldir, 'estimator.pkl'))
 
-def precision(row, **subset_args):
-    y_true, y_score = model.true_score(row.y, **subset_args)
-    return metrics.precision_series(y_true, y_score)
-
-def recall(row, k=None, value=True, **subset_args):
-    y_true, y_score = model.true_score(row.y, k=k, **subset_args)
-
-    return metrics.recall_series(y_true, y_score, k=k, value=value)
-
 def intersect(df, **subset_args):
     indexes = map(lambda row: set(model.y_subset(row[1].y, **subset_args).index), df.iterrows())
 

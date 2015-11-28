@@ -4,32 +4,22 @@ import sklearn.metrics
 from drain import util,model
 from drain.util import to_float
 
-def count_notnull(series):
-    return (~np.isnan(to_float(series))).sum()
+def count(series, dropna=False):
+    if dropna:
+        series = util.to_float(series)
+        return (~np.isnan(to_float(series))).sum()
+    else:
+        return len(series)
 
-def baseline(run, **subset_args):
-    y_true,y_score = model.true_score(run.y, **subset_args)
-
+def baseline(y_true):
     if len(y_true) > 0:
-        return np.nansum(y_true)/count_notnull(y_true)
+        return np.nansum(y_true)/count(y_true, dropna=True)
     else:
         return 0.0
 
-# return size of dataset
-# if dropna=True, only count rows where outcome is not nan
-def count(run, **subset_args):
-    y_true,y_score = model.true_score(run.y, **subset_args)
-    return len(y_true)
-
-def auc(run, **subset_args):
-    y_true, y_score = model.true_score(run.y, **subset_args)
+def auc(y_true, y_score):
     fpr, tpr, thresholds = sklearn.metrics.roc_curve(y_true, y_score)
     return sklearn.metrics.auc(fpr, tpr)
-
-def precision(run, dropna=True, **subset_args):
-    y_true, y_score = model.true_score(run.y, dropna=dropna, **subset_args)
-
-    return precision_at_k(y_true, y_score, len(y_true), extrapolate=(not dropna))
 
 def top_k(y_true, y_score, k, extrapolate=False):
     if len(y_true) != len(y_score):

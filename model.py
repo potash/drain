@@ -5,10 +5,9 @@ from copy import deepcopy
 
 import pandas as pd
 import numpy as np
-from sklearn import metrics
 from statsmodels.discrete.discrete_model import Logit
 
-from drain import util
+from drain import util,metrics
 
 class ModelRun(object):
     def __init__(self, estimator, y, data):
@@ -127,3 +126,34 @@ def y_subset(y, masks=[], filters={}, test=True,
 def true_score(y, outcome='true', score='score', **subset_args):
     y = y_subset(y, outcome=outcome, score=score, **subset_args) 
     return util.to_float(y[outcome], y[score])
+
+def auc(run, **subset_args):
+    y_true, y_score = true_score(run.y, **subset_args)
+    return metrics.auc(y_true, y_score)
+
+# return size of dataset
+# if dropna=True, only count rows where outcome is not nan
+# note this means witholdinging dropna from y_subset() call
+def count(run, dropna=False, **subset_args):
+    y_true,y_score = true_score(run.y, **subset_args)
+    return metrics.count(y_true, dropna=dropna)
+
+def baseline(run, **subset_args):
+    y_true,y_score = true_score(run.y, **subset_args)
+    return metrics.baseline(y_true)
+
+def precision(run, dropna=True, **subset_args):
+    y_true, y_score = true_score(run.y, dropna=dropna, **subset_args)
+
+    return metrics.precision_at_k(y_true, y_score, len(y_true), extrapolate=(not dropna))
+
+def precision_series(run, **subset_args):
+    y_true, y_score = true_score(run.y, **subset_args)
+    return metrics.precision_series(y_true, y_score)
+
+def recall(run, k=None, value=True, **subset_args):
+    y_true, y_score = true_score(run.y, k=k, **subset_args)
+    return metrics.recall_series(y_true, y_score, k=k, value=value)
+
+# TODO: should these metrics be member methods of ModelRun? e.g.:
+# ModelRun.recall = recall
