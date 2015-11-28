@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 import sklearn.metrics
-from drain import util,model
+from drain import util
 from drain.util import to_float
 
 def count(series, dropna=False):
