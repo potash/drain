@@ -12,4 +12,9 @@ fi
 
 python $DIR/grid_search.py --drakeargsfile $DRAKE_ARGS_FILE --drakeoutput $DRAKE_FILE $args || exit
 drake_args=$(cat $DRAKE_ARGS_FILE)
-drake -w $DRAKE_FILE $drake_args
+echo $DRAKE_FILE
+if [ -z "$drake_args" ]; then
+    drake -w $DRAKE_FILE
+else
+    drake -w $DRAKE_FILE $drake_args
+fi

@@ -88,9 +88,12 @@ def proximity(run, ix, k):
     return distance, neighbors
 
 # subset a model "y" dataframe
+# dropna means drop missing outcomes
+# return top k (count) or p (proportion) if specified
+# p_dropna means proportion is relative to labeled count
 def y_subset(y, masks=[], filters={}, test=True, 
         dropna=False, outcome='true',
-        k=None, p=None, ascending=False, score='score'):
+        k=None, p=None, ascending=False, score='score', p_dropna=True):
 
     masks2=[]
     for mask in masks:
@@ -109,11 +112,11 @@ def y_subset(y, masks=[], filters={}, test=True,
         y = y.dropna(subset=[outcome])
 
     if k is not None and p is not None:
-        raise ValueError("precision: cannot specify both k and p")
+        raise ValueError("Cannot specify both k and p")
     elif k is not None:
         k = k
     elif p is not None:
-        k = int(p*len(y))
+        k = int(p*metrics.count(y[outcome], dropna=p_dropna))
     else:
         k = None
 
@@ -126,8 +129,8 @@ def true_score(y, outcome='true', score='score', **subset_args):
     y = y_subset(y, outcome=outcome, score=score, **subset_args) 
     return util.to_float(y[outcome], y[score])
 
-def auc(run, **subset_args):
-    y_true, y_score = true_score(run.y, **subset_args)
+def auc(run, dropna=True, **subset_args):
+    y_true, y_score = true_score(run.y, dropna=True, **subset_args)
     return metrics.auc(y_true, y_score)
 
 # return size of dataset

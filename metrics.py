@@ -4,12 +4,12 @@ import sklearn.metrics
 from drain import util
 from drain.util import to_float
 
-def count(series, dropna=False):
+def count(y, dropna=False):
     if dropna:
-        series = util.to_float(series)
-        return (~np.isnan(to_float(series))).sum()
+        y = util.to_float(y)
+        return (~np.isnan(to_float(y))).sum()
     else:
-        return len(series)
+        return len(y)
 
 def baseline(y_true):
     if len(y_true) > 0:

@@ -31,7 +31,6 @@ def to_float(*args):
     floats = [np.array(a, dtype=np.float32) for a in args]
     return floats[0] if len(floats) == 1 else floats
 
-
 def hash_yaml_dict(params):
     h = hex(hash(yaml.dump(params)))
     return h[h.index('x')+1:]

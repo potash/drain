@@ -250,9 +250,9 @@ def Xy(df, y_column, include=None, exclude=None, train=None, category_classes={}
 
 def normalize(X, train=None):
     Xfit = X[train] if train is not None else X
-    sigma = X[train].std(ddof=0)
+    sigma = Xfit.std(ddof=0)
     sigma.loc[sigma==0]=1
-    mu = X[train].mean()
+    mu = Xfit.mean()
 
     X = (X - mu) / sigma
         

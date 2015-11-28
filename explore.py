@@ -43,7 +43,7 @@ def intersect(df, **subset_args):
     return util.intersect(indexes)
 
 def apply(df, fn, **kwargs):
-    return df.apply(lambda row: fn(row=row, **kwargs), axis=1).T
+    return df.apply(lambda run: fn(run=run, **kwargs), axis=1).T
 
 def read_model(dirname, estimator=False):
     dirname = os.path.join(dirname, 'output/')
