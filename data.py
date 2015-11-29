@@ -9,7 +9,6 @@ from itertools import product
 
 import random
 import datetime
-import model
 from util import prefix_columns, join_years
 import util
 import warnings

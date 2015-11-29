@@ -112,8 +112,9 @@ class SpacetimeAggregator(object):
         self.filenames = {d: os.path.join(self.dirname, '%s.hdf' % d.strftime('%Y%m%d')) for d in dates}
         
     # should return DataFrame of aggregations for the given date
-    def aggregate(self, aggregation_date, **args):
+    def aggregate(self, date, **args):
         raise NotImplementedError
+
         
     # should return the aggregations, pivoted and prefixed
     # if left is specified then only returns those aggregations
@@ -131,16 +132,6 @@ class SpacetimeAggregator(object):
             left = left[left.date == date]
             if len(left) == 0:
                 return pd.DataFrame()            
-            #where = []
-            #n_values = 0
-            #for index in self.spatial_indexes:
-            #    values = left[index].unique()
-            #    n_values += len(values)
-            #    where.append('{0} = [{1}]'.format(index, str(str.join(',', values) )))
-                
-            #print n_values
-            #if n_values <= 20000:
-            #    hdf_kwargs['where'] = str.join(' | ', where)
         print date
         df = pd.read_hdf(self.filenames[date], key='df', **hdf_kwargs)
         for index in self.spatial_indexes:
@@ -152,7 +143,9 @@ class SpacetimeAggregator(object):
     
     # write the data for a specific date
     # cast to dtype unless it's None
-    def write_date(self, df, date, dtype=np.float32):
+    def write_date(self, date, dtype=None):
+        df = self.aggregate(date)
+
         if not os.path.isdir(self.dirname):
             os.mkdir(self.dirname)
         df = df.astype(np.float32) if dtype is not None else df
