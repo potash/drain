@@ -37,10 +37,19 @@ def read_estimator(row, basedir):
     modeldir = os.path.join(params_dir(basedir, row['params'], 'model'), 'output')
     row['estimator'] = joblib.load(os.path.join(modeldir, 'estimator.pkl'))
 
-def intersect(df, **subset_args):
+# pairwise returns a dataframe with intersections
+def intersection(df, pairwise=False, **subset_args):
     indexes = map(lambda row: set(model.y_subset(row[1].y, **subset_args).index), df.iterrows())
 
-    return util.intersect(indexes)
+    if not pairwise:
+        return len(util.intersect(indexes))
+    else:
+        r = pd.DataFrame(index=df.index, columns=xrange(len(df)))
+
+        for i in xrange(len(df)):
+            for j in xrange(i+1, len(df)):
+                r.values[i][j] = len(indexes[i] & indexes[j])
+        return r
 
 def apply(df, fn, **kwargs):
     return df.apply(lambda run: fn(run=run, **kwargs), axis=1).T
