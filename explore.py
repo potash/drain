@@ -47,6 +47,7 @@ def intersection(df, pairwise=False, **subset_args):
         r = pd.DataFrame(index=df.index, columns=xrange(len(df)))
 
         for i in xrange(len(df)):
+            r.values[i][i] = len(indexes[i])
             for j in xrange(i+1, len(df)):
                 r.values[i][j] = len(indexes[i] & indexes[j])
         return r
