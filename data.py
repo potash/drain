@@ -188,7 +188,7 @@ def countsorted(values, counts, value):
 
 def expand_counts(df, column, values=None):
     if values is None:
-        values = set(np.concatenate(df[column].apply(lambda c: c[0])))
+        values = set(np.concatenate(df[column].apply(lambda c: c[0]).values))
     for value in values:
         name = values[value] if type(values) is dict else str(value)
         df[column + '_'+ name.replace(' ', '_')] = df[column].apply(lambda c: countsorted(c[0], c[1], value))
