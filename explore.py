@@ -17,12 +17,15 @@ import matplotlib.pyplot as plt
 from drain import model, util, metrics
 from drain.model import params_dir
 
-def dict_to_df(d):
+# turn a dictionary into a dataframe row
+# subdictionaries get included either multilevel or prefixed
+def dict_to_df(d, multilevel=False):
     df = pd.DataFrame(index=[0])
     for k in d:
         if isinstance(d[k], dict):
             for k2 in d[k]:
-                df[k2] = [str(d[k][k2])]
+                k3 = (k,k2) if multilevel else '{}_{}'.format(str(k), str(k2))
+                df[k3] = [d[k][k2]]
         else:
             df[k] = [d[k]]
     return df
@@ -91,20 +94,26 @@ def read_models(dirname, tagname=None, estimator=False):
     else:
         dirname = os.path.join(dirname, 'model')
     df = pd.concat((read_model(subdir, estimator) for subdir in get_subdirs(dirname)), ignore_index=True)
-    #calculate_metrics(df)
 
-    df.index = [yaml.dump(d).replace('\n', ', ')[:-2] for d in dict_diff(df.params.values)]
+    reset_index(df)
     return df
 
-def calculate_metrics(df):
-    df_metrics = df[df['params'].apply(lambda d: d['metrics'])] # these are the rows of df where metrics is True
-    if len(df_metrics) > 0:
-        df['auc'] = df_metrics.apply(lambda row: model.auc(row['y']['true'][row['test']], row['y']['score'][row['test']]), axis=1)
+# set model runs dataframe index using diff of params
+def reset_index(df):
+    df = df.reset_index(drop=True)
+    diff = dict_diff(df.params.values)
+    for c in diff[0].keys():
+        s = df[c]
 
-        for p in [.01, .02, .05, .1]:
-            df['precision' + str(p)] = df_metrics.apply(lambda row: precision(row['y']['true'][row['test']], row['y']['score'][row['test']], p), axis=1)
+        # shorten model and transform names by removing module name
+        if c.endswith('name'):
+            s = s.apply(lambda d: d[d.rfind('.')+1:]) 
+        s = s.fillna('') # make nan empty to look nicer
 
-        df['baseline']=df_metrics.apply(lambda row: row['y']['true'][row['test']].sum()*1.0/len(row['y']['true'][row['test']]), axis=1)
+        try:
+            df.set_index(s, append=True, inplace=True)
+        except TypeError: # if its an unhashable type (e.g. list or dict) stringify it
+            df.set_index(s.apply(lambda d: str(d)), append=True, inplace=True)
 
     return df
 
@@ -199,7 +208,7 @@ def export_tree(clf, filename, feature_names=None, max_depth=None):
     graph = pydot.graph_from_dot_data(dot_data.getvalue())
     graph.write_pdf(filename)
 
-def dict_diff(dictionaries):
+def dict_diff(dictionaries, multilevel=False):
     diffs = [{} for d in dictionaries]
     for top_key in ['data','model', 'transform']:
         dicts = [d[top_key] for d in dictionaries]
@@ -214,13 +223,15 @@ def dict_diff(dictionaries):
             if len(set(yaml.dump(d[key]) for d in dicts)) > 1:
                 for d1, d2 in zip(diff, dicts):
                     d1[key] = d2[key]
-        
+
+        for i in xrange(len(diff)):
+            if multilevel:
+                diff[i] = {(top_key, k):v for k,v in diff[i].iteritems()}
+            else:
+                diff[i] = {'{}_{}'.format(str(top_key), str(k)):v for k,v in diff[i].iteritems()}
+
         if len(diff[0]) > 0: # add to total diff if non-empty
             for d1, d2 in zip(diffs, diff):
                 d1.update(d2)
 
-    # make model name shorter by removing module name  
-    for d in diffs:
-        if 'name' in d:
-            d['name'] = d['name'][d['name'].rfind('.')+1:]
     return diffs
