@@ -50,6 +50,8 @@ def read_model(dirname, estimator=False):
     if not os.path.isdir(dirname):
         return
  
+    mtime = util.mtime(dirname)
+
     estimator = (joblib.load(os.path.join(dirname, 'estimator.pkl'))) if estimator else None
     
     y = pd.read_hdf(os.path.join(dirname, 'y.hdf'), 'y')
@@ -59,6 +61,7 @@ def read_model(dirname, estimator=False):
     estimator_name = params['model']['name']
 
     df = dict_to_df(params)
+    df['timestamp'] = [mtime]
     df['estimator'] = [estimator]
     df['estimator_name'] = [estimator_name]
     df['y'] = [y]

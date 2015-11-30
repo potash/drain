@@ -5,6 +5,7 @@ import datetime
 import sys
 import yaml
 import pandas as pd
+from datetime import datetime, timedelta
 from sklearn import preprocessing
 from scipy import stats
 
@@ -21,6 +22,10 @@ def execute_sql(sql, engine):
     trans = conn.begin()
     conn.execute(sql)
     trans.commit()
+
+def mtime(path):
+    #return datetime.fromtimestamp(max(os.stat(root).st_mtime for root,_,_ in os.walk(dirname)))
+    return datetime.fromtimestamp(os.stat(path).st_mtime)
 
 def intersect(sets):
     return reduce(lambda a,b: a & b, sets)
@@ -54,14 +59,14 @@ def init_object(name, **kwargs):
     return get_attr(name)(**kwargs)
 
 def randtimedelta(low, high, size):
-    d = np.empty(shape=size, dtype=datetime.timedelta)
+    d = np.empty(shape=size, dtype=timedelta)
     r = np.random.randint(low, high, size=size)
     for i in range(size):
-        d[i] = datetime.timedelta(r[i])
+        d[i] = timedelta(r[i])
     return d
 
 def randdates(start,end, size):
-    d = np.empty(shape=size, dtype=datetime.datetime)
+    d = np.empty(shape=size, dtype=datetime)
     r = randtimedelta(0, (end-start).days, size)
     for i in range(size):
         d[i] = start + r[i]
