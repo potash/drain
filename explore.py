@@ -1,7 +1,9 @@
 import os
+import sys
 import yaml
 from copy import deepcopy
 from tempfile import NamedTemporaryFile
+from pprint import pformat
 
 from sklearn.externals import joblib
 from sklearn import tree
@@ -56,22 +58,23 @@ def apply(df, fn, **kwargs):
     return df.apply(lambda run: fn(run=run, **kwargs), axis=1).T
 
 def read_model(dirname, estimator=False):
-    dirname = os.path.join(dirname, 'output/')
-    if not os.path.isdir(dirname):
+    outdirname = os.path.join(dirname, 'output/')
+    if not os.path.isdir(outdirname):
         return
  
-    mtime = util.mtime(dirname)
+    mtime = util.mtime(outdirname)
 
-    estimator = (joblib.load(os.path.join(dirname, 'estimator.pkl'))) if estimator else None
+    estimator = (joblib.load(os.path.join(outdirname, 'estimator.pkl'))) if estimator else None
     
-    y = pd.read_hdf(os.path.join(dirname, 'y.hdf'), 'y')
-    features = pd.read_csv(os.path.join(dirname, 'features.csv'))
-    params = yaml.load(open(os.path.join(dirname, '../params.yaml')))
+    y = pd.read_hdf(os.path.join(outdirname, 'y.hdf'), 'y')
+    features = pd.read_csv(os.path.join(outdirname, 'features.csv'))
+    params = yaml.load(open(os.path.join(outdirname, '../params.yaml')))
 
     estimator_name = params['model']['name']
 
     df = dict_to_df(params)
     df['timestamp'] = [mtime]
+    df['dirname'] = [dirname]
     df['estimator'] = [estimator]
     df['estimator_name'] = [estimator_name]
     df['y'] = [y]
@@ -90,7 +93,7 @@ def read_models(dirname, tagname=None, estimator=False):
     df = pd.concat((read_model(subdir, estimator) for subdir in get_subdirs(dirname)), ignore_index=True)
     #calculate_metrics(df)
 
-    df.index = [yaml.dump(d).replace('\n', '') for d in dict_diff(df.params.values)]
+    df.index = [yaml.dump(d).replace('\n', ', ')[:-2] for d in dict_diff(df.params.values)]
     return df
 
 def calculate_metrics(df):
@@ -215,4 +218,9 @@ def dict_diff(dictionaries):
         if len(diff[0]) > 0: # add to total diff if non-empty
             for d1, d2 in zip(diffs, diff):
                 d1.update(d2)
+
+    # make model name shorter by removing module name  
+    for d in diffs:
+        if 'name' in d:
+            d['name'] = d['name'][d['name'].rfind('.')+1:]
     return diffs
