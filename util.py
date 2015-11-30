@@ -30,6 +30,8 @@ def mtime(path):
 def intersect(sets):
     return reduce(lambda a,b: a & b, sets)
 
+def union(sets):
+    return reduce(lambda a,b: a | b, sets)
 # cast numpy arrays to float32
 # if there's more than one, return an array
 def to_float(*args):

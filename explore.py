@@ -17,19 +17,6 @@ import matplotlib.pyplot as plt
 from drain import model, util, metrics
 from drain.model import params_dir
 
-# turn a dictionary into a dataframe row
-# subdictionaries get included either multilevel or prefixed
-def dict_to_df(d, multilevel=False):
-    df = pd.DataFrame(index=[0])
-    for k in d:
-        if isinstance(d[k], dict):
-            for k2 in d[k]:
-                k3 = (k,k2) if multilevel else '{}_{}'.format(str(k), str(k2))
-                df[k3] = [d[k][k2]]
-        else:
-            df[k] = [d[k]]
-    return df
-
 def read_data(row, basedir, transform=True):
     params = {'data': row['params']['data']}
     datadir = os.path.join(params_dir(basedir, params, 'data'), 'output')
@@ -95,14 +82,15 @@ def read_models(dirname, tagname=None, estimator=False):
         dirname = os.path.join(dirname, 'model')
     df = pd.concat((read_model(subdir, estimator) for subdir in get_subdirs(dirname)), ignore_index=True)
 
-    reset_index(df)
+    reset_index(df, inplace=True)
     return df
 
 # set model runs dataframe index using diff of params
-def reset_index(df):
-    df = df.reset_index(drop=True)
-    diff = dict_diff(df.params.values)
-    for c in diff[0].keys():
+def reset_index(df, inplace=False):
+    diffs = dict_diff(df.params.values)
+
+    first = True
+    for c in util.union(map(set, diffs)):
         s = df[c]
 
         # shorten model and transform names by removing module name
@@ -111,9 +99,11 @@ def reset_index(df):
         s = s.fillna('') # make nan empty to look nicer
 
         try:
-            df.set_index(s, append=True, inplace=True)
+            df.set_index(s, append=(not first), inplace=True)
         except TypeError: # if its an unhashable type (e.g. list or dict) stringify it
-            df.set_index(s.apply(lambda d: str(d)), append=True, inplace=True)
+            df.set_index(s.apply(lambda d: str(d)), append=(not first), inplace=True)
+   
+        first=False
 
     return df
 
@@ -207,6 +197,19 @@ def export_tree(clf, filename, feature_names=None, max_depth=None):
     tree.export_graphviz(clf, out_file=dot_data, feature_names=feature_names, max_depth=max_depth)
     graph = pydot.graph_from_dot_data(dot_data.getvalue())
     graph.write_pdf(filename)
+
+# turn a dictionary into a dataframe row
+# subdictionaries get included either multilevel or prefixed
+def dict_to_df(d, multilevel=False):
+    df = pd.DataFrame(index=[0])
+    for k in d:
+        if isinstance(d[k], dict):
+            for k2 in d[k]:
+                k3 = (k,k2) if multilevel else '{}_{}'.format(str(k), str(k2))
+                df[k3] = [d[k][k2]]
+        else:
+            df[k] = [d[k]]
+    return df
 
 def dict_diff(dictionaries, multilevel=False):
     diffs = [{} for d in dictionaries]
