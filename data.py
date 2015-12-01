@@ -187,11 +187,12 @@ def countsorted(values, counts, value):
         return 0
 
 def expand_counts(df, column, values=None):
+    d = df[column].dropna()
     if values is None:
-        values = set(np.concatenate(df[column].apply(lambda c: c[0]).values))
+        values = set(np.concatenate(d.apply(lambda c: c[0]).values))
     for value in values:
         name = values[value] if type(values) is dict else str(value)
-        df[column + '_'+ name.replace(' ', '_')] = df[column].apply(lambda c: countsorted(c[0], c[1], value))
+        df[column + '_'+ name.replace(' ', '_')] = d.apply(lambda c: countsorted(c[0], c[1], value))
     df.drop(column, axis=1, inplace=True)
 
 def binarize_clusters(df, column, n_clusters, train=None):
