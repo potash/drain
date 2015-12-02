@@ -5,6 +5,12 @@ from copy import deepcopy
 from drain import util
 
 import warnings
+from pandas.io.pytables import PerformanceWarning
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+warnings.filterwarnings("ignore", category=PerformanceWarning)
+
+import logging
+logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=0)
 
 parser = argparse.ArgumentParser(description='Use this script to read and write ModelData for caching.')
 parser.add_argument('input', type=str, help='yaml filename')
@@ -17,8 +23,7 @@ with open(args.input) as f:
 params = deepcopy(params_orig)
 data_name = params['data'].pop('name')
 
-print 'Loading ' + data_name
-print '    with parameters ' + str(params['data'])
+logging.info('Loading ' + data_name + ' with parameters\n\t:' + str(params['data']))
 
 data = util.get_attr(data_name)(**params['data'])
 data.read()
@@ -26,4 +31,6 @@ data.read()
 if not os.path.exists(args.basedir):
     os.makedirs(args.basedir)
 
+logging.info('Writing ' + data_name)
 data.write(args.basedir)
+logging.info(data_name + ' written.')

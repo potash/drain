@@ -144,10 +144,10 @@ def baseline(run, **subset_args):
     y_true,y_score = true_score(run.y, **subset_args)
     return metrics.baseline(y_true)
 
-def precision(run, dropna=True, **subset_args):
+def precision(run, return_bounds=True, dropna=True, **subset_args):
     y_true, y_score = true_score(run.y, dropna=dropna, **subset_args)
 
-    return metrics.precision_at_k(y_true, y_score, len(y_true), extrapolate=(not dropna))
+    return metrics.precision_at_k(y_true, y_score, len(y_true), return_bounds=return_bounds, extrapolate=(not dropna))
 
 def precision_series(run, **subset_args):
     y_true, y_score = true_score(run.y, **subset_args)

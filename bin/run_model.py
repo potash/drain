@@ -14,9 +14,12 @@ import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=PerformanceWarning)
 
+import logging
+logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=0)
+
 from pprint import pformat
-def pformat_indent(o, indent):
-    return ' '*indent + pformat(o).replace('\n', '\n'+' '*indent)
+def pformat_indent(o):
+    return '\t' + pformat(o).replace('\n', '\n\t')
 
 parser = argparse.ArgumentParser(description='Use this script to run a single model.')
 parser.add_argument('params', type=str, help='yaml params filename')
@@ -30,22 +33,20 @@ with open(args.params) as f:
 data_name = params['data'].pop('name')
 model_name = params['model'].pop('name')
 
-print 'Reading ' + data_name + ' with parameters:' 
-print pformat_indent(params['data'], 4)
+logging.info('Reading ' + data_name + ' with parameters:\n' + pformat_indent(params['data']))
 
 data = util.get_attr(data_name)(**params['data'])
 data.read(args.datadir)
 
-print 'Tranforming with parameters:'
-print pformat_indent(params['transform'], 4)
+logging.info('Tranforming with parameters:\n' + pformat_indent(params['transform']))
 
 data.transform(**params['transform'])
 train,test = data.cv
 
-print 'Training ' + model_name
-print '    with parameters ' + str(params['model'])
-print '    on ' + str(train.sum()) + ' examples'
-print '    with ' + str(len(data.X.columns)) + ' features'
+logging.info('Training ' + model_name +
+    '\n\twith parameters ' + str(params['model']) + 
+    '\n\ton ' + str(train.sum()) + ' examples'+
+    '\n\twith ' + str(len(data.X.columns)) + ' features')
 
 estimator = util.get_attr(model_name)(**params['model'])
 
@@ -54,8 +55,8 @@ if 'sample_weight' in inspect.getargspec(estimator.fit) and hasattr(data, 'sampl
 else:
     estimator.fit(data.X[train],data.y[train])
 
-print 'Validating model'
-print '    on ' + str(test.sum()) + ' examples'
+logging.info('Validating model'+
+    '\n\ton ' + str(test.sum()) + ' examples')
 
 y_score = pd.Series(model.y_score(estimator, data.X[test]), index=data.X[test].index)
 
@@ -87,14 +88,14 @@ for metric in params['metrics']:
 
 #    mp = map(lambda k: str(k) + '=' + str(mp[k]),mp)
     mp = map(lambda k: str(k) + '=' + str(metric[k]),metric)
-    print '    ' + metric_fn.__name__ + '(' + str.join(',', mp) + '): ' + str(v)
+    print '\t' + metric_fn.__name__ + '(' + str.join(',', mp) + '): ' + str(v)
 
 if not os.path.exists(args.outputdir):
     os.makedirs(args.outputdir)
     
+logging.info('Dumping estimator')
 joblib.dump(estimator, os.path.join(args.outputdir, 'estimator.pkl'))
 
-# write output
+logging.info('Dumping output')
 y.to_hdf(os.path.join(args.outputdir, 'y.hdf'), 'y', mode='w')
-
 model.feature_importance(estimator, data.X).to_csv(os.path.join(args.outputdir, 'features.csv'), index=False)

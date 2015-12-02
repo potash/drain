@@ -1,5 +1,6 @@
 import os
 from datetime import date
+import logging
 
 import pandas as pd
 import numpy as np
@@ -84,7 +85,7 @@ def aggregate_set(l):
     return set(np.concatenate(l.values))
 
 def aggregate_counts(l):
-    return {value:count for value,count in zip(*np.unique(np.concatenate(l.values), return_counts=True))}
+    return np.unique(np.concatenate(l.values), return_counts=True)
 
 # spacetimes is a list of space names and deltas to aggregate,
 #     e.g. ['address' : [1,2,3], 'tract':[4,5,6]
@@ -121,9 +122,10 @@ class SpacetimeAggregator(object):
     def read(self, left=None):
         dfs = []
         for d in self.dates:
+            logging.info('reading date %s' % d)
             df = self.read_date(d, left)
             dfs.append(df)
-        return pd.concat(dfs)
+        return pd.concat(dfs, ignore_index=True, copy=False)
     
     # read the data for the specified date
     def read_date(self, date, left=None):
@@ -132,7 +134,6 @@ class SpacetimeAggregator(object):
             left = left[left.date == date]
             if len(left) == 0:
                 return pd.DataFrame()            
-        print date
         df = pd.read_hdf(self.filenames[date], key='df', **hdf_kwargs)
         for index in self.spatial_indexes:
             values = left[index].unique()

@@ -97,11 +97,7 @@ def reset_index(df, inplace=False):
         if c.endswith('name'):
             s = s.apply(lambda d: d[d.rfind('.')+1:]) 
         s = s.fillna('') # make nan empty to look nicer
-
-        try:
-            df.set_index(s, append=(not first), inplace=True)
-        except TypeError: # if its an unhashable type (e.g. list or dict) stringify it
-            df.set_index(s.apply(lambda d: str(d)), append=(not first), inplace=True)
+        df.set_index(s.apply(lambda d: str(d)), append=(not first), inplace=True)
    
         first=False
 

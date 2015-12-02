@@ -186,9 +186,15 @@ def countsorted(values, counts, value):
     else:
         return 0
 
-# expand a column containing value:count pairs, as returned by drain.aggegate.aggregate_counts()
+# convert (values, counts) as returned by aggregate.aggregate_counts() to dicts
+# makes expand_counts much faster
+def counts_to_dicts(df, column):
+    d = df[column].apply(lambda c: pd.notnull(c) and len(c[0]) > 0) # index where there are counts and they aren't null
+    return df.loc[d, column].apply(lambda c: {k:v for k,v in zip(*c)})
+
+# expand a column containing value:count dictionaries
 def expand_counts(df, column, values=None):
-    d = df[column].dropna() # avoid nulls
+    d = counts_to_dicts(df, column)
     if values is None:
         values = set(np.concatenate(d.apply(lambda c: c.keys()).values))
     for value in values:
