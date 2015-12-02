@@ -159,11 +159,12 @@ def binarize(df, category_classes, all_classes=False):
     return df
 
 def binarize_set(df, column, values=None):
+    d = df[column].dropna() # avoid nulls
     if values is None:
-        values = reduce(lambda a,b: a | b, df[column])
+        values = reduce(lambda a,b: a | b, d)
     for value in values:
         name = values[value] if type(values) is dict else str(value)
-        df[column + '_'+ name.replace(' ', '_')] = df[column].apply(lambda d: value in d)
+        df[column + '_'+ name.replace(' ', '_')] = d.apply(lambda c: value in c)
     df.drop(column, axis=1, inplace=True)
 
 # given a column whose entries are lists, create columns counting each element
@@ -176,7 +177,6 @@ def count_list(df, column, values=None):
     df.drop(column, axis=1, inplace=True)
 
 # given values, counts (as returned by np.unique(return_counts=True), find the count of a given value
-# used by expand_counts below
 def countsorted(values, counts, value):
     if len(values) == 0: # when values is empty is has float dtype and searchsorted will fail
         return 0
@@ -186,13 +186,14 @@ def countsorted(values, counts, value):
     else:
         return 0
 
+# expand a column containing value:count pairs, as returned by drain.aggegate.aggregate_counts()
 def expand_counts(df, column, values=None):
-    d = df[column].dropna()
+    d = df[column].dropna() # avoid nulls
     if values is None:
-        values = set(np.concatenate(d.apply(lambda c: c[0]).values))
+        values = set(np.concatenate(d.apply(lambda c: c.keys()).values))
     for value in values:
         name = values[value] if type(values) is dict else str(value)
-        df[column + '_'+ name.replace(' ', '_')] = d.apply(lambda c: countsorted(c[0], c[1], value))
+        df[column + '_'+ name.replace(' ', '_')] = d.apply(lambda c: c[value] if value in c else 0)
     df.drop(column, axis=1, inplace=True)
 
 def binarize_clusters(df, column, n_clusters, train=None):

@@ -84,7 +84,7 @@ def aggregate_set(l):
     return set(np.concatenate(l.values))
 
 def aggregate_counts(l):
-    return np.unique(np.concatenate(l.values), return_counts=True)
+    return {value:count for value,count in zip(*np.unique(np.concatenate(l.values), return_counts=True))}
 
 # spacetimes is a list of space names and deltas to aggregate,
 #     e.g. ['address' : [1,2,3], 'tract':[4,5,6]
