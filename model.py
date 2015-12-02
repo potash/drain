@@ -153,9 +153,13 @@ def precision_series(run, **subset_args):
     y_true, y_score = true_score(run.y, **subset_args)
     return metrics.precision_series(y_true, y_score)
 
-def recall(run, k=None, value=True, **subset_args):
-    y_true, y_score = true_score(run.y, k=k, **subset_args)
-    return metrics.recall_series(y_true, y_score, k=k, value=value)
+def recall(run, value=True, **subset_args):
+    y_true, y_score = true_score(run.y, **subset_args)
+    return metrics.recall(y_true, y_score, value=value)
+
+def recall_series(run, value=True, **subset_args):
+    y_true, y_score = true_score(run.y, **subset_args)
+    return metrics.recall_series(y_true, y_score, value=value)
 
 # TODO: should these metrics be member methods of ModelRun? e.g.:
 # ModelRun.recall = recall

@@ -4,6 +4,15 @@ import sklearn.metrics
 from drain import util
 from drain.util import to_float
 
+def _top_k(y_score, k=None):
+    ranks = y_score.argsort()
+    
+    if k is None:
+        k = len(y_score)
+    top_k = ranks[::-1][0:k]
+
+    return top_k
+
 def count(y, dropna=False):
     if dropna:
         y = util.to_float(y)
@@ -70,28 +79,27 @@ def precision_at_k(y_true, y_score, k, extrapolate=False, return_bounds=True):
 # TODO extrapolate here
 def precision_series(y_true, y_score, k=None):
     y_true, y_score = to_float(y_true, y_score)
-    ranks = y_score.argsort()
-
-    if k is None:
-        k = len(y_true)
-
     top_k = ranks[::-1][0:k]
 
     n = np.nan_to_num(y_true[top_k]).cumsum() # fill missing labels with 0
     d = (~np.isnan(y_true[top_k])).cumsum()     # count number of labelsa
     return pd.Series(n/d, index=np.arange(1,k+1))
 
-# TODO: should recall be proportion or absolute?
-# value is True or False, the label to recall
-def recall_series(y_true, y_score, k=None, value=True):
+def recall(y_true, y_score, k=None, value=True):
     y_true, y_score = to_float(y_true, y_score)
-    ranks = y_score.argsort()
-    
-    if k is None:
-        k = len(y_true)
-    top_k = ranks[::-1][0:k]
+    top_k = _top_k(y_score, k)
 
     if not value:
         y_true = 1-y_true
 
-    return pd.Series(np.nan_to_num(y_true[top_k]).cumsum(), index=np.arange(1,k+1))
+    return np.nan_to_num(y_true[top_k]).sum()
+
+def recall_series(y_true, y_score, k=None, value=True):
+    y_true, y_score = to_float(y_true, y_score)
+    top_k = _top_k(y_score, k)
+
+    if not value:
+        y_true = 1-y_true
+
+    a = np.nan_to_num(y_true[top_k]).cumsum()
+    return pd.Series(a, index=np.arange(1,len(a)+1))
