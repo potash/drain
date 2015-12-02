@@ -140,6 +140,10 @@ def count(run, dropna=False, **subset_args):
     y_true,y_score = true_score(run.y, **subset_args)
     return metrics.count(y_true, dropna=dropna)
 
+def count_series(run, dropna=False, **subset_args):
+    y_true,y_score = true_score(run.y, **subset_args)
+    return metrics.count_series(y_true, y_score, dropna=dropna)
+
 def baseline(run, **subset_args):
     y_true,y_score = true_score(run.y, **subset_args)
     return metrics.baseline(y_true)

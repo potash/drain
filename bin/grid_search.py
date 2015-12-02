@@ -80,7 +80,7 @@ def grid_search(params, outputdir, drakefile, drakein=None, tag=None, python_arg
     if drakein is not None:
         dirname, basename = os.path.split(os.path.abspath(drakein))
         drakefile.write("BASE={}\n".format(dirname))
-        drakefile.write("%include $[BASE]/{}\n".format(basename))
+        drakefile.write(";%include $[BASE]/{}\n".format(basename))
     
     #TODO include a project specific Drakefile via cmd arg
     bindir = os.path.abspath(os.path.dirname(sys.argv[0]))
@@ -99,7 +99,7 @@ model()
     
     if tag is not None:
         tagdir = os.path.join(outputdir, 'tag', tag)
-        if overwrite_tag and not preview:
+        if overwrite_tag and os.path.exists(tagdir) and not preview:
             shutil.rmtree(tagdir)
         if not os.path.exists(tagdir) and not preview:
             os.makedirs(tagdir)

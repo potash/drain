@@ -15,10 +15,21 @@ def _top_k(y_score, k=None):
 
 def count(y, dropna=False):
     if dropna:
-        y = util.to_float(y)
         return (~np.isnan(to_float(y))).sum()
     else:
         return len(y)
+
+def count_series(y_true, y_score, dropna=False):
+    y_true, y_score = to_float(y_true, y_score)
+    top_k = _top_k(y_score)
+
+    if dropna:
+        a = (~np.isnan(y_true[top_k])).cumsum()
+    else:
+        a = range(1, len(y)+1)
+
+    return pd.Series(a, index=range(1, len(a)+1))
+
 
 def baseline(y_true):
     if len(y_true) > 0:
@@ -79,11 +90,11 @@ def precision_at_k(y_true, y_score, k, extrapolate=False, return_bounds=True):
 # TODO extrapolate here
 def precision_series(y_true, y_score, k=None):
     y_true, y_score = to_float(y_true, y_score)
-    top_k = ranks[::-1][0:k]
+    top_k = _top_k(y_score, k)
 
     n = np.nan_to_num(y_true[top_k]).cumsum() # fill missing labels with 0
     d = (~np.isnan(y_true[top_k])).cumsum()     # count number of labelsa
-    return pd.Series(n/d, index=np.arange(1,k+1))
+    return pd.Series(n/d, index=np.arange(1,len(n)+1))
 
 def recall(y_true, y_score, k=None, value=True):
     y_true, y_score = to_float(y_true, y_score)
