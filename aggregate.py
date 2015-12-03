@@ -120,13 +120,19 @@ class SpacetimeAggregator(object):
         
     # should return the aggregations, pivoted and prefixed
     # if left is specified then only returns those aggregations
-    def read(self, left=None):
+    def read(self, left=None, pivot=False):
         dfs = []
         for d in self.dates:
             logging.info('reading date %s' % d)
             df = self.read_date(d, left)
             dfs.append(df)
-        return pd.concat(dfs, ignore_index=True, copy=False)
+        df = pd.concat(dfs, ignore_index=True, copy=False)
+
+        if pivot:
+            df.set_index(['id', 'date', 'space', 'delta'])
+            df = df.unstack(['space', 'delta'])
+            df.columns = ['{0}_{1}_{2}_{3}'.format(prefix, space, delta, column)
+                for column, space, delta in product(*df.columns.levels)]
     
     # read the data for the specified date
     def read_date(self, date, left=None):
@@ -136,9 +142,9 @@ class SpacetimeAggregator(object):
             if len(left) == 0:
                 return pd.DataFrame()            
         df = pd.read_hdf(self.filenames[date], key='df', **hdf_kwargs)
-        for index in self.spatial_indexes:
-            values = left[index].unique()
-            df.drop(df.index[~df[index].isin(values)], inplace=True)
+        for space in self.spacedeltas:
+            values = left[space.spatial_index].unique()
+            df.drop(df.index[~df['id'].isin(values)], inplace=True)
 
         df['date'] = date
         return df
