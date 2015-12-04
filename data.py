@@ -195,11 +195,12 @@ def counts_to_dicts(df, column):
 # expand a column containing value:count dictionaries
 def expand_counts(df, column, values=None):
     d = counts_to_dicts(df, column)
-    if values is None:
-        values = set(np.concatenate(d.apply(lambda c: c.keys()).values))
-    for value in values:
-        name = values[value] if type(values) is dict else str(value)
-        df[column + '_'+ name.replace(' ', '_')] = d.apply(lambda c: c[value] if value in c else 0)
+    if len(d) > 0:
+        if values is None:
+            values = set(np.concatenate(d.apply(lambda c: c.keys()).values))
+        for value in values:
+            name = values[value] if type(values) is dict else str(value)
+            df[column + '_'+ name.replace(' ', '_')] = d.apply(lambda c: c[value] if value in c else 0)
     df.drop(column, axis=1, inplace=True)
 
 def binarize_clusters(df, column, n_clusters, train=None):

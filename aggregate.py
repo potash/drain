@@ -5,6 +5,7 @@ import logging
 import datetime
 from datetime import date
 from dateutil.relativedelta import relativedelta
+from itertools import product
 
 import pandas as pd
 import numpy as np
@@ -100,10 +101,7 @@ def aggregate_counts(l):
 #     storing the hdf files (e.g. '{basedir}/tests/20130101.hdf')
 #     feature names (e.g. tests_tract_3y_{feature_name}
 
-# TODO write the aggregate function
-# TODO pivot based on delta
-# TODO prefix column
-# TODO test table vs fixed format, data_column
+# TODO: read(left, pivot) support for multiple spatial indexes
 class SpacetimeAggregator(object):
     def __init__(self, spacedeltas, dates, prefix, basedir):
         self.spacedeltas = spacedeltas
@@ -120,19 +118,20 @@ class SpacetimeAggregator(object):
         
     # should return the aggregations, pivoted and prefixed
     # if left is specified then only returns those aggregations
-    def read(self, left=None, pivot=False):
+    def read(self, left=None, pivot=True):
         dfs = []
         for d in self.dates:
-            logging.info('reading date %s' % d)
             df = self.read_date(d, left)
             dfs.append(df)
         df = pd.concat(dfs, ignore_index=True, copy=False)
 
         if pivot:
-            df.set_index(['id', 'date', 'space', 'delta'])
+            df.set_index(['id', 'date', 'space', 'delta'], inplace=True)
             df = df.unstack(['space', 'delta'])
-            df.columns = ['{0}_{1}_{2}_{3}'.format(prefix, space, delta, column)
+            df.columns = ['{0}_{1}_{2}_{3}'.format(self.prefix, space, delta, column)
                 for column, space, delta in product(*df.columns.levels)]
+
+        return df
     
     # read the data for the specified date
     def read_date(self, date, left=None):
@@ -140,11 +139,15 @@ class SpacetimeAggregator(object):
         if left is not None:
             left = left[left.date == date]
             if len(left) == 0:
-                return pd.DataFrame()            
+                return pd.DataFrame()
+
+        logging.info('Reading date %s' % date)
         df = pd.read_hdf(self.filenames[date], key='df', **hdf_kwargs)
-        for space in self.spacedeltas:
-            values = left[space.spatial_index].unique()
-            df.drop(df.index[~df['id'].isin(values)], inplace=True)
+
+        if left is not None:
+            for space in self.spacedeltas:
+                values = left[self.spacedeltas[space].spatial_index].unique()
+                df.drop(df.index[~df['id'].isin(values)], inplace=True)
 
         df['date'] = date
         return df
@@ -175,6 +178,12 @@ def parse_delta(s):
             return relativedelta(**{delta_chars[l[0][1]]:int(l[0][0])})
         else:
             raise ValueError('Invalid delta string: %s' % s)
+
+spacetime_prefix_regex = re.compile('^(([^_]+_){3})')
+
+# returns the {prefix}_{space}_{delta}_
+def get_spacetime_prefix(column):
+    return spacetime_prefix_regex.findall(column)[0][0]
 
 class Spacedeltas(object):
     def __init__(self, spatial_index, delta_strings):

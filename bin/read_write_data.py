@@ -23,7 +23,7 @@ with open(args.input) as f:
 params = deepcopy(params_orig)
 data_name = params['data'].pop('name')
 
-logging.info('Loading ' + data_name + ' with parameters\n\t:' + str(params['data']))
+logging.info('Loading ' + data_name + ' with parameters:\n\t' + str(params['data']))
 
 data = util.get_attr(data_name)(**params['data'])
 data.read()
