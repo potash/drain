@@ -128,8 +128,15 @@ class SpacetimeAggregator(object):
         if pivot:
             df.set_index(['id', 'date', 'space', 'delta'], inplace=True)
             df = df.unstack(['space', 'delta'])
+            columns = list(product(*df.columns.levels)) # list of (column, space, delta)
+
+            # unstack can mess with dtypes so set them back
+            for c in filter(lambda c: c[0] in self.dtypes, columns):
+                df[c] = df[c].astype(self.dtypes[c[0]])
+
+            # prefix columns
             df.columns = ['{0}_{1}_{2}_{3}'.format(self.prefix, space, delta, column)
-                for column, space, delta in product(*df.columns.levels)]
+                for column, space, delta in columns]
 
         return df
     
@@ -154,12 +161,14 @@ class SpacetimeAggregator(object):
     
     # write the data for a specific date
     # cast to dtype unless it's None
-    def write_date(self, date, dtype=None):
+    def write_date(self, date):
+        logging.info('Aggregating %s' % date)
         df = self.aggregate(date)
 
         if not os.path.isdir(self.dirname):
             os.mkdir(self.dirname)
-        df = df.astype(np.float32) if dtype is not None else df
+
+        logging.info('Writing %s' % date)
         return df.to_hdf(self.filenames[date], key='df', mode='w')
 
 delta_chars = {

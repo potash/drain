@@ -6,6 +6,7 @@ import os
 import argparse
 import inspect
 from copy import deepcopy
+import logging
 
 from drain import model
 from drain import util
@@ -13,9 +14,6 @@ from drain import util
 import warnings
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=PerformanceWarning)
-
-import logging
-logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=0)
 
 from pprint import pformat
 def pformat_indent(o):

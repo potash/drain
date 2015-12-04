@@ -3,14 +3,12 @@ import os
 import argparse
 from copy import deepcopy
 from drain import util
+import logging
 
 import warnings
 from pandas.io.pytables import PerformanceWarning
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 warnings.filterwarnings("ignore", category=PerformanceWarning)
-
-import logging
-logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=0)
 
 parser = argparse.ArgumentParser(description='Use this script to read and write ModelData for caching.')
 parser.add_argument('input', type=str, help='yaml filename')
