@@ -29,6 +29,6 @@ data.read()
 if not os.path.exists(args.basedir):
     os.makedirs(args.basedir)
 
-logging.info('Writing ' + data_name)
+logging.info('Writing %s with shape %s' % (data_name, data.df.shape)
 data.write(args.basedir)
 logging.info(data_name + ' written.')
