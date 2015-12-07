@@ -24,8 +24,11 @@ def execute_sql(sql, engine):
     trans.commit()
 
 def mtime(path):
-    #return datetime.fromtimestamp(max(os.stat(root).st_mtime for root,_,_ in os.walk(dirname)))
     return datetime.fromtimestamp(os.stat(path).st_mtime)
+
+def touch(path):
+    open(path, 'a').close()
+    os.utime(path, None)
 
 def intersect(sets):
     return reduce(lambda a,b: a & b, sets)

@@ -107,11 +107,6 @@ def get_subdirs(directory):
      return [os.path.join(directory, name) for name in os.listdir(directory) 
              if os.path.isdir(os.path.join(directory, name))]
 
-def mask(df, key, value):
-    return df[df[key] == value]
-
-pd.DataFrame.mask = mask
-
 def get_series(df, columns, value, indices=None, index_names=None,index='year', include_baseline=True):
     unstacked = df.set_index([index]+columns).unstack(columns)
     if indices is not None:

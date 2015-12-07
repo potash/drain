@@ -34,11 +34,11 @@ model_name = params['model'].pop('name')
 logging.info('Reading ' + data_name + ' with parameters:\n' + pformat_indent(params['data']))
 
 data = util.get_attr(data_name)(**params['data'])
-data.read(args.datadir)
+#data.read(args.datadir)
 
 logging.info('Tranforming with parameters:\n' + pformat_indent(params['transform']))
 
-data.transform(**params['transform'])
+data.transform(directory=args.datadir, **params['transform'])
 train,test = data.cv
 
 logging.info('Training ' + model_name +
@@ -97,3 +97,6 @@ joblib.dump(estimator, os.path.join(args.outputdir, 'estimator.pkl'))
 logging.info('Dumping output')
 y.to_hdf(os.path.join(args.outputdir, 'y.hdf'), 'y', mode='w')
 model.feature_importance(estimator, data.X).to_csv(os.path.join(args.outputdir, 'features.csv'), index=False)
+
+target = os.path.join(os.path.dirname(args.params), 'target')
+util.touch(target)

@@ -51,7 +51,8 @@ def drake_step(basedir, params, method, inputs=[], tagdir=None, preview=False):
     if not os.path.exists(d) and not preview:
         os.makedirs(d)
     
-    dirname = os.path.join(d, 'output/')
+    #dirname = os.path.join(d, 'output/')
+    target = os.path.join(d, 'target')
     params_file = os.path.join(d, 'params.yaml')
 
     if params_new(params, params_file) and not preview:
@@ -67,7 +68,7 @@ def drake_step(basedir, params, method, inputs=[], tagdir=None, preview=False):
 
     inputs = ', !' + str.join(', !', inputs) if len(inputs) > 0 else ''
 
-    return '!'+dirname + ' <- ' + '!'+params_file + inputs + ' [method:' + method + ']\n\n'
+    return '!'+target + ' <- ' + '!'+params_file + inputs + ' [method:' + method + ']\n\n'
 
 # write the grid search drakefile to drakefile
 # drakein is the optional dependent drakefile
@@ -80,16 +81,16 @@ def grid_search(params, outputdir, drakefile, drakein=None, tag=None, python_arg
     if drakein is not None:
         dirname, basename = os.path.split(os.path.abspath(drakein))
         drakefile.write("BASE={}\n".format(dirname))
-        drakefile.write(";%include $[BASE]/{}\n".format(basename))
+        drakefile.write("%include $[BASE]/{}\n".format(basename))
     
     #TODO include a project specific Drakefile via cmd arg
     bindir = os.path.abspath(os.path.dirname(sys.argv[0]))
     drakefile.write("""
 PYTHONUNBUFFERED=Y\n
 data()
-    python {python_args} {bindir}/read_write_data.py $INPUT $OUTPUT
+    python {python_args} {bindir}/read_write_data.py $INPUT $(dirname $OUTPUT)/output/
 model()
-    python {python_args} {bindir}/run_model.py $INPUT $OUTPUT $INPUT1 \n
+    python {python_args} {bindir}/run_model.py $INPUT $(dirname $OUTPUT)/output/ $(dirname $INPUT1)/output/ \n
 """.format(bindir=bindir, python_args=python_args))
     
     # data steps
@@ -111,7 +112,7 @@ model()
         i = i + 1
         p = {'data': d, 'transform':t, 'model':m, 'metrics':metrics}
         d = {'data': d}
-        datadir = os.path.join(params_dir(outputdir, d, 'data'), 'output/') # use data dir for drake dependency
+        datadir = os.path.join(params_dir(outputdir, d, 'data'), 'target') # use data dir for drake dependency
         tagdir = os.path.join(outputdir, 'tag', tag, util.hash_yaml_dict(p)) if tag is not None else None
     
         drakefile.write(drake_step(outputdir, p, 'model', inputs=[datadir], tagdir=tagdir, preview=preview))
