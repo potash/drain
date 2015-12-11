@@ -90,23 +90,16 @@ def proximity(run, ix, k):
 # subset a model "y" dataframe
 # dropna means drop missing outcomes
 # return top k (count) or p (proportion) if specified
-# p_dropna means proportion is relative to labeled count
-def y_subset(y, masks=[], filters={}, test=True, 
-        dropna=False, outcome='true',
-        k=None, p=None, ascending=False, score='score', p_dropna=True):
+# p_of specifies what the proportion is relative to:
+# p_of='notnull' means proportion is relative to labeled count
+# p_of='true' means proportion is relative to positive count
+# p_of='all' means proportion is relative to total count
 
-    masks2=[]
-    for mask in masks:
-        masks2.append(util.get_series(y, mask))
+def y_subset(y, query=None, dropna=False, outcome='true',
+        k=None, p=None, ascending=False, score='score', p_of='notnull'):
 
-    for column, value in filters.iteritems():
-        masks2.append(util.get_series(y, column) == value)
-
-    if test:
-        masks2.append(y['test'])
-
-    mask = util.intersect(masks2)
-    y = y[mask]
+    if query is not None:
+        y = y.query(query)
 
     if dropna:
         y = y.dropna(subset=[outcome])
@@ -116,7 +109,14 @@ def y_subset(y, masks=[], filters={}, test=True,
     elif k is not None:
         k = k
     elif p is not None:
-        k = int(p*metrics.count(y[outcome], dropna=p_dropna))
+        if p_of == 'notnull':
+            k = int(p*y[outcome].notnull().sum())
+        elif p_of == 'true':
+            k = int(p*y[outcome].sum())
+        elif p_of == 'all':
+            k = int(p*len(y))
+        else:
+            raise ValueError('Invalid value for p_of: %s' % p_of)
     else:
         k = None
 
@@ -136,22 +136,21 @@ def auc(run, dropna=True, **subset_args):
 # return size of dataset
 # if dropna=True, only count rows where outcome is not nan
 # note this means witholdinging dropna from y_subset() call
-def count(run, dropna=False, **subset_args):
+def count(run, countna=False, **subset_args):
     y_true,y_score = true_score(run.y, **subset_args)
-    return metrics.count(y_true, dropna=dropna)
+    return metrics.count(y_true, countna=countna)
 
-def count_series(run, dropna=False, **subset_args):
+def count_series(run, countna=False, **subset_args):
     y_true,y_score = true_score(run.y, **subset_args)
-    return metrics.count_series(y_true, y_score, dropna=dropna)
+    return metrics.count_series(y_true, y_score, countna=countna)
 
 def baseline(run, **subset_args):
     y_true,y_score = true_score(run.y, **subset_args)
     return metrics.baseline(y_true)
 
-def precision(run, return_bounds=True, dropna=True, **subset_args):
-    y_true, y_score = true_score(run.y, dropna=dropna, **subset_args)
-
-    return metrics.precision_at_k(y_true, y_score, len(y_true), return_bounds=return_bounds, extrapolate=(not dropna))
+def precision(run, return_bounds=False, **subset_args):
+    y_true, y_score = true_score(run.y, **subset_args)
+    return metrics.precision(y_true, y_score, return_bounds=return_bounds)
 
 def precision_series(run, **subset_args):
     y_true, y_score = true_score(run.y, **subset_args)
