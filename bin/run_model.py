@@ -30,6 +30,7 @@ with open(args.params) as f:
 
 data_name = params['data'].pop('name')
 model_name = params['model'].pop('name')
+model_cache = params['model'].pop('cache') if 'cache' in params['model'] else False
 
 logging.info('Reading ' + data_name + ' with parameters:\n' + pformat_indent(params['data']))
 
@@ -59,12 +60,12 @@ logging.info('Validating model'+
 y_score = pd.Series(model.y_score(estimator, data.X[test]), index=data.X[test].index)
 
 # create a single y dataframe with train and test and other masks
-y = pd.DataFrame({'true': data.y})
+y = pd.DataFrame({'true': data.y[test]})
 y['score'] = y_score
 if hasattr(data, 'masks'):
     y = y.join(data.masks)
-y['train'] = train
-y['test'] = test
+#y['train'] = train
+#y['test'] = test
 
 #run = {'data': data, 'estimator': estimator, 'y': y.reset_index()}
 run = model.ModelRun(data=data, estimator=estimator, y=y.reset_index())
@@ -91,8 +92,9 @@ for metric in params['metrics']:
 if not os.path.exists(args.outputdir):
     os.makedirs(args.outputdir)
     
-logging.info('Dumping estimator')
-joblib.dump(estimator, os.path.join(args.outputdir, 'estimator.pkl'))
+if model_cache:
+    logging.info('Dumping estimator')
+    joblib.dump(estimator, os.path.join(args.outputdir, 'estimator.pkl'))
 
 logging.info('Dumping output')
 y.to_hdf(os.path.join(args.outputdir, 'y.hdf'), 'y', mode='w')

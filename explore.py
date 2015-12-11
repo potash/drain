@@ -49,7 +49,7 @@ def apply(df, fn, **kwargs):
 
 def read_model(dirname, estimator=False):
     outdirname = os.path.join(dirname, 'output/')
-    if not os.path.isdir(outdirname):
+    if not (os.path.isdir(outdirname) and os.path.isfile(os.path.join(dirname, 'target'))):
         return
  
     mtime = util.mtime(outdirname)

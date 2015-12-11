@@ -1,4 +1,5 @@
 import pandas as pd
+from scipy import stats
 from sklearn import preprocessing
 from sklearn.utils.validation import _assert_all_finite
 import re
@@ -129,6 +130,9 @@ def get_aggregation(table_name, levels, engine, left, prefix=None):
         left = left.merge(t, on=index, how='left', copy=False)
 
     return left
+
+def percentile(series):
+    return pd.Series(stats.rankdata(series)/len(series), index=series.index)
 
 # generate year, month, day features from specified date features
 def expand_dates(df, columns=[]):
