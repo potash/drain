@@ -41,6 +41,14 @@ def to_float(*args):
     floats = [np.array(a, dtype=np.float32) for a in args]
     return floats[0] if len(floats) == 1 else floats
 
+# a fake hash that detects references to the same object
+# used by Aggregator for minimzing computations
+def hash_obj(obj):
+    try:
+        return hash((True, obj))
+    except: 
+        return hash((False, id(obj)))
+
 def hash_yaml_dict(params):
     h = hex(hash(yaml.dump(params)))
     return h[h.index('x')+1:]
@@ -132,7 +140,17 @@ def cross_join(left, right, lsuffix='_left', rsuffix='_right'):
     right.index = np.zeros(len(right))
     return left.join(right, lsuffix=lsuffix, rsuffix=rsuffix)
 
-def set_types(df, types_dict):
+def merge_dicts(*dict_args):
+    '''
+    Given any number of dicts, shallow copy and merge into a new dict,
+    precedence goes to key value pairs in latter dicts.
+    '''
+    result = {}
+    for dictionary in dict_args:
+        result.update(dictionary)
+    return result
+
+def set_dtypes(df, types_dict):
     for column, dtype in types_dict.iteritems():
         df[column] = df[column].astype(dtype)
     
@@ -155,11 +173,6 @@ def conditional_join(left, right, left_on, right_on, condition, lsuffix='_left',
     df.reset_index(drop=True, inplace=True)
     
     return df
-
-def merge_dicts(x, y):
-    z = x.copy()
-    z.update(y)
-    return z
 
 def join_years(left, years, period=None, column='year'):
     years = pd.DataFrame({column:years})
