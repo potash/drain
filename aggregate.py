@@ -293,7 +293,7 @@ class SpacetimeAggregator(object):
         if not os.path.isdir(self.dirname):
             os.mkdir(self.dirname)
 
-        logging.info('Writing %s with %s aggregations' % (date, len(df)))
+        logging.info('Writing %s %s' % (date, df.shape))
         return df.to_hdf(self.filenames[date], key='df', mode='w')
 
 delta_chars = {
