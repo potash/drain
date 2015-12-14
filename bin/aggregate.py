@@ -1,11 +1,12 @@
 import sys
 import dateutil
 import logging
+import pandas as pd
 
 from drain import util
 
 aggregator_name = sys.argv[1]
-date = dateutil.parser.parse(sys.argv[2]).date()
+date = pd.to_datetime(dateutil.parser.parse(sys.argv[2]))
 basedir = sys.argv[3]
 
 logging.info('Initializing %s' % aggregator_name)

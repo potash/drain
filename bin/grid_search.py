@@ -117,6 +117,13 @@ model()
     
         drakefile.write(drake_step(outputdir, p, 'model', inputs=[datadir], tagdir=tagdir, preview=preview))
 
+def powerset_constructor(loader, node):
+    args = loader.construct_sequence(node)
+    return list(itertools.chain.from_iterable(itertools.combinations(args, r) for r in range(len(args)+1)))
+
+def yaml_init():
+    yaml.add_constructor('!powerset', powerset_constructor)
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Use this script to generate a Drakefile for grid search')
     
@@ -133,6 +140,7 @@ if __name__ == "__main__":
     parser.add_argument('drakeargs', nargs='?', type=str, default=None, help='parameters to pass to drake via --drakeargsfile')
     args = parser.parse_args()
     
+    yaml_init()
     with open(args.params) as f:
         params = yaml.load(f)
     

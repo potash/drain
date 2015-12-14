@@ -16,4 +16,4 @@ for date in aggregator.dates:
     if hasattr(aggregator, 'DEPENDENCIES'):
         inputs = str.join(', ', [inputs] + aggregator.DEPENDENCIES)
     print '{} <- {}'.format(aggregator.filenames[date], inputs)
-    print '    python {} {} {} {}'.format(aggregate, aggregator_name, date, str.join(' ', params))
+    print '    python {} {} {} {}'.format(aggregate, aggregator_name, date.strftime('%Y%m%d'), str.join(' ', params))

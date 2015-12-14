@@ -10,7 +10,7 @@ from itertools import product,chain
 import pandas as pd
 import numpy as np
 
-from drain import util
+from drain import util, data
 from drain.util import merge_dicts, hash_obj
 
 # AggregateSeries consist of a series and a function
@@ -85,7 +85,8 @@ class Count(AggregateBase):
         else:
             if name is None: name = series
             columns = ['%s_count' % name]
-            aggregate_series = [AggregateSeries(series, 'sum')]
+            # converting to float32 before summing is an order of magnitude faster
+            aggregate_series = [AggregateSeries(lambda d: d[series].astype(np.float32), 'sum')]
             
             if prop:
                 columns.append('%s_prop' % name)
@@ -193,6 +194,7 @@ class SpacetimeAggregator(object):
         self.spacedeltas = spacedeltas
         self.prefix = prefix
         
+        dates = pd.to_datetime(dates) # this is a pandas DatetimeIndex
         if len(set(dates)) != len(dates):
             raise ValueError('Dates must be unique')
         self.dates = dates
@@ -201,11 +203,19 @@ class SpacetimeAggregator(object):
         
         self.filenames = {d: os.path.join(self.dirname, '%s.hdf' % d.strftime('%Y%m%d')) for d in dates}
         self.dtypes = {}
-        
+
+    def select(self, df, spacedeltas):
+        include = []
+        for space, deltas in spacedeltas.iteritems():
+            if not self.spacedeltas[space].has_deltas(deltas):
+                raise ValueError('Aggregator does not have deltas for %s: %s' % (space, deltas))
+            include.extend(['%s_%s_%s_.*' % (self.prefix, space, delta) for delta in deltas])
+
+        return data.select_features(df, exclude=['%s_.*' % self.prefix], include=include)
+
     # should return DataFrame of aggregations for the given date
     def aggregate(self, date, **args):
         raise NotImplementedError
-
         
     # should return the aggregations, pivoted and prefixed
     # if left is specified then only returns those aggregations
@@ -215,7 +225,7 @@ class SpacetimeAggregator(object):
     def read(self, left=None, pivot=True):
         # check to make sure left doesn't have dates that weren't aggregated
         if left is not None:
-            diff = set(left.date.unique()).difference(self.dates)
+            diff = set(left.date.unique()).difference(self.dates.values)
             if len(diff) > 0:
                 raise ValueError('Left frame contains dates not in aggregator: %s' % diff)
 
@@ -232,16 +242,19 @@ class SpacetimeAggregator(object):
             left.date = pd.to_datetime(left.date) # ensure datetime64 for join
 
             for space, st in self.spacedeltas.iteritems():
+                logging.info('Pivoting %s' % space)
                 if st.spatial_index not in left.columns:
                     continue
                 
                 df_s = df[df.space == space]
                 df_s = self._pivot(df_s)
+              
+                logging.info('Joining %s' % space)
                 df_s.reset_index(inplace=True)
                 df_s.rename(columns={'id':st.spatial_index}, inplace=True)
 
                 df_s['date'] = pd.to_datetime(df_s['date']) # ensure datetime64 for join
-                left = left.merge(df_s, on=[st.spatial_index, 'date'], how='left')
+                left = left.merge(df_s, on=[st.spatial_index, 'date'], how='left', copy=False)
  
             left.index = index
             return left
@@ -255,8 +268,11 @@ class SpacetimeAggregator(object):
         columns = list(product(*df.columns.levels)) # list of (column, space, delta)
 
         # unstack can mess with dtypes so set them back
-        for c in filter(lambda c: c[0] in self.dtypes, columns):
-            df[c] = df[c].astype(self.dtypes[c[0]])
+        if isinstance(dtypes, dict):
+            dtypes = {c: self.dtypes[c[0]] for c in columns if c[0] in self.dtypes}
+        else:
+            dtypes = self.dtypes
+        util.set_dtypes(df, dtypes)
 
         # prefix columns
         df.columns = ['{0}_{1}_{2}_{3}'.format(self.prefix, space, delta, column)
@@ -276,7 +292,7 @@ class SpacetimeAggregator(object):
 
     def aggregate(self, date):
         df = self.get_data(date)
-        aggregates = self.get_aggregates(date)
+        aggregates = self.get_aggregates(date=date, data=df)
 
         dfs = []
         for space, st in self.spacedeltas.iteritems():
@@ -362,4 +378,10 @@ def get_spacetime_prefix(column):
 class Spacedeltas(object):
     def __init__(self, spatial_index, delta_strings):
         self.spatial_index = spatial_index
+        if len(set(delta_strings)) != len(delta_strings):
+            raise ValueError('Duplicate deltas: %s' % delta_strings)
+        self.delta_strings = delta_strings
         self.deltas = {s:parse_delta(s) for s in delta_strings}
+
+    def has_deltas(self, delta_strings):
+        return set(delta_strings).issubset(self.delta_strings)

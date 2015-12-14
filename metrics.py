@@ -39,7 +39,7 @@ def count_series(y_true, y_score, countna=False):
 
 def baseline(y_true):
     if len(y_true) > 0:
-        return np.nansum(y_true)/count(y_true, dropna=True)
+        return np.nansum(y_true)/count(y_true, countna=False)
     else:
         return 0.0
 

@@ -129,13 +129,10 @@ def true_score(y, outcome='true', score='score', **subset_args):
     y = y_subset(y, outcome=outcome, score=score, **subset_args) 
     return util.to_float(y[outcome], y[score])
 
-def auc(run, dropna=True, **subset_args):
-    y_true, y_score = true_score(run.y, dropna=True, **subset_args)
+def auc(run, **subset_args):
+    y_true, y_score = true_score(run.y, **subset_args)
     return metrics.auc(y_true, y_score)
 
-# return size of dataset
-# if dropna=True, only count rows where outcome is not nan
-# note this means witholdinging dropna from y_subset() call
 def count(run, countna=False, **subset_args):
     y_true,y_score = true_score(run.y, **subset_args)
     return metrics.count(y_true, countna=countna)

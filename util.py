@@ -150,9 +150,13 @@ def merge_dicts(*dict_args):
         result.update(dictionary)
     return result
 
-def set_dtypes(df, types_dict):
-    for column, dtype in types_dict.iteritems():
-        df[column] = df[column].astype(dtype)
+def set_dtypes(df, dtypes):
+    if isinstance(dtypes, dict):
+        for column, dtype in dtypes.iteritems():
+            df[column] = df[column].astype(dtype)
+    else:
+        for column in df.columns:
+            df[column] = df[column].astype(dtypes)
     
 def conditional_join(left, right, left_on, right_on, condition, lsuffix='_left', rsuffix='_right'):
     left_index = left[left_on].reset_index()
