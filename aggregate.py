@@ -192,6 +192,9 @@ class SpacetimeAggregator(object):
     def __init__(self, spacedeltas, dates, prefix, basedir, date_col='date'):
         self.spacedeltas = spacedeltas
         self.prefix = prefix
+        
+        if len(set(dates)) != len(dates):
+            raise ValueError('Dates must be unique')
         self.dates = dates
         self.dirname = os.path.join(basedir, prefix)
         self.date_col = date_col
@@ -206,7 +209,16 @@ class SpacetimeAggregator(object):
         
     # should return the aggregations, pivoted and prefixed
     # if left is specified then only returns those aggregations
+    # if pivot then pivot the spaces and deltas
+    # if pivot and left then will iteratively left join
+    # will ignore spatial index columns missing from left
     def read(self, left=None, pivot=True):
+        # check to make sure left doesn't have dates that weren't aggregated
+        if left is not None:
+            diff = set(left.date.unique()).difference(self.dates)
+            if len(diff) > 0:
+                raise ValueError('Left frame contains dates not in aggregator: %s' % diff)
+
         dfs = []
         for d in self.dates:
             df = self.read_date(d, left)
@@ -214,17 +226,41 @@ class SpacetimeAggregator(object):
         df = pd.concat(dfs, ignore_index=True, copy=False)
 
         if pivot:
-            df.set_index(['id', 'date', 'space', 'delta'], inplace=True)
-            df = df.unstack(['space', 'delta'])
-            columns = list(product(*df.columns.levels)) # list of (column, space, delta)
+            if left is None:
+                raise ValueError('Need left frame to pivot')
+            index = left.index # preserve index for return
+            left.date = pd.to_datetime(left.date) # ensure datetime64 for join
 
-            # unstack can mess with dtypes so set them back
-            for c in filter(lambda c: c[0] in self.dtypes, columns):
-                df[c] = df[c].astype(self.dtypes[c[0]])
+            for space, st in self.spacedeltas.iteritems():
+                if st.spatial_index not in left.columns:
+                    continue
+                
+                df_s = df[df.space == space]
+                df_s = self._pivot(df_s)
+                df_s.reset_index(inplace=True)
+                df_s.rename(columns={'id':st.spatial_index}, inplace=True)
 
-            # prefix columns
-            df.columns = ['{0}_{1}_{2}_{3}'.format(self.prefix, space, delta, column)
-                for column, space, delta in columns]
+                df_s['date'] = pd.to_datetime(df_s['date']) # ensure datetime64 for join
+                left = left.merge(df_s, on=[st.spatial_index, 'date'], how='left')
+ 
+            left.index = index
+            return left
+        else:
+            return df
+
+    # spacetime pivot, inplace
+    def _pivot(self, df):
+        df.set_index(['id', 'date', 'space', 'delta'], inplace=True)
+        df = df.unstack(['space', 'delta'])
+        columns = list(product(*df.columns.levels)) # list of (column, space, delta)
+
+        # unstack can mess with dtypes so set them back
+        for c in filter(lambda c: c[0] in self.dtypes, columns):
+            df[c] = df[c].astype(self.dtypes[c[0]])
+
+        # prefix columns
+        df.columns = ['{0}_{1}_{2}_{3}'.format(self.prefix, space, delta, column)
+            for column, space, delta in columns]
 
         return df
 
@@ -263,23 +299,27 @@ class SpacetimeAggregator(object):
 
                 dfs.append(aggregated)
 
-        return pd.concat(dfs)
+        return pd.concat(dfs, ignore_index=True)
     
     # read the data for the specified date
     def read_date(self, date, left=None):
-        hdf_kwargs = {}
         if left is not None:
             left = left[left.date == date]
             if len(left) == 0:
                 return pd.DataFrame()
 
         logging.info('Reading date %s' % date)
-        df = pd.read_hdf(self.filenames[date], key='df', **hdf_kwargs)
+        df = pd.read_hdf(self.filenames[date], key='df')
 
         if left is not None:
-            for space in self.spacedeltas:
-                values = left[self.spacedeltas[space].spatial_index].unique()
-                df.drop(df.index[~df['id'].isin(values)], inplace=True)
+            for space, st in self.spacedeltas.iteritems():
+                mask = (df['space'] == space)
+
+                # TODO make this support spatial multi-index
+                if st.spatial_index in left.columns:
+                    values = left[self.spacedeltas[space].spatial_index].unique()
+                    mask = mask & (~df['id'].isin(values))
+                df.drop(df.index[mask], inplace=True)
 
         df['date'] = date
         return df
@@ -291,7 +331,7 @@ class SpacetimeAggregator(object):
         df = self.aggregate(date)
 
         if not os.path.isdir(self.dirname):
-            os.mkdir(self.dirname)
+            os.makedirs(self.dirname)
 
         logging.info('Writing %s %s' % (date, df.shape))
         return df.to_hdf(self.filenames[date], key='df', mode='w')
