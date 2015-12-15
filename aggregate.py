@@ -245,7 +245,7 @@ class SpacetimeAggregator(object):
                 logging.info('Pivoting %s' % space)
                 if st.spatial_index not in left.columns:
                     continue
-                
+
                 df_s = df[df.space == space]
                 df_s = self._pivot(df_s)
               
@@ -263,17 +263,13 @@ class SpacetimeAggregator(object):
 
     # spacetime pivot, inplace
     def _pivot(self, df):
+        logging.info('Setting index')
         df.set_index(['id', 'date', 'space', 'delta'], inplace=True)
-        df = df.unstack(['space', 'delta'])
+        logging.info('Unstacking')
+        df = df.unstack('space').unstack('delta')
         columns = list(product(*df.columns.levels)) # list of (column, space, delta)
 
-        # unstack can mess with dtypes so set them back
-        if isinstance(dtypes, dict):
-            dtypes = {c: self.dtypes[c[0]] for c in columns if c[0] in self.dtypes}
-        else:
-            dtypes = self.dtypes
-        util.set_dtypes(df, dtypes)
-
+        logging.info('Prefixing columns')
         # prefix columns
         df.columns = ['{0}_{1}_{2}_{3}'.format(self.prefix, space, delta, column)
             for column, space, delta in columns]

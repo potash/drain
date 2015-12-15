@@ -108,21 +108,29 @@ model()
 
     # model steps
     i = 0
-    for d,t,m in itertools.product(data,transforms,models):
+    #for d,t,m in itertools.product(data,transforms,models):
+    for t,m in itertools.product(transforms,models):
         i = i + 1
-        p = {'data': d, 'transform':t, 'model':m, 'metrics':metrics}
-        d = {'data': d}
-        datadir = os.path.join(params_dir(outputdir, d, 'data'), 'target') # use data dir for drake dependency
+        #p = {'data': d, 'transform':t, 'model':m, 'metrics':metrics}
+        p = {'transform':t, 'model':m, 'metrics':metrics}
+        #d = {'data': d}
+        #datadir = os.path.join(params_dir(outputdir, d, 'data'), 'target') # use data dir for drake dependency
         tagdir = os.path.join(outputdir, 'tag', tag, util.hash_yaml_dict(p)) if tag is not None else None
     
-        drakefile.write(drake_step(outputdir, p, 'model', inputs=[datadir], tagdir=tagdir, preview=preview))
+        #drakefile.write(drake_step(outputdir, p, 'model', inputs=[datadir], tagdir=tagdir, preview=preview))
+        drakefile.write(drake_step(outputdir, p, 'model', inputs=[], tagdir=tagdir, preview=preview))
 
 def powerset_constructor(loader, node):
     args = loader.construct_sequence(node)
     return list(itertools.chain.from_iterable(itertools.combinations(args, r) for r in range(len(args)+1)))
 
+def range_constructor(loader, node):
+    args = loader.construct_sequence(node)
+    return range(*args)
+
 def yaml_init():
     yaml.add_constructor('!powerset', powerset_constructor)
+    yaml.add_constructor('!range', range_constructor)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Use this script to generate a Drakefile for grid search')
@@ -137,8 +145,8 @@ if __name__ == "__main__":
     
     parser.add_argument('params', type=str, help='yaml params filename')
     parser.add_argument('outputdir', type=str, help='output directory')
-    parser.add_argument('drakeargs', nargs='?', type=str, default=None, help='parameters to pass to drake via --drakeargsfile')
-    args = parser.parse_args()
+    #parser.add_argument('drakeargs', nargs='?', type=str, default=None, help='parameters to pass to drake via --drakeargsfile')
+    args, drake_args = parser.parse_known_args()
     
     yaml_init()
     with open(args.params) as f:
@@ -156,7 +164,7 @@ if __name__ == "__main__":
             drakefile = sys.stdout
         grid_search(params, outputdir, drakefile, args.Drakeinput, args.tag, 
                 python_args=pyargs, overwrite_tag=args.overwrite, preview=args.preview)
-    
-    if args.drakeargs is not None and args.drakeargsfile is not None and not args.preview:
+   
+    if drake_args is not None and args.drakeargsfile is not None and not args.preview:
         with open(args.drakeargsfile, 'w') as drakeargsfile:
-            drakeargsfile.write(args.drakeargs)
+            drakeargsfile.write(str.join(' ', drake_args))

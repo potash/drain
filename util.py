@@ -1,4 +1,5 @@
 import sqlalchemy
+import logging
 import os
 import numpy as np
 import datetime
@@ -151,12 +152,16 @@ def merge_dicts(*dict_args):
     return result
 
 def set_dtypes(df, dtypes):
-    if isinstance(dtypes, dict):
-        for column, dtype in dtypes.iteritems():
+    for column in df.columns:
+        dtype = None
+        if isinstance(dtypes, dict):
+            if column in dtypes:
+                dtype = dtypes[column]
+        else:
+            dtype = dtypes
+        
+        if dtype is not None and df[column].dtype != dtype:
             df[column] = df[column].astype(dtype)
-    else:
-        for column in df.columns:
-            df[column] = df[column].astype(dtypes)
     
 def conditional_join(left, right, left_on, right_on, condition, lsuffix='_left', rsuffix='_right'):
     left_index = left[left_on].reset_index()
