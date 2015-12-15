@@ -30,7 +30,7 @@ def params_dir(basedir, params, method):
         params = deepcopy(params)
         params.pop('metrics')
 
-    h = util.hash_yaml_dict(params)
+    h = util.hash_yaml(params)
     d = os.path.join(basedir, method, h + '/')
     return d
 

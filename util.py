@@ -50,7 +50,7 @@ def hash_obj(obj):
     except: 
         return hash((False, id(obj)))
 
-def hash_yaml_dict(params):
+def hash_yaml(params):
     h = hex(hash(yaml.dump(params)))
     return h[h.index('x')+1:]
 

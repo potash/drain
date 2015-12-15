@@ -202,7 +202,6 @@ class SpacetimeAggregator(object):
         self.date_col = date_col
         
         self.filenames = {d: os.path.join(self.dirname, '%s.hdf' % d.strftime('%Y%m%d')) for d in dates}
-        self.dtypes = {}
 
     def select(self, df, spacedeltas):
         include = []
@@ -299,7 +298,6 @@ class SpacetimeAggregator(object):
                 aggregator = Aggregator(df_st, aggregates)
                 aggregated = aggregator.aggregate(index=spatial_index)
 
-                util.set_dtypes(aggregated, self.dtypes)
                 aggregated.reset_index(inplace=True)
 
                 aggregated.rename(columns={spatial_index:'id'}, inplace=True)
