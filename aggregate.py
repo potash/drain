@@ -263,13 +263,10 @@ class SpacetimeAggregator(object):
 
     # spacetime pivot, inplace
     def _pivot(self, df):
-        logging.info('Setting index')
         df.set_index(['id', 'date', 'space', 'delta'], inplace=True)
-        logging.info('Unstacking')
         df = df.unstack('space').unstack('delta')
         columns = list(product(*df.columns.levels)) # list of (column, space, delta)
 
-        logging.info('Prefixing columns')
         # prefix columns
         df.columns = ['{0}_{1}_{2}_{3}'.format(self.prefix, space, delta, column)
             for column, space, delta in columns]
