@@ -71,7 +71,7 @@ def read_model(dirname, estimator=False):
     df['features'] = [features]
     df['n_features'] = [len(features)]
     df['params'] = [params]
-    df['data'] = [util.init_object(**params['data'])]
+    df['transform'] = [util.init_object(**params['transform'])]
 
     return df
 
@@ -204,7 +204,7 @@ def dict_to_df(d, multilevel=False):
 
 def dict_diff(dictionaries, multilevel=False):
     diffs = [{} for d in dictionaries]
-    for top_key in ['data','model', 'transform']:
+    for top_key in ['model', 'transform']:
         dicts = [d[top_key] for d in dictionaries]
         keys = map(lambda d: set(d.keys()), dicts)
         intersection = reduce(lambda a,b: a&b, keys)

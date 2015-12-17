@@ -22,24 +22,24 @@ def pformat_indent(o):
 parser = argparse.ArgumentParser(description='Use this script to run a single model.')
 parser.add_argument('params', type=str, help='yaml params filename')
 parser.add_argument('outputdir', type=str, help='output directory')
-parser.add_argument('datadir', type=str, default=None, help='datadir filename')
 args = parser.parse_args()
 
 with open(args.params) as f:
     params = yaml.load(f)
 
-data_name = params['data'].pop('name')
+data_name = params['transform'].pop('name')
 model_name = params['model'].pop('name')
 model_cache = params['model'].pop('cache') if 'cache' in params['model'] else False
 
-logging.info('Reading ' + data_name + ' with parameters:\n' + pformat_indent(params['data']))
+logging.info('Reading ' + data_name + ' with parameters:\n' + pformat_indent(params['transform']))
 
-data = util.get_attr(data_name)(**params['data'])
+data = util.get_attr(data_name)(**params['transform'])
 #data.read(args.datadir)
 
-logging.info('Tranforming with parameters:\n' + pformat_indent(params['transform']))
+logging.info('Tranforming')
 
-data.transform(directory=args.datadir, **params['transform'])
+basedir = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(os.path.join(args.outputdir)))))
+data.run()
 train,test = data.cv
 
 logging.info('Training ' + model_name +
@@ -62,8 +62,8 @@ y_score = pd.Series(model.y_score(estimator, data.X[test]), index=data.X[test].i
 # create a single y dataframe with train and test and other masks
 y = pd.DataFrame({'true': data.y[test]})
 y['score'] = y_score
-if hasattr(data, 'masks'):
-    y = y.join(data.masks)
+if hasattr(data, 'aux'):
+    y = y.join(data.aux)
 #y['train'] = train
 #y['test'] = test
 

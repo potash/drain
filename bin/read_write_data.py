@@ -24,13 +24,15 @@ data_name = params['data'].pop('name')
 logging.info('Loading ' + data_name + ' with parameters:\n\t' + str(params['data']))
 
 data = util.get_attr(data_name)(**params['data'])
-data.read()
+#data.read()
+data.run()
 
 if not os.path.exists(args.basedir):
     os.makedirs(args.basedir)
 
 logging.info('Writing %s with shape %s' % (data_name, data.df.shape))
-data.write(args.basedir)
+#data.write(args.basedir)
+data.dump(args.basedir)
 logging.info(data_name + ' written.')
 
 target = os.path.join(os.path.dirname(args.input), 'target')

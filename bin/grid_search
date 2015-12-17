@@ -11,6 +11,7 @@ if [ -f 'default_profile' ]; then
 fi
 
 python $DIR/grid_search.py --drakeargsfile $DRAKE_ARGS_FILE --drakeoutput $DRAKE_FILE $args || exit
+echo $DRAKE_FILE
 drake_args=$(cat $DRAKE_ARGS_FILE)
 if [ -z "$drake_args" ]; then
     drake -w $DRAKE_FILE

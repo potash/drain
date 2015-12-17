@@ -147,7 +147,9 @@ def expand_dates(df, columns=[]):
 # binarize specified categoricals
 # category_classes is either a dict of (column : [class1, class2, ...]) pairs
 # or a list of columns, in which case possible values are found using df[column].unique()
-def binarize(df, category_classes, all_classes=False):
+# all_classes = False means the last class is skipped
+# drop means drop the original column
+def binarize(df, category_classes, all_classes=True, drop=True):
     if type(category_classes) is not dict:
         columns = set(category_classes).intersection(df.columns)
         category_classes = {column : df[column].unique() for column in columns}
@@ -158,8 +160,9 @@ def binarize(df, category_classes, all_classes=False):
         classes = category_classes[category]
         for i in range(len(classes)-1 if not all_classes else len(classes)):
             df[category + '_' + str(classes[i]).replace( ' ', '_')] = (df[category] == classes[i])
-        
-    df.drop(columns, axis=1, inplace=True)                                      
+    
+    if drop:
+        df.drop(columns, axis=1, inplace=True)                                  
     return df
 
 def binarize_set(df, column, values=None):

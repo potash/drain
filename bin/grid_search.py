@@ -11,9 +11,12 @@ from drain.model import params_dir
     
 # cartesian product of dict whose values are lists
 def dict_product(d):
-    items = sorted(d.items())
-    if len(items) == 0:
+    if len(d) == 0:
         return [{}]
+    for k in d:
+        if isinstance(d[k], dict):
+            d[k] = dict_product(d[k])
+    items = sorted(d.items())
     keys, values = zip(*items)
     a = [dict_filter_none(dict(zip(keys, v))) for v in itertools.product(*values)]
     return a
@@ -46,7 +49,7 @@ def params_new(params, params_file):
     return False
 
 def drake_step(basedir, params, method, inputs=[], tagdir=None, preview=False):
-    d = params_dir(basedir, params, method)
+    d = params_dir(params=params, method=method, basedir=basedir)
 
     if not os.path.exists(d) and not preview:
         os.makedirs(d)
@@ -90,7 +93,7 @@ PYTHONUNBUFFERED=Y\n
 data()
     python {python_args} {bindir}/read_write_data.py $INPUT $(dirname $OUTPUT)/output/
 model()
-    python {python_args} {bindir}/run_model.py $INPUT $(dirname $OUTPUT)/output/ $(dirname $INPUT1)/output/ \n
+    python {python_args} {bindir}/run_model.py $INPUT $(dirname $OUTPUT)/output/ \n
 """.format(bindir=bindir, python_args=python_args))
     
     # data steps
@@ -141,7 +144,7 @@ if __name__ == "__main__":
     parser.add_argument('-t', '--tag', default=None, help='tag name for model outputs', type=check_tag)
     parser.add_argument('-o', '--overwrite', action='store_true', help='overwrite tag')
     parser.add_argument('-d', '--debug', action='store_true', help='run python -m pdb')
-    parser.add_argument('-P', '--preview', action='store_true', help='Preview Drakefile and pass --preview to drake')
+    parser.add_argument('-P', '--preview', action='store_true', help='Preview Drakefile')
     
     parser.add_argument('params', type=str, help='yaml params filename')
     parser.add_argument('outputdir', type=str, help='output directory')

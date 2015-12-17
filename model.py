@@ -25,13 +25,20 @@ def y_score(estimator, X):
 # generally this is basedir/method/#/
 # where '#' is the hash of the yaml dump of the params dict
 # in the special case of method='model', the metrics key is dropped before hashing
-def params_dir(basedir, params, method):
+def params_dir(params, method=None, basedir=None):
+    if method is None:
+        method = params.keys()[0]
     if method == 'model' and 'metrics' in params:
         params = deepcopy(params)
         params.pop('metrics')
 
+    name = params[method]['name']
+    name = name[name.rfind('.')+1:]
+
     h = util.hash_yaml(params)
-    d = os.path.join(basedir, method, h + '/')
+    if basedir is None:
+        basedir = os.environ['OUTPUT_DIR']
+    d = os.path.join(basedir, name, h + '/')
     return d
 
 def sk_tree(X,y, params={'max_depth':3}):
@@ -129,8 +136,8 @@ def true_score(y, outcome='true', score='score', **subset_args):
     y = y_subset(y, outcome=outcome, score=score, **subset_args) 
     return util.to_float(y[outcome], y[score])
 
-def auc(run, **subset_args):
-    y_true, y_score = true_score(run.y, **subset_args)
+def auc(run, dropna=True, **subset_args):
+    y_true, y_score = true_score(run.y, dropna=dropna, **subset_args)
     return metrics.auc(y_true, y_score)
 
 def count(run, countna=False, **subset_args):
