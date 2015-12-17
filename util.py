@@ -267,3 +267,15 @@ class PgSQLDatabase(pandas.io.sql.SQLDatabase):
             sys.exit(r)
 
         return r
+
+    def read_table(self, name, schema=None):
+        table_name=name
+        if schema is not None:
+            table_name = schema + '.' + table_name
+        from subprocess import Popen, PIPE, STDOUT
+        sql = "COPY {table_name} TO STDOUT WITH (FORMAT CSV, HEADER TRUE)".format(table_name=table_name)
+        p = Popen(['psql', '-c', sql], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
+        df = pd.read_csv(p.stdout)
+ 
+        return df
+
