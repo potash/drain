@@ -1,5 +1,6 @@
 import sqlalchemy
 import logging
+import itertools
 import os
 import numpy as np
 import datetime
@@ -150,6 +151,45 @@ def merge_dicts(*dict_args):
     for dictionary in dict_args:
         result.update(dictionary)
     return result
+
+def make_list(a):
+    return [a] if not hasattr(a, '__iter__') else a
+
+# cartesian product of dict whose values are lists
+# if product_keys is not None then take product on those keys only
+def dict_product(d, product_keys=None):
+    if product_keys is not None:
+        holdout = {k:d[k] for k in d if k not in product_keys}
+        d = {k:d[k] for k in d if k in product_keys}
+        
+    if not isinstance(d, dict):
+        raise ValueError('Expected dictionary got %s' % type(d).__name__)
+        
+    items = d.items()
+    if len(items) == 0:
+        dicts =  [{}]
+    else:
+        keys, values = zip(*items)
+        dicts = [dict_filter_none(dict(zip(keys, v))) for v in itertools.product(*values)]
+    
+    if product_keys is not None:
+        for d in dicts:
+            d.update(holdout)
+            
+    return dicts
+
+# filter none values from dict
+def dict_filter_none(d):
+    return {k:v for k,v in d.iteritems() if v is not None}
+
+# update a set-valued dictionary
+# when key exists, union sets
+def dict_update_union(d1, d2):
+    for k in d2:
+        if k in d1:
+            d1[k].update(d2[k])
+        else:
+            d1[k] = d2[k]
 
 def set_dtypes(df, dtypes):
     for column in df.columns:
