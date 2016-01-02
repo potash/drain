@@ -37,16 +37,20 @@ class Step(object):
         self.__name__ = name
         self.__target__ = target
 
-        if dirname is None:
-            dirname = os.path.join(BASEDIR, self.__class__.__name__, self.__dirname__()) 
         self.dirname = dirname
-        self.yaml_filename = os.path.join(dirname, 'step.yaml')
-        
         for k in kwargs:
             setattr(self, k, kwargs[k])
         
         if 'inputs' not in kwargs:
             self.inputs = []
+
+    def get_dirname(self):
+        if self.dirname is not None:
+            return self.dirname
+        else:
+            if BASEDIR is None:
+                raise ValueError('BASEDIR not initialized')
+            return os.path.join(BASEDIR, self.__class__.__name__, self.__dirname__())
         
     def run(self):
         raise NotImplementedError()
@@ -58,18 +62,20 @@ class Step(object):
         return self.__target__
     
     def load(self, **kwargs):
-        self.output = joblib.load(os.path.join(self.dirname, 'dump', 'output.pkl'), **kwargs)
+        self.output = joblib.load(os.path.join(self.get_dirname(), 'dump', 'output.pkl'), **kwargs)
     
     def create_dump(self):
-        dumpdir = os.path.join(self.dirname, 'dump')
+        dumpdir = os.path.join(self.get_dirname(), 'dump')
         if not os.path.isdir(dumpdir):
             os.makedirs(dumpdir)
             
         dump = False
-        if not os.path.isfile(self.yaml_filename):
+        yaml_filename = os.path.join(self.get_dirname(), 'step.yaml')
+        
+        if not os.path.isfile(yaml_filename):
             dump = True
         else:
-            with open(self.yaml_filename) as other:
+            with open(yaml_filename) as other:
                 if yaml.load(other) != self:
                     logging.warning('Existing step.yaml does not match hash, regenerating')
                     dunmp = True
@@ -80,7 +86,7 @@ class Step(object):
 
     def dump(self, **kwargs):
         self.create_dump()
-        joblib.dump(self.output, os.path.join(self.dirname, 'dump', 'output.pkl'), **kwargs)
+        joblib.dump(self.output, os.path.join(self.get_dirname(), 'dump', 'output.pkl'), **kwargs)
 
     def __repr__(self):
         return '{name}({args})'.format(name=self.__class__.__name__,
@@ -94,7 +100,7 @@ class Step(object):
         return hash(yaml.dump(self)) # pyyaml dumps dicts in sorted order so this works
     
     def __eq__(self, other):
-        return hasattr(other, '__kwargs__') and (self.__kwargs__ == other.__kwargs__)
+        return util.eqattr(self, other, '__kwargs__')
 
 # temporary holder of step arguments
 # used to expand ArgumentCollections by search()
@@ -105,12 +111,27 @@ class StepTemplate(object):
         self.name = name
         self.target = target
         self.kwargs = kwargs
-    
-    def construct(self, **kwargs):
-        kwargs = util.merge_dicts(self.kwargs, kwargs)
-        return self.cls(target=self.target, name=self.name, **kwargs)
 
-       
+    def copy(self, **kwargs):
+        kwargs = util.merge_dicts(self.kwargs, kwargs)
+        return StepTemplate(cls=self.cls, name=self.name, target=self.target, **kwargs)
+    
+    def construct(self):
+        if 'inputs' in self.kwargs:
+            self.kwargs['inputs'] = [i.construct() for i in self.kwargs['inputs']]
+        return self.cls(target=self.target, name=self.name, **self.kwargs)
+
+    def __repr__(self):
+        return '{name}({args})'.format(name=self.cls.__name__,
+                args=str.join(',', ('%s=%s' % i for i in self.kwargs.iteritems())))
+ 
+    def __eq__(self, other):
+        for attr in ('cls', 'name', 'target', 'kwargs'):
+            if not util.eqattr(self, other, attr):
+                print attr
+                return False
+        return True
+
 class Add(Step):
     def __init__(self, value, **kwargs):
         Step.__init__(self, value=value, **kwargs)
@@ -140,7 +161,7 @@ def argument_product(args):
     return dicts
 
 def step_product(step):
-    return [step.construct(**d) for d in argument_product(step.kwargs)]
+    return [step.copy(**d) for d in argument_product(step.kwargs)]
 
 # a list of steps
 # expands ArgumentCollections
@@ -155,7 +176,7 @@ def serial(*inputs):
     psteps = None
     for steps in map(util.make_list, inputs):
         if psteps is not None:
-            steps = map(lambda s: s.construct(inputs=psteps), steps)
+            steps = map(lambda s: s.copy(inputs=psteps), steps)
         psteps = steps
     return psteps
     

@@ -12,25 +12,25 @@ def test_argument_product_deep():
     assert argument_product({'a' : {'b': ArgumentCollection([1,2])} }) == [{'a': {'b': 1}}, {'a': {'b': 2}}]
 
 def test_step_product():
-    assert step_product(StepTemplate(a={'b': ArgumentCollection([1,2])})) == [Step(a={'b': 1}), Step(a={'b': 2})]
+    assert step_product(StepTemplate(a={'b': ArgumentCollection([1,2])})) == [StepTemplate(a={'b': 1}), StepTemplate(a={'b': 2})]
 
 def test_parallel():
-    assert parallel(Step(a=1), Step(b=1)) == [Step(a=1), Step(b=1)]
+    assert parallel(StepTemplate(a=1), StepTemplate(b=1)) == [StepTemplate(a=1), StepTemplate(b=1)]
 
 def test_parallel_multiple():
-    assert parallel([Step(a=1), Step(b=1)], [Step(c=1)]) == [Step(a=1), Step(b=1), Step(c=1)]
+    assert parallel([StepTemplate(a=1), StepTemplate(b=1)], [StepTemplate(c=1)]) == [StepTemplate(a=1), StepTemplate(b=1), StepTemplate(c=1)]
 
 def test_search():
-    assert search(StepTemplate(a=ArgumentCollection([1,2]))) == [Step(a=1), Step(a=2)]
+    assert search(StepTemplate(a=ArgumentCollection([1,2]))) == [StepTemplate(a=1), StepTemplate(a=2)]
 
 def test_search_multiple():
-    assert search(StepTemplate(a=ArgumentCollection([1,2])), StepTemplate(b=ArgumentCollection([1,2]))) == [Step(a=1), Step(a=2), Step(b=1), Step(b=2)]
+    assert search(StepTemplate(a=ArgumentCollection([1,2])), StepTemplate(b=ArgumentCollection([1,2]))) == [StepTemplate(a=1), StepTemplate(a=2), StepTemplate(b=1), StepTemplate(b=2)]
 
 def test_product():
-    assert product([Step(a=1), Step(a=2)], Step(b=1)) == [(Step(a=1), Step(b=1)), (Step(a=2), Step(b=1))]
+    assert product([StepTemplate(a=1), StepTemplate(a=2)], StepTemplate(b=1)) == [(StepTemplate(a=1), StepTemplate(b=1)), (StepTemplate(a=2), StepTemplate(b=1))]
     
 def test_serial():
-    assert serial([StepTemplate(a=1), StepTemplate(a=2)], [StepTemplate(b=1), StepTemplate(b=2)]) == [Step(inputs=[Step(a=1), Step(a=2)],b=1), Step(inputs=[Step(a=1), Step(a=2)],b=2)]
+    assert serial([StepTemplate(a=1), StepTemplate(a=2)], [StepTemplate(b=1), StepTemplate(b=2)]) == [StepTemplate(inputs=[StepTemplate(a=1), StepTemplate(a=2)],b=1), StepTemplate(inputs=[StepTemplate(a=1), StepTemplate(a=2)],b=2)]
     
 def test_run():
     step = yaml.load("""
@@ -39,7 +39,8 @@ def test_run():
         - !step:drain.drain..Add 
             value : !range [1,10]
       - !step:drain.drain.Add {value : 3, target : True}
-    """)[0]
+    """)
+    step = step[0].construct()
     run(step)
     assert step.output == 48
 
