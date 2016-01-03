@@ -59,7 +59,7 @@ def datetime64(year,month,day):
     return np.datetime64( ("%04d" % year) + '-' +  ("%02d" % month) + '-' + ("%02d" % day))
 
 def eqattr(object1, object2, attr):
-    return hasattr(object1, attr) and hasattr(object2, attr) and getattr(object1, attr) == getattr(object2, attr)
+    return hasattr(object1, attr) and hasattr(object2, attr) and (getattr(object1, attr) == getattr(object2, attr))
 
 # get a class or function by name
 def get_attr(name):

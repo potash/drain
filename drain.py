@@ -1,6 +1,7 @@
 import yaml
 import itertools
 from pprint import pformat
+from StringIO import StringIO
 import util
 import joblib
 import os
@@ -44,13 +45,25 @@ class Step(object):
         if 'inputs' not in kwargs:
             self.inputs = []
 
+        hasher = hashlib.md5(yaml.dump(self)) # this won't work right if we haven't called initialize()
+        self.__digest__ = base64.urlsafe_b64encode(hasher.digest())
+
     def get_dirname(self):
         if self.dirname is not None:
             return self.dirname
         else:
             if BASEDIR is None:
                 raise ValueError('BASEDIR not initialized')
-            return os.path.join(BASEDIR, self.__class__.__name__, self.__dirname__())
+            return os.path.join(BASEDIR, self.__class__.__name__, self.__digest__[0:8])
+
+    def get_yaml_filename(self):
+        return os.path.join(self.get_dirname(), 'step.yaml')
+
+    def get_dump_dirname(self):
+        return os.path.join(self.get_dirname(), 'dump')
+
+    def get_target_filename(self):
+        return os.path.join(self.get_dirname(), 'target')
         
     def run(self):
         raise NotImplementedError()
@@ -64,43 +77,44 @@ class Step(object):
     def load(self, **kwargs):
         self.output = joblib.load(os.path.join(self.get_dirname(), 'dump', 'output.pkl'), **kwargs)
     
-    def create_dump(self):
-        dumpdir = os.path.join(self.get_dirname(), 'dump')
+    def setup_dump(self):
+        dumpdir = self.get_dump_dirname()
         if not os.path.isdir(dumpdir):
             os.makedirs(dumpdir)
             
         dump = False
-        yaml_filename = os.path.join(self.get_dirname(), 'step.yaml')
+        yaml_filename = self.get_yaml_filename()
         
         if not os.path.isfile(yaml_filename):
             dump = True
         else:
+            logging.info('yaml exists')
             with open(yaml_filename) as other:
-                if yaml.load(other) != self:
+                other_obj = yaml.load(other)
+                if other_obj != self:
                     logging.warning('Existing step.yaml does not match hash, regenerating')
-                    dunmp = True
+                    dump = True
         
         if dump:
             with open(yaml_filename, 'w') as f:
                 yaml.dump(self, f)
 
     def dump(self, **kwargs):
-        self.create_dump()
-        joblib.dump(self.output, os.path.join(self.get_dirname(), 'dump', 'output.pkl'), **kwargs)
+        self.setup_dump()
+        joblib.dump(self.output, os.path.join(self.get_dump_dirname(), 'output.pkl'), **kwargs)
 
     def __repr__(self):
         return '{name}({args})'.format(name=self.__class__.__name__,
                 args=str.join(',', ('%s=%s' % i for i in self.__kwargs__.iteritems())))
-    
-    def __dirname__(self):
-        hasher = hashlib.md5(yaml.dump(self))
-        return base64.urlsafe_b64encode(hasher.digest())[0:8]
     
     def __hash__(self):
         return hash(yaml.dump(self)) # pyyaml dumps dicts in sorted order so this works
     
     def __eq__(self, other):
         return util.eqattr(self, other, '__kwargs__')
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 # temporary holder of step arguments
 # used to expand ArgumentCollections by search()
@@ -128,9 +142,11 @@ class StepTemplate(object):
     def __eq__(self, other):
         for attr in ('cls', 'name', 'target', 'kwargs'):
             if not util.eqattr(self, other, attr):
-                print attr
                 return False
         return True
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
 
 class Add(Step):
     def __init__(self, value, **kwargs):
@@ -188,9 +204,12 @@ def step_multi_representer(dumper, data):
     tag = '!obj:%s.%s' % (data.__class__.__module__, data.__class__.__name__)
     return dumper.represent_mapping(tag, data.__kwargs__)
 
+def object_multi_constructor(loader, tag_suffix, node):
+    cls = util.get_attr(tag_suffix[1:])
+    args = loader.construct_mapping(node)
+    return cls(**args)
+
 def step_multi_constructor(loader, tag_suffix, node):
-    if tag_suffix == '':
-        tag_suffix = ':__main__.Step'
     cls = util.get_attr(tag_suffix[1:])
     args = loader.construct_mapping(node)
     return StepTemplate(cls, **args)
@@ -218,6 +237,7 @@ def initialize(basedir):
     BASEDIR = basedir
     yaml.add_multi_representer(Step, step_multi_representer)
     yaml.add_multi_constructor('!step', step_multi_constructor)
+    yaml.add_multi_constructor('!obj', object_multi_constructor)
     
     yaml.add_constructor('!parallel', get_sequence_constructor(parallel))
     yaml.add_constructor('!search', get_sequence_constructor(search))
@@ -227,14 +247,6 @@ def initialize(basedir):
     yaml.add_constructor('!range', range_constructor)
     yaml.add_constructor('!powerset', powerset_constructor)
     yaml.add_constructor('!list', list_constructor)
-
-def to_drake_step(step):
-    inputs = [step.yaml_filename] # first input is the step itself
-    input_targets = get_input_targets(step)
-    inputs.extend(map(lambda i: os.path.join(i.dirname, 'target'), input_targets)) # followed by its input drake steps
-    
-    output = os.path.join(step.dirname, 'target') if step.__target__ else ''
-    return '{output} <- {inputs} [method:drain]'.format(output=output, inputs=str.join(', ', inputs))
 
 def get_targets(step, ignore):
     outputs = set()
@@ -252,7 +264,11 @@ def get_input_targets(step):
 def get_output_targets(step):
     return get_targets(step, ignore=False)
 
-def to_drake_helper(steps):
+# returns three Step:set<Step> dicts
+# output_inputs: maps output to inputs
+# output_no_outputs: maps output to no-outputs that depend on it (for no-output steps with single target input)
+# no_output_inputs: maps no_output step with *multiple* target inputs to them
+def get_drake_data_helper(steps):
     output_inputs = {}
     output_no_outputs = {}
     no_output_inputs = {}
@@ -261,7 +277,6 @@ def to_drake_helper(steps):
         if step.is_target():
             if step not in output_inputs:
                 output_inputs[step] = get_input_targets(step)
-            print output_inputs
         else:
             outputs = get_output_targets(step)
             if len(outputs) == 1:
@@ -281,7 +296,7 @@ def to_drake_helper(steps):
         inputs |= i
 
     if len(inputs) > 0:
-        o1, o2, o3 = to_drake_helper(inputs)
+        o1, o2, o3 = get_drake_data_helper(inputs)
         util.dict_update_union(output_inputs, o1)
         util.dict_update_union(output_no_outputs, o2)
         util.dict_update_union(no_output_inputs, o3)
@@ -289,21 +304,52 @@ def to_drake_helper(steps):
 
     return output_inputs, output_no_outputs, no_output_inputs
 
-def to_drake(steps):
-    output_inputs, output_no_outputs, no_output_inputs = to_drake_helper(steps)
+# returns data for the drakefile
+# i.e. a list of tuples (inputs, output, no-outputs)
+def get_drake_data(steps):
+    drake_data = []
+    output_inputs, output_no_outputs, no_output_inputs = get_drake_data_helper(steps)
     for output, inputs in output_inputs.iteritems():
         if output in output_no_outputs:
             no_outputs = output_no_outputs[output]
         else:
             no_outputs = set()
-        print to_drake_step(output, inputs, no_outputs)
+        drake_data.append((inputs, output, no_outputs))
 
     for no_output, inputs in no_output_inputs.iteritems():
-        print to_drake_step(None, inputs, set(no_output))
+        drake_data.append((inputs, None, set([no_output])))
 
-#def to_drake_step(inputs, output, no_outputs):
-#    if len(no_outputs) > 0:
-#        collect them into one step yaml
-#    else:
-#        use step yaml
-#    output/target <- step.yaml, input/target, input2/target, ...
+    return drake_data
+
+# takes the (inputs, output, no_outputs) data returned by to_drake_data 
+# and returns the step to be run
+def get_step(inputs, output, no_outputs):
+    if len(no_outputs) > 1:
+        step = Step(inputs=list(no_outputs))
+    elif len(no_outputs) == 1:
+        step = no_outputs.pop()
+    else:
+        step = output
+
+    return step
+
+def to_drake_step(step, inputs, output):
+    inputs = map(lambda i: os.path.join(i.dirname, 'target'), list(inputs))
+    inputs.insert(0, step.get_yaml_filename())
+
+    output = os.path.join(output.get_target_filename()) if output is not None else ''
+    return '{output} <- {inputs} [method:drain]\n\n'.format(output=output, inputs=str.join(', ', inputs))
+
+def to_drakefile(steps):
+    data = get_drake_data(steps)
+    drakefile = StringIO()
+    for inputs, output, no_outputs in data:
+        step = get_step(inputs, output, no_outputs)
+        step.setup_dump()
+        if output is not None:
+            output.setup_dump()
+
+        drakefile.write(to_drake_step(step, inputs, output))
+
+    return drakefile
+
