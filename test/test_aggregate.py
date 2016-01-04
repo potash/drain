@@ -31,4 +31,5 @@ class TestAggregator(SpacetimeAggregator):
     def get_aggregates(self, d):
         return [Aggregate('population', ['sum', 'mean']), Aggregate('income', ['sum','mean'])]
 
-def test_spacetime_aggregator():
+#def test_spacetime_aggregator():
+# TODO
