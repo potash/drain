@@ -27,21 +27,20 @@ if __name__ == "__main__":
     with open(args.steps) as f:
         drain.initialize(outputdir)
         templates = yaml.load(f)
-        print templates
         steps = [t.construct() for t in templates]
 
     if args.Drakeinput is None and os.path.exists('Drakefile'):
         args.Drakeinput = 'Drakefile'
 
-    pyargs = '-m pdb' if args.debug else ''
+    pyargs = '-m pdb' if args.debug else '' # TODO use this
     
-    with open(args.drakeoutput, 'w') as drakefile:
-        if args.preview:
-            drakefile = sys.stdout
+    workflow = drain.to_drakefile(steps, preview=args.preview)
 
-        print drain.to_drakefile(steps).getvalue()
-        #grid_search(params, outputdir, drakefile, args.Drakeinput, args.tag, 
-        #        python_args=pyargs, overwrite_tag=args.overwrite, preview=args.preview)
+    if not args.preview:
+        with open(args.drakeoutput, 'w') as drakefile:
+            drakefile.write(workflow)
+    else:
+        sys.stdout.write(workflow)
    
     if drake_args is not None and args.drakeargsfile is not None and not args.preview:
         with open(args.drakeargsfile, 'w') as drakeargsfile:

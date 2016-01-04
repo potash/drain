@@ -1,4 +1,5 @@
 import yaml
+import sys
 import itertools
 from pprint import pformat
 from StringIO import StringIO
@@ -38,7 +39,6 @@ class Step(object):
         self.__name__ = name
         self.__target__ = target
 
-        self.dirname = dirname
         for k in kwargs:
             setattr(self, k, kwargs[k])
         
@@ -49,12 +49,9 @@ class Step(object):
         self.__digest__ = base64.urlsafe_b64encode(hasher.digest())
 
     def get_dirname(self):
-        if self.dirname is not None:
-            return self.dirname
-        else:
-            if BASEDIR is None:
-                raise ValueError('BASEDIR not initialized')
-            return os.path.join(BASEDIR, self.__class__.__name__, self.__digest__[0:8])
+        if BASEDIR is None:
+            raise ValueError('BASEDIR not initialized')
+        return os.path.join(BASEDIR, self.__class__.__name__, self.__digest__[0:8])
 
     def get_yaml_filename(self):
         return os.path.join(self.get_dirname(), 'step.yaml')
@@ -88,7 +85,6 @@ class Step(object):
         if not os.path.isfile(yaml_filename):
             dump = True
         else:
-            logging.info('yaml exists')
             with open(yaml_filename) as other:
                 other_obj = yaml.load(other)
                 if other_obj != self:
@@ -338,18 +334,22 @@ def to_drake_step(step, inputs, output):
     inputs.insert(0, step.get_yaml_filename())
 
     output = os.path.join(output.get_target_filename()) if output is not None else ''
-    return '{output} <- {inputs} [method:drain]\n\n'.format(output=output, inputs=str.join(', ', inputs))
+    return '{output}<- {inputs} [method:drain]\n\n'.format(output=output, inputs=str.join(', ', inputs))
 
-def to_drakefile(steps):
+# if preview then don't create the dump directories and step yaml files
+def to_drakefile(steps, preview=True, bindir=None):
     data = get_drake_data(steps)
     drakefile = StringIO()
+
+    bindir = os.path.join(os.path.dirname(__file__), 'bin')
+    drakefile.write("drain()\n\tpython %s/run_step.py $OUTPUT $INPUTS 2>&1\n\n" % bindir)
     for inputs, output, no_outputs in data:
         step = get_step(inputs, output, no_outputs)
-        step.setup_dump()
+        preview or step.setup_dump()
         if output is not None:
-            output.setup_dump()
+            preview or output.setup_dump()
 
         drakefile.write(to_drake_step(step, inputs, output))
 
-    return drakefile
+    return drakefile.getvalue()
 

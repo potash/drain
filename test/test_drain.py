@@ -124,4 +124,4 @@ def test_drake_data4():
 def test_drakefile():
     steps = [Step(a=1, inputs=[Step(b=1, target=True)]),
              Step(a=2, inputs=[Step(b=1, target=True)])]
-    print to_drakefile(steps).getvalue()
+    print to_drakefile(steps, preview=True).getvalue()
