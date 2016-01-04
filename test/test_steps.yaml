@@ -1,2 +1,4 @@
-!search 
-  - !step:drain.drain.Step {a : !range [1,10], target : True }
+!serial
+  - !search 
+    - !step:drain.drain.Add {value : !range [1,10] }
+  - !step:drain.drain.Add {value : 3, target : True}

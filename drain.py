@@ -20,18 +20,37 @@ import logging
 
 BASEDIR=None
 
-def run(step, targets=[]):
+# run the given step
+# inputs should be loaded from disk
+# output should be written to disk
+def run(step, inputs=None, output=None):
+    if inputs is None:
+        inputs = []
+    if output is None:
+        output = []
+
     if not step.has_output():
-        if step in targets:
-            logging.info('Loading %s' % step)
+        if step in inputs:
             step.load()
         else:
             for i in step.inputs:
-                run(i, targets)
-            logging.info('Running %s' % step)
+                run(step=i, inputs=inputs, output=output)
             step.run()
-    
+
+    if step == output:
+        step.dump()
+        util.touch(step.get_target_filename())
+
     return step.output
+
+def from_yaml(filename):
+    with open(filename) as f:
+        templates = yaml.load(f)
+        if isinstance(templates, StepTemplate):
+            return templates.construct()
+        else:
+            return [t.construct() for t in templates]
+
 
 class Step(object):
     def __init__(self, name=None, target=False, dirname=None, **kwargs):
@@ -51,6 +70,7 @@ class Step(object):
     def get_dirname(self):
         if BASEDIR is None:
             raise ValueError('BASEDIR not initialized')
+
         return os.path.join(BASEDIR, self.__class__.__name__, self.__digest__[0:8])
 
     def get_yaml_filename(self):
@@ -73,7 +93,7 @@ class Step(object):
     
     def load(self, **kwargs):
         self.output = joblib.load(os.path.join(self.get_dirname(), 'dump', 'output.pkl'), **kwargs)
-    
+
     def setup_dump(self):
         dumpdir = self.get_dump_dirname()
         if not os.path.isdir(dumpdir):
@@ -85,11 +105,10 @@ class Step(object):
         if not os.path.isfile(yaml_filename):
             dump = True
         else:
-            with open(yaml_filename) as other:
-                other_obj = yaml.load(other)
-                if other_obj != self:
-                    logging.warning('Existing step.yaml does not match hash, regenerating')
-                    dump = True
+            other_obj = from_yaml(yaml_filename)
+            if other_obj != self:
+                logging.warning('Existing step.yaml does not match hash, regenerating')
+                dump = True
         
         if dump:
             with open(yaml_filename, 'w') as f:
@@ -197,13 +216,8 @@ def product(*inputs):
     return list(itertools.product(*map(util.make_list, inputs)))
     
 def step_multi_representer(dumper, data):
-    tag = '!obj:%s.%s' % (data.__class__.__module__, data.__class__.__name__)
+    tag = '!step:%s.%s' % (data.__class__.__module__, data.__class__.__name__)
     return dumper.represent_mapping(tag, data.__kwargs__)
-
-def object_multi_constructor(loader, tag_suffix, node):
-    cls = util.get_attr(tag_suffix[1:])
-    args = loader.construct_mapping(node)
-    return cls(**args)
 
 def step_multi_constructor(loader, tag_suffix, node):
     cls = util.get_attr(tag_suffix[1:])
@@ -233,7 +247,6 @@ def initialize(basedir):
     BASEDIR = basedir
     yaml.add_multi_representer(Step, step_multi_representer)
     yaml.add_multi_constructor('!step', step_multi_constructor)
-    yaml.add_multi_constructor('!obj', object_multi_constructor)
     
     yaml.add_constructor('!parallel', get_sequence_constructor(parallel))
     yaml.add_constructor('!search', get_sequence_constructor(search))
@@ -330,7 +343,7 @@ def get_step(inputs, output, no_outputs):
     return step
 
 def to_drake_step(step, inputs, output):
-    inputs = map(lambda i: os.path.join(i.dirname, 'target'), list(inputs))
+    inputs = map(lambda i: i.get_target_filename(), list(inputs))
     inputs.insert(0, step.get_yaml_filename())
 
     output = os.path.join(output.get_target_filename()) if output is not None else ''
@@ -345,9 +358,10 @@ def to_drakefile(steps, preview=True, bindir=None):
     drakefile.write("drain()\n\tpython %s/run_step.py $OUTPUT $INPUTS 2>&1\n\n" % bindir)
     for inputs, output, no_outputs in data:
         step = get_step(inputs, output, no_outputs)
-        preview or step.setup_dump()
-        if output is not None:
-            preview or output.setup_dump()
+        if not preview:
+            step.setup_dump()
+            if output is not None and output != step:
+                output.setup_dump()
 
         drakefile.write(to_drake_step(step, inputs, output))
 

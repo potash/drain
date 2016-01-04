@@ -12,8 +12,7 @@ def is_step(filename):
 # given the filename of a step or a target, load it
 def get_step(filename):
     yaml_filename = os.path.join(os.path.dirname(filename), 'step.yaml')
-    with open(yaml_filename) as step_file:
-        return yaml.load(step_file)
+    return drain.from_yaml(yaml_filename)
 
 if len(sys.argv) == 1:
     raise ValueError('Need at least one argument')
@@ -36,6 +35,4 @@ if not is_step(args[0]):
 step = get_step(args[0])
 inputs = map(get_step, args[1:])
 
-print step
-print inputs
-print output
+drain.run(step=step, output=output, inputs=inputs)

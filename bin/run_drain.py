@@ -23,11 +23,9 @@ if __name__ == "__main__":
     #parser.add_argument('drakeargs', nargs='?', type=str, default=None, help='parameters to pass to drake via --drakeargsfile')
     args, drake_args = parser.parse_known_args()
     outputdir = os.path.abspath(args.outputdir)
-    
-    with open(args.steps) as f:
-        drain.initialize(outputdir)
-        templates = yaml.load(f)
-        steps = [t.construct() for t in templates]
+
+    drain.initialize(outputdir)
+    steps = drain.from_yaml(args.steps)
 
     if args.Drakeinput is None and os.path.exists('Drakefile'):
         args.Drakeinput = 'Drakefile'
