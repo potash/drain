@@ -1,0 +1,2 @@
+!search 
+  - !step:drain.drain.Step {a : !range [1,10], target : True }
