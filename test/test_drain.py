@@ -1,4 +1,4 @@
-from drain.drain import *
+from drain.step import *
 import tempfile
 
 def setup_module(module):
@@ -36,9 +36,9 @@ def test_run():
     step = yaml.load("""
     !serial 
       - !search
-        - !step:drain.drain..Add 
+        - !step:drain.step.Add 
             value : !range [1,10]
-      - !step:drain.drain.Add {value : 3, target : True}
+      - !step:drain.step.Add {value : 3, target : True}
     """)
     step = step[0].construct()
     run(step)

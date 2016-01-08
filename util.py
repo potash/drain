@@ -64,8 +64,8 @@ def eqattr(object1, object2, attr):
 # get a class or function by name
 def get_attr(name):
     i = name.rfind('.')
-    cls = name[i+1:]
-    module = name[:i]
+    cls = str(name[i+1:])
+    module = str(name[:i])
     
     mod = __import__(module, fromlist=[cls])
     return getattr(mod,cls)

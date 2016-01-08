@@ -6,7 +6,7 @@ from copy import deepcopy
 import pandas as pd
 import numpy as np
 from statsmodels.discrete.discrete_model import Logit
-from drain import util, metrics
+import drain, util, metrics
 
 class ModelRun(object):
     def __init__(self, estimator, y, data):
