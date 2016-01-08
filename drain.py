@@ -48,9 +48,10 @@ def from_yaml(filename):
         templates = yaml.load(f)
         if isinstance(templates, StepTemplate):
             return templates.construct()
-        else:
+        elif hasattr(templates, '__iter__'):
             return [t.construct() for t in templates]
-
+        else:
+            return templates
 
 class Step(object):
     def __init__(self, name=None, target=False, dirname=None, **kwargs):
@@ -147,7 +148,7 @@ class StepTemplate(object):
     
     def construct(self):
         if 'inputs' in self.kwargs:
-            self.kwargs['inputs'] = [i.construct() for i in self.kwargs['inputs']]
+            self.kwargs['inputs'] = [i.construct() if isinstance(i, StepTemplate) else i for i in self.kwargs['inputs']]
         return self.cls(target=self.target, name=self.name, **self.kwargs)
 
     def __repr__(self):
@@ -224,6 +225,11 @@ def step_multi_constructor(loader, tag_suffix, node):
     args = loader.construct_mapping(node)
     return StepTemplate(cls, **args)
 
+def object_multi_constructor(loader, tag_suffix, node):
+    cls = util.get_attr(tag_suffix[1:])
+    args = loader.construct_mapping(node)
+    return cls(**args)
+
 def get_sequence_constructor(method):
     def constructor(loader, node):
         seq = loader.construct_sequence(node)
@@ -247,6 +253,7 @@ def initialize(basedir):
     BASEDIR = basedir
     yaml.add_multi_representer(Step, step_multi_representer)
     yaml.add_multi_constructor('!step', step_multi_constructor)
+    yaml.add_multi_constructor('!obj', object_multi_constructor)
     
     yaml.add_constructor('!parallel', get_sequence_constructor(parallel))
     yaml.add_constructor('!search', get_sequence_constructor(search))
@@ -350,12 +357,12 @@ def to_drake_step(step, inputs, output):
     return '{output}<- {inputs} [method:drain]\n\n'.format(output=output, inputs=str.join(', ', inputs))
 
 # if preview then don't create the dump directories and step yaml files
-def to_drakefile(steps, preview=True, bindir=None):
+def to_drakefile(steps, preview=True, debug=False, bindir=None):
     data = get_drake_data(steps)
     drakefile = StringIO()
 
     bindir = os.path.join(os.path.dirname(__file__), 'bin')
-    drakefile.write("drain()\n\tpython %s/run_step.py $OUTPUT $INPUTS 2>&1\n\n" % bindir)
+    drakefile.write("drain()\n\tpython %s %s/run_step.py $OUTPUT $INPUTS 2>&1\n\n" % ('-m pdb' if debug else '', bindir))
     for inputs, output, no_outputs in data:
         step = get_step(inputs, output, no_outputs)
         if not preview:

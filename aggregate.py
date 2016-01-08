@@ -10,8 +10,8 @@ from itertools import product,chain
 import pandas as pd
 import numpy as np
 
-from drain import util, data
-from drain.util import merge_dicts, hash_obj
+import util, data
+from util import merge_dicts, hash_obj
 
 # AggregateSeries consist of a series and a function
 # the series can be:
