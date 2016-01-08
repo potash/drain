@@ -64,21 +64,20 @@ def test_target_output_output_multi():
 
 def test_drake_data_helper():
     steps = [Step(value=1)]
-    assert get_drake_data_helper(steps) == ({},{},{Step(value=1): set()})
+    assert get_drake_data_helper(steps) == ({},{Step(value=1): set()})
 
 def test_drake_data_helper2():
     steps = [Step(value=1, inputs=[Step(value=2, target=True)])]
-    assert get_drake_data_helper(steps) == ({Step(value=2): set()}, {Step(value=2): {steps[0]}}, {})
+    assert get_drake_data_helper(steps) == ({Step(value=2): set()}, {steps[0] : {Step(value=2)}})
 
 def test_drake_data_helper3():
     steps = [Step(value=1, target=True)]
-    assert get_drake_data_helper(steps) == ({Step(value=1): set()}, {}, {})
+    assert get_drake_data_helper(steps) == ({Step(value=1): set()}, {})
 
 def test_drake_data_helper4():
     steps = [Step(value=1, inputs=[Step(value=2, target=True), Step(value=3, target=True)])]
     assert get_drake_data_helper(steps) == (
             {Step(value=2):set(), Step(value=3):set()},
-            {},
             {steps[0]: set([Step(value=2), Step(value=3)])}
     )
 
@@ -86,40 +85,39 @@ def test_drake_data_helper4():
 # should it?
 def test_drake_data_helper5():
     steps = [Step(value=1), Step(value=1, target=True)]
-    assert get_drake_data_helper(steps) == ({Step(value=1): set()}, {}, {Step(value=1):set()})
+    assert get_drake_data_helper(steps) == ({Step(value=1): set()}, {Step(value=1):set()})
 
 def test_drake_data_helper6():
     steps = [Step(value=1, inputs=[Step(value=3, target=True)]), Step(value=2,  inputs=[Step(value=3, target=True)])]
     assert get_drake_data_helper(steps) == (
             {Step(value=3) : set()},
-            {Step(value=3): set(steps)},
-            {}
+            {steps[0] : {Step(value=3)}, steps[1] : {Step(value=3)}},
     )
 
 # no output step
 def test_drake_data():
     step = Step(a=1)
     data = get_drake_data([step])
-    assert data == [(set(), None, set([Step(a=1)]))]
+    assert data == {Step(a=1) : set()}
 
 # no output step with no target input
 def test_drake_data2():
     step = Step(a=1, inputs=[Step(b=1)])
     data = get_drake_data([step])
-    assert data == [(set([]), None, set([Step(a=1,inputs=[Step(b=1)])]))]
+    assert data == {step : set()}
 
 # no output step with target
 def test_drake_data3():
     step = Step(a=1, inputs=[Step(b=1, target=True)])
     data = get_drake_data([step])
-    assert data == [(set([]), Step(b=1), set([Step(a=1,inputs=[Step(b=1)])]))]
+    assert data == { Step(b=1) : set(), step : {Step(b=1)} }
 
 # multiple no output steps on single target
 def test_drake_data4():
     steps = [Step(a=1, inputs=[Step(b=1, target=True)]),
              Step(a=2, inputs=[Step(b=1, target=True)])]
     data = get_drake_data(steps)
-    assert data == [(set([]), Step(b=1), set([Step(a=1,inputs=[Step(b=1)]), Step(a=2,inputs=[Step(b=1)])]))]
+    assert data == {Step(b=1) : set(), steps[0] : {Step(b=1)}, steps[1] : {Step(b=1)} }
 
 def test_drakefile():
     steps = [Step(a=1, inputs=[Step(b=1, target=True)]),

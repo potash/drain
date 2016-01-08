@@ -295,16 +295,7 @@ def get_drake_data_helper(steps):
                 output_inputs[step] = get_input_targets(step)
         else:
             outputs = get_output_targets(step)
-            if len(outputs) == 1:
-                output = outputs.pop()
-                if output in output_no_outputs:
-                    output_no_outputs[output].add(step)
-                else:
-                    output_no_outputs[output] = {step}
-                    if output not in output_inputs:
-                        output_inputs[output] = get_input_targets(output)
-            else:
-                no_output_inputs[step] = outputs
+            no_output_inputs[step] = outputs
 
     # recursively do the same for all the inputs
     inputs = set()
@@ -312,48 +303,31 @@ def get_drake_data_helper(steps):
         inputs |= i
 
     if len(inputs) > 0:
-        o1, o2, o3 = get_drake_data_helper(inputs)
+        o1, o2 = get_drake_data_helper(inputs)
         util.dict_update_union(output_inputs, o1)
-        util.dict_update_union(output_no_outputs, o2)
-        util.dict_update_union(no_output_inputs, o3)
+        util.dict_update_union(no_output_inputs, o2)
 
 
-    return output_inputs, output_no_outputs, no_output_inputs
+    return output_inputs, no_output_inputs
 
 # returns data for the drakefile
 # i.e. a list of tuples (inputs, output, no-outputs)
 def get_drake_data(steps):
-    drake_data = []
-    output_inputs, output_no_outputs, no_output_inputs = get_drake_data_helper(steps)
+    drake_data = {}
+    output_inputs, no_output_inputs = get_drake_data_helper(steps)
     for output, inputs in output_inputs.iteritems():
-        if output in output_no_outputs:
-            no_outputs = output_no_outputs[output]
-        else:
-            no_outputs = set()
-        drake_data.append((inputs, output, no_outputs))
+        drake_data[output] = inputs
 
     for no_output, inputs in no_output_inputs.iteritems():
-        drake_data.append((inputs, None, set([no_output])))
+        drake_data[no_output] = inputs
 
     return drake_data
 
-# takes the (inputs, output, no_outputs) data returned by to_drake_data 
-# and returns the step to be run
-def get_step(inputs, output, no_outputs):
-    if len(no_outputs) > 1:
-        step = Step(inputs=list(no_outputs))
-    elif len(no_outputs) == 1:
-        step = no_outputs.pop()
-    else:
-        step = output
-
-    return step
-
-def to_drake_step(step, inputs, output):
+def to_drake_step(inputs, output):
     inputs = map(lambda i: i.get_target_filename(), list(inputs))
-    inputs.insert(0, step.get_yaml_filename())
+    inputs.insert(0, output.get_yaml_filename())
 
-    output = os.path.join(output.get_target_filename()) if output is not None else ''
+    output = os.path.join(output.get_target_filename()) if output.is_target() else ''
     return '{output}<- {inputs} [method:drain]\n\n'.format(output=output, inputs=str.join(', ', inputs))
 
 # if preview then don't create the dump directories and step yaml files
@@ -363,14 +337,11 @@ def to_drakefile(steps, preview=True, debug=False, bindir=None):
 
     bindir = os.path.join(os.path.dirname(__file__), 'bin')
     drakefile.write("drain()\n\tpython %s %s/run_step.py $OUTPUT $INPUTS 2>&1\n\n" % ('-m pdb' if debug else '', bindir))
-    for inputs, output, no_outputs in data:
-        step = get_step(inputs, output, no_outputs)
+    for output, inputs in data.iteritems():
         if not preview:
-            step.setup_dump()
-            if output is not None and output != step:
-                output.setup_dump()
+            output.setup_dump()
 
-        drakefile.write(to_drake_step(step, inputs, output))
+        drakefile.write(to_drake_step(inputs, output))
 
     return drakefile.getvalue()
 
