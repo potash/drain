@@ -41,7 +41,7 @@ def run(step, inputs=None, output=None):
         step.dump()
         util.touch(step.get_target_filename())
 
-    return step.output
+    return step.result
 
 def from_yaml(filename):
     with open(filename) as f:
@@ -93,7 +93,7 @@ class Step(object):
         return self.__target__
     
     def load(self, **kwargs):
-        self.output = joblib.load(os.path.join(self.get_dirname(), 'dump', 'output.pkl'), **kwargs)
+        self.result = joblib.load(os.path.join(self.get_dirname(), 'dump', 'output.pkl'), **kwargs)
 
     def setup_dump(self):
         dumpdir = self.get_dump_dirname()
@@ -117,7 +117,7 @@ class Step(object):
 
     def dump(self, **kwargs):
         self.setup_dump()
-        joblib.dump(self.output, os.path.join(self.get_dump_dirname(), 'output.pkl'), **kwargs)
+        joblib.dump(self.result, os.path.join(self.get_dump_dirname(), 'output.pkl'), **kwargs)
 
     def __repr__(self):
         return '{name}({args})'.format(name=self.__class__.__name__,
@@ -171,9 +171,9 @@ class Add(Step):
     def run(self):
         r = self.value
         for i in self.inputs:
-            r += i.output
+            r += i.result
             
-        self.output = r
+        self.result = r
         
 class ArgumentCollection(object):
     def __init__(self, collection):

@@ -42,7 +42,7 @@ def test_run():
     """)
     step = step[0].construct()
     run(step)
-    assert step.output == 48
+    assert step.result == 48
 
 def test_input_targets():
     assert get_input_targets(Step(value=1, inputs=[Step(value=2)])) == set()
