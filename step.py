@@ -12,7 +12,7 @@ import hashlib
 import itertools
 import logging
 
-from . import model
+import model
 
 #from model import SklearnEstimatorStep
 
