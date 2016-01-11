@@ -17,7 +17,6 @@ import model
 #from model import SklearnEstimatorStep
 
 # TODO:
-#    - create Drakefile from collection of steps by searching for targets and leaves
 #    - random grid search
 #    - get steps by name
 #    - optional args like njobs that don't affect output? allow them to be excluded from yaml, hash, eq
@@ -40,13 +39,19 @@ def run(step, inputs=None, output=None):
         else:
             for i in step.inputs:
                 run(step=i, inputs=inputs, output=output)
-            step.run()
+
+            if hasattr(step, 'inputs_mapping'):
+                kwargs = step.map_inputs()
+                step.set_result(step.run(**kwargs))
+            else:
+                args = map(lambda i: i.get_result(), step.inputs)
+                step.set_result(step.run(*args))
 
     if step == output:
         step.dump()
         util.touch(step.get_target_filename())
 
-    return step.result
+    return step.get_result()
 
 def from_yaml(filename):
     with open(filename) as f:
@@ -59,7 +64,7 @@ def from_yaml(filename):
             return templates
 
 class Step(object):
-    def __init__(self, name=None, target=False, dirname=None, **kwargs):
+    def __init__(self, name=None, target=False, **kwargs):
         self.__kwargs__ = kwargs
         self.__name__ = name
         self.__target__ = target
@@ -72,6 +77,27 @@ class Step(object):
 
         hasher = hashlib.md5(yaml.dump(self)) # this won't work right if we haven't called initialize()
         self.__digest__ = base64.urlsafe_b64encode(hasher.digest())
+
+    def map_inputs(self):
+        inputs_mapping = util.make_list(self.inputs_mapping)
+        
+        kwargs = {}
+        for input, mapping in zip(self.inputs, inputs_mapping):
+            if isinstance(mapping, dict):
+                for k in mapping:
+                    kwargs[k] = input.get_result()[mapping[k]]
+            elif isinstance(mapping, basestring):
+                kwargs[mapping] = input.get_result()
+            else:
+                raise ValueError('Input mapping is neither dict nor str: %s' % mapping)
+
+        return kwargs
+
+    def get_result(self):
+        return self.__result__
+
+    def set_result(self, result):
+        self.__result__ = result
 
     def get_dirname(self):
         if BASEDIR is None:
@@ -98,7 +124,7 @@ class Step(object):
         return self.__target__
     
     def load(self, **kwargs):
-        self.result = joblib.load(os.path.join(self.get_dirname(), 'dump', 'output.pkl'), **kwargs)
+        self.set_result(joblib.load(os.path.join(self.get_dirname(), 'dump', 'output.pkl'), **kwargs))
 
     def setup_dump(self):
         dumpdir = self.get_dump_dirname()
@@ -122,7 +148,7 @@ class Step(object):
 
     def dump(self, **kwargs):
         self.setup_dump()
-        joblib.dump(self.result, os.path.join(self.get_dump_dirname(), 'output.pkl'), **kwargs)
+        joblib.dump(self.get_result(), os.path.join(self.get_dump_dirname(), 'output.pkl'), **kwargs)
 
     def __repr__(self):
         return '{name}({args})'.format(name=self.__class__.__name__,
@@ -136,6 +162,15 @@ class Step(object):
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
+class ConstructorStep(Step):
+    def __init__(self, __class_name__, name=None, target=None, **kwargs):
+        Step.__init__(self, __class_name__=__class_name__, name=name, target=target, kwargs=kwargs)
+
+    def run(self, **kwargs):
+        cls = util.get_attr(self.__class_name__)
+        kwargs.update(self.kwargs)
+        return cls(**kwargs)
 
 class SklearnEstimatorStep(Step):
     def __init__(self, cls, keep_estimator=False, **kwargs):
@@ -214,16 +249,20 @@ class StepTemplate(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-class Add(Step):
+class Scalar(Step):
     def __init__(self, value, **kwargs):
         Step.__init__(self, value=value, **kwargs)
 
-    def run(self):
-        r = self.value
-        for i in self.inputs:
-            r += i.result
-            
-        self.result = r
+    def run(self, *values):
+        return self.value
+
+class Add(Step):
+    def run(self, *values):
+        return sum(values)
+
+class Divide(Step):
+    def run(self, numerator, denominator):
+        return numerator / denominator
         
 class ArgumentCollection(object):
     def __init__(self, collection):
@@ -253,12 +292,12 @@ def parallel(*inputs):
 def search(*inputs):
     return parallel(*map(step_product, inputs))
 
-# compose the list of steps by setting s(n).inputs = s(n-1).get_steps()
+# compose the list of steps by setting s(n).inputs = s(n-1)
 def serial(*inputs):
     psteps = None
     for steps in map(util.make_list, inputs):
         if psteps is not None:
-            steps = map(lambda s: s.copy(inputs=psteps), steps)
+            steps = map(lambda s: s.copy(inputs=psteps + (s.kwargs['inputs'] if 'inputs' in s.kwargs else [])), steps)
         psteps = steps
     return psteps
     
@@ -276,18 +315,11 @@ def step_multi_constructor(loader, tag_suffix, node):
 
     return StepTemplate(__cls__=cls, **kwargs)
 
-def estimator_multi_constructor(loader, tag_suffix, node):
-    cls = tag_suffix[1:]
+def constructor_multi_constructor(loader, tag_suffix, node):
+    class_name = tag_suffix[1:]
     kwargs = loader.construct_mapping(node)
-    kwargs['cls'] = cls
 
-    return StepTemplate(__cls__=SklearnEstimatorStep, **kwargs)
-
-
-def object_multi_constructor(loader, tag_suffix, node):
-    cls = util.get_attr(tag_suffix[1:])
-    args = loader.construct_mapping(node)
-    return cls(**args)
+    return StepTemplate(__cls__=ConstructorStep, __class_name__=class_name, **kwargs)
 
 def get_sequence_constructor(method):
     def constructor(loader, node):
@@ -312,8 +344,7 @@ def initialize(basedir):
     BASEDIR = basedir
     yaml.add_multi_representer(Step, step_multi_representer)
     yaml.add_multi_constructor('!step', step_multi_constructor)
-    yaml.add_multi_constructor('!obj', object_multi_constructor)
-    yaml.add_multi_constructor('!estimator', estimator_multi_constructor)
+    yaml.add_multi_constructor('!construct', constructor_multi_constructor)
     
     yaml.add_constructor('!parallel', get_sequence_constructor(parallel))
     yaml.add_constructor('!search', get_sequence_constructor(search))

@@ -36,13 +36,24 @@ def test_run():
     step = yaml.load("""
     !serial 
       - !search
-        - !step:drain.step.Add 
+        - !step:drain.step.Scalar 
             value : !range [1,10]
-      - !step:drain.step.Add {value : 3, target : True}
+      - !step:drain.step.Add {target : True}
     """)
     step = step[0].construct()
-    run(step)
-    assert step.result == 48
+    assert run(step) == 45
+
+def test_run2():
+    step = yaml.load("""
+    !serial 
+      - !parallel
+        - !step:drain.step.Scalar {value : 1.}
+        - !step:drain.step.Scalar {value : 2.}
+      - !step:drain.step.Divide { inputs_mapping : [denominator, numerator] }
+    """)
+    step = step[0].construct()
+    assert run(step) == 2
+
 
 def test_input_targets():
     assert get_input_targets(Step(value=1, inputs=[Step(value=2)])) == set()
