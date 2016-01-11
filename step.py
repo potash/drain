@@ -172,7 +172,7 @@ class Step(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-class ConstructorStep(Step):
+class Construct(Step):
     def __init__(self, __class_name__, name=None, target=None, **kwargs):
         Step.__init__(self, __class_name__=__class_name__, name=name, target=target, kwargs=kwargs)
 
@@ -180,51 +180,6 @@ class ConstructorStep(Step):
         cls = util.get_attr(self.__class_name__)
         kwargs.update(self.kwargs)
         return cls(**kwargs)
-
-class SklearnEstimatorStep(Step):
-    def __init__(self, cls, keep_estimator=False, **kwargs):
-        Step.__init__(self, cls=cls, keep_estimator=keep_estimator, **kwargs)
-
-        kwargs = dict(kwargs)
-        for k in ['inputs', 'target', 'name']:
-            if k in kwargs:
-                kwargs.pop(k)
-        self.estimator = util.get_attr(cls)(**kwargs)
-
-    def run(self):
-        input = self.inputs[0].result
-        X,y = input['X'], input['y']
-        train,test = input['cv'][0], input['cv'][1]
-        
-        logging.info('Fitting')
-        self.estimator.fit(X[train], y[train])
-
-        logging.info('Scoring')
-        y = pd.DataFrame({'true': y[test]})
-        y['score'] = model.y_score(self.estimator, X[test])
-        if 'aux' in input:
-            y = y.join(input['aux'])
-        
-        self.result = {'y': y}
-        if self.keep_estimator:
-            self.result['estimator'] = self.estimator
-
-    def dump(self):
-        filename = os.path.join(self.get_dump_dirname(), 'result.hdf')
-        self.result['y'].to_hdf(filename, 'y')
-
-        if self.keep_estimator:
-            filename = os.path.join(self.get_dump_dirname(), 'estimator.pkl')
-            joblib.dump(self.result['estimator'], filename)
-   
-    def load(self):
-        self.result = {}
-        filename = os.path.join(self.get_dump_dirname(), 'result.hdf')
-        self.result['y'] = pd.read_hdf(filename, 'y')
-
-        if self.keep_estimator:
-            filename = os.path.join(self.get_dump_dirname(), 'estimator.pkl')
-            self.result['estimator'] = joblib.load(filename)
 
 # temporary holder of step arguments
 # used to expand ArgumentCollections by search()
@@ -326,7 +281,7 @@ def constructor_multi_constructor(loader, tag_suffix, node):
     class_name = tag_suffix[1:]
     kwargs = loader.construct_mapping(node)
 
-    return StepTemplate(__cls__=ConstructorStep, __class_name__=class_name, **kwargs)
+    return StepTemplate(__cls__=Construct, __class_name__=class_name, **kwargs)
 
 def get_sequence_constructor(method):
     def constructor(loader, node):

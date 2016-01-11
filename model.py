@@ -21,26 +21,6 @@ def y_score(estimator, X):
         y = estimator.predict_proba(X)
         return y[:,1]
 
-# given a params dict and a basedir and a method, return a directory for storing the method output
-# generally this is basedir/method/#/
-# where '#' is the hash of the yaml dump of the params dict
-# in the special case of method='model', the metrics key is dropped before hashing
-def params_dir(params, method=None, basedir=None):
-    if method is None:
-        method = params.keys()[0]
-    if method == 'model' and 'metrics' in params:
-        params = deepcopy(params)
-        params.pop('metrics')
-
-    name = params[method]['name']
-    name = name[name.rfind('.')+1:]
-
-    h = util.hash_yaml(params)
-    if basedir is None:
-        basedir = os.environ['OUTPUT_DIR']
-    d = os.path.join(basedir, name, h + '/')
-    return d
-
 def sk_tree(X,y, params={'max_depth':3}):
     clf = tree.DecisionTreeClassifier(**params)
     return clf.fit(X, y)
@@ -51,9 +31,11 @@ def feature_importance(estimator, X):
     elif hasattr(estimator, 'feature_importances_'):
         i = estimator.feature_importances_
     else:
-        i = [np.nan]*len(X.columns)
+        i = [np.nan]*X.shape[1]
 
-    return pd.DataFrame({'feature': X.columns, 'importance': i}).sort_values('importance', ascending=False)
+    features = X.columns if hasattr(X, 'columns') else range(X.shape[1])
+
+    return pd.DataFrame({'feature': features, 'importance': i}).sort_values('importance', ascending=False)
 
 
 class LogisticRegression(object):
