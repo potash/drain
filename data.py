@@ -1,18 +1,34 @@
-import pandas as pd
-from scipy import stats
-from sklearn import preprocessing
-from sklearn.utils.validation import _assert_all_finite
+import random
+import datetime
 import re
 import os
+import util
+import warnings
+
+import pandas as pd
+from scipy import stats
+
 import numpy as np
+from numpy import random
 import collections
 from itertools import product
 
-import random
-import datetime
+from sklearn import preprocessing, datasets
+from sklearn.utils.validation import _assert_all_finite
+
 from util import prefix_columns, join_years
-import util
-import warnings
+from step import Step
+
+class ClassificationData(Step):
+    def run(self):
+        X,y = datasets.make_classification(**self.__kwargs__)
+        X,y = pd.DataFrame(X), pd.Series(y)
+
+        train = np.zeros(len(X), dtype=bool)
+        train[random.choice(len(X), len(X)/2)] = True
+        train = pd.Series(train)
+
+        return {'X': X, 'y': y, 'train': train, 'test': ~train}
 
 def percentile(series):
     return pd.Series(stats.rankdata(series)/len(series), index=series.index)
