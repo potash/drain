@@ -40,12 +40,8 @@ def run(step, inputs=None, output=None):
             for i in step.inputs:
                 run(step=i, inputs=inputs, output=output)
 
-            if hasattr(step, 'inputs_mapping'):
-                kwargs = step.map_inputs()
-                step.set_result(step.run(**kwargs))
-            else:
-                args = map(lambda i: i.get_result(), step.inputs)
-                step.set_result(step.run(*args))
+            args, kwargs = step.map_inputs()
+            step.set_result(step.run(*args, **kwargs))
 
     if step == output:
         step.dump()
@@ -79,19 +75,32 @@ class Step(object):
         self.__digest__ = base64.urlsafe_b64encode(hasher.digest())
 
     def map_inputs(self):
-        inputs_mapping = util.make_list(self.inputs_mapping)
-        
         kwargs = {}
-        for input, mapping in zip(self.inputs, inputs_mapping):
-            if isinstance(mapping, dict):
-                for k in mapping:
-                    kwargs[k] = input.get_result()[mapping[k]]
-            elif isinstance(mapping, basestring):
-                kwargs[mapping] = input.get_result()
-            else:
-                raise ValueError('Input mapping is neither dict nor str: %s' % mapping)
+        args = []
 
-        return kwargs
+        if hasattr(self, 'inputs_mapping'):
+            inputs_mapping = util.make_list(self.inputs_mapping)
+        
+            for input, mapping in zip(self.inputs, inputs_mapping):
+                if isinstance(mapping, dict):
+                    for k in mapping:
+                        kwargs[k] = input.get_result()[mapping[k]]
+                elif isinstance(mapping, basestring):
+                    kwargs[mapping] = input.get_result()
+                else:
+                    raise ValueError('Input mapping is neither dict nor str: %s' % mapping)
+
+        else:
+            # without a mapping we handle two cases
+            for result in [i.get_result() for i in self.inputs]:
+                # when the result is a dict merge it with a global dict
+                if isinstance(result, dict):
+                    kwargs.update(result)
+                # otherwise use it as a positional argument
+                else:
+                    args.append(result)
+
+        return args, kwargs
 
     def get_result(self):
         return self.__result__
@@ -284,8 +293,6 @@ def argument_product(args):
 def step_product(step):
     return [step.copy(**d) for d in argument_product(step.kwargs)]
 
-# a list of steps
-# expands ArgumentCollections
 def parallel(*inputs):
     return list(itertools.chain(*map(util.make_list, inputs)))
 
