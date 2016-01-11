@@ -15,10 +15,10 @@ def test_step_product():
     assert step_product(StepTemplate(a={'b': ArgumentCollection([1,2])})) == [StepTemplate(a={'b': 1}), StepTemplate(a={'b': 2})]
 
 def test_parallel():
-    assert parallel(StepTemplate(a=1), StepTemplate(b=1)) == [StepTemplate(a=1), StepTemplate(b=1)]
+    assert parallel(StepTemplate(a=1), StepTemplate(b=1)) == [[StepTemplate(a=1)], [StepTemplate(b=1)]]
 
 def test_parallel_multiple():
-    assert parallel([StepTemplate(a=1), StepTemplate(b=1)], [StepTemplate(c=1)]) == [StepTemplate(a=1), StepTemplate(b=1), StepTemplate(c=1)]
+    assert parallel([StepTemplate(a=1), StepTemplate(b=1)], [StepTemplate(c=1)]) == [[StepTemplate(a=1)], [StepTemplate(b=1)], [StepTemplate(c=1)]]
 
 def test_search():
     assert search(StepTemplate(a=ArgumentCollection([1,2]))) == [StepTemplate(a=1), StepTemplate(a=2)]
@@ -31,6 +31,9 @@ def test_product():
     
 def test_serial():
     assert serial([StepTemplate(a=1), StepTemplate(a=2)], [StepTemplate(b=1), StepTemplate(b=2)]) == [StepTemplate(inputs=[StepTemplate(a=1), StepTemplate(a=2)],b=1), StepTemplate(inputs=[StepTemplate(a=1), StepTemplate(a=2)],b=2)]
+
+def test_serial2():
+    assert serial([[StepTemplate(a=1), StepTemplate(a=2)], [StepTemplate(b=1), StepTemplate(b=2)]], [StepTemplate(c=1), StepTemplate(c=2)]) == [StepTemplate(c=1, inputs=[StepTemplate(a=1), StepTemplate(a=2)]), StepTemplate(c=2, inputs=[StepTemplate(a=1), StepTemplate(a=2)]), StepTemplate(c=1, inputs=[StepTemplate(b=1), StepTemplate(b=2)]), StepTemplate(c=2, inputs=[StepTemplate(b=1), StepTemplate(b=2)])]
     
 def test_run():
     step = yaml.load("""
@@ -41,12 +44,13 @@ def test_run():
       - !step:drain.step.Add {target : True}
     """)
     step = step[0].construct()
+    print step
     assert run(step) == 45
 
 def test_run2():
     step = yaml.load("""
     !serial 
-      - !parallel
+      - !product
         - !step:drain.step.Scalar {value : 1.}
         - !step:drain.step.Scalar {value : 2.}
       - !step:drain.step.Divide { inputs_mapping : [denominator, numerator] }

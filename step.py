@@ -4,7 +4,6 @@ import itertools
 import pandas as pd
 from pprint import pformat
 from StringIO import StringIO
-import util
 import joblib
 import os
 import base64
@@ -12,7 +11,7 @@ import hashlib
 import itertools
 import logging
 
-import model
+from . import util
 
 #from model import SklearnEstimatorStep
 
@@ -249,17 +248,20 @@ def step_product(step):
     return [step.copy(**d) for d in argument_product(step.kwargs)]
 
 def parallel(*inputs):
-    return list(itertools.chain(*map(util.make_list, inputs)))
+    return map(util.make_list, itertools.chain(*map(util.make_list, inputs)))
 
 def search(*inputs):
-    return parallel(*map(step_product, inputs))
+    return list(itertools.chain(*map(util.make_list, map(step_product, inputs))))
 
 # compose the list of steps by setting s(n).inputs = s(n-1)
 def serial(*inputs):
     psteps = None
     for steps in map(util.make_list, inputs):
         if psteps is not None:
-            steps = map(lambda s: s.copy(inputs=psteps), steps)
+            if not hasattr(psteps[0], '__iter__'):
+                psteps = (psteps,)
+            steps = list(itertools.chain(*(map(lambda s: s.copy(inputs=util.make_list(ps)), steps) for ps in psteps)))
+            
         psteps = steps
     return psteps
     
