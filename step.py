@@ -4,6 +4,7 @@ import itertools
 import pandas as pd
 from pprint import pformat
 from StringIO import StringIO
+from sklearn.base import _pprint
 import joblib
 import os
 import base64
@@ -40,6 +41,7 @@ def run(step, inputs=None, output=None):
                 run(step=i, inputs=inputs, output=output)
 
             args, kwargs = step.map_inputs()
+            logging.info('Running\n%s' % step)
             step.set_result(step.run(*args, **kwargs))
 
     if step == output:
@@ -145,10 +147,10 @@ class Step(object):
         if not os.path.isfile(yaml_filename):
             dump = True
         else:
-            other_obj = from_yaml(yaml_filename)
-            if other_obj != self:
-                logging.warning('Existing step.yaml does not match hash, regenerating')
-                dump = True
+            with open(yaml_filename) as f:
+                if f.read() != yaml.dump(self):
+                    logging.warning('Existing step.yaml does not match hash, regenerating')
+                    dump = True
         
         if dump:
             with open(yaml_filename, 'w') as f:
@@ -158,9 +160,19 @@ class Step(object):
         self.setup_dump()
         joblib.dump(self.get_result(), os.path.join(self.get_dump_dirname(), 'output.pkl'), **kwargs)
 
+    def get_kwargs(self, deep=True):
+        if deep:
+            return self.__kwargs__
+        else:
+            kwargs = dict(self.__kwargs__)
+            if 'inputs' in kwargs:
+                kwargs.pop('inputs')
+            return kwargs
+
     def __repr__(self):
-        return '{name}({args})'.format(name=self.__class__.__name__,
-                args=str.join(',', ('%s=%s' % i for i in self.__kwargs__.iteritems())))
+        class_name = self.__class__.__name__
+        return '%s(%s)' % (class_name, 
+                _pprint(self.get_kwargs(deep=False), offset=len(class_name),),)
     
     def __hash__(self):
         return hash(yaml.dump(self)) # pyyaml dumps dicts in sorted order so this works
@@ -173,11 +185,12 @@ class Step(object):
 
 class Construct(Step):
     def __init__(self, __class_name__, name=None, target=None, **kwargs):
-        Step.__init__(self, __class_name__=__class_name__, name=name, target=target, kwargs=kwargs)
+        Step.__init__(self, __class_name__=__class_name__, name=name, target=target, **kwargs)
 
-    def run(self, **kwargs):
-        cls = util.get_attr(self.__class_name__)
-        kwargs.update(self.kwargs)
+    def run(self, **update_kwargs):
+        kwargs = dict(self.__kwargs__)
+        kwargs.update(update_kwargs)
+        cls = util.get_attr(kwargs.pop('__class_name__'))
         return cls(**kwargs)
 
 # temporary holder of step arguments
@@ -283,7 +296,7 @@ def constructor_multi_constructor(loader, tag_suffix, node):
     class_name = tag_suffix[1:]
     kwargs = loader.construct_mapping(node)
 
-    return StepTemplate(__cls__=Construct, __class_name__=class_name, **kwargs)
+    return StepTemplate(__cls__=Construct, __class_name__=str(class_name), **kwargs)
 
 def get_sequence_constructor(method):
     def constructor(loader, node):

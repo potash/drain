@@ -46,7 +46,7 @@ class FitPredict(Step):
                 X_test, y_test = X, y
 
             result['score'] =  pd.Series(y_score(estimator, X[test]),
-                    index=X[test].index)
+                    index=X_test.index)
 
         return result
 

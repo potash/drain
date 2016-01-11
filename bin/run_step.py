@@ -33,8 +33,6 @@ if not is_step(args[0]):
     raise ValueError('Need a step to run')
 
 step = get_step(args[0])
-logging.info('Running %s' % step)
-
 inputs = map(get_step, args[1:])
 
 drain.step.run(step=step, output=output, inputs=inputs)
