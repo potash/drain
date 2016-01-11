@@ -259,7 +259,7 @@ def serial(*inputs):
     psteps = None
     for steps in map(util.make_list, inputs):
         if psteps is not None:
-            steps = map(lambda s: s.copy(inputs=psteps + (s.kwargs['inputs'] if 'inputs' in s.kwargs else [])), steps)
+            steps = map(lambda s: s.copy(inputs=psteps), steps)
         psteps = steps
     return psteps
     
