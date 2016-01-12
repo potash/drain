@@ -233,6 +233,9 @@ class Construct(Step):
 
     def run(self, **update_kwargs):
         kwargs = dict(self.__kwargs__)
+        for k in ['inputs', 'inputs_mapping']:
+            if k in kwargs:
+                kwargs.pop(k)
         kwargs.update(update_kwargs)
         cls = util.get_attr(kwargs.pop('__class_name__'))
         return cls(**kwargs)
@@ -422,8 +425,10 @@ def to_drake_step(inputs, output):
     inputs = map(lambda i: i.get_target_filename(), list(inputs))
     inputs.insert(0, output.get_yaml_filename())
 
-    output = os.path.join(output.get_target_filename()) if output.is_target() else '%no_output'
-    return '{output}<- {inputs} [method:drain]\n\n'.format(output=output, inputs=str.join(', ', inputs))
+    output_str = '%' + output.__class__.__name__
+    if output.is_target():
+        output_str += ', ' + os.path.join(output.get_target_filename())
+    return '{output} <- {inputs} [method:drain]\n\n'.format(output=output_str, inputs=str.join(', ', inputs))
 
 # if preview then don't create the dump directories and step yaml files
 def to_drakefile(steps, preview=True, debug=False, bindir=None):
