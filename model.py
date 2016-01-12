@@ -1,7 +1,7 @@
 import os
 import datetime
 import math
-from copy import deepcopy
+import logging
 
 import pandas as pd
 import numpy as np
@@ -31,6 +31,7 @@ class FitPredict(Step):
             else:
                 X_train, y_train = X, y
 
+            logging.info('Fitting with %s examples, %s features' % X_train.shape)
             estimator.fit(X_train, y_train)
 
         result = {}
@@ -45,7 +46,8 @@ class FitPredict(Step):
             else:
                 X_test, y_test = X, y
 
-            result['score'] =  pd.Series(y_score(estimator, X[test]),
+            logging.info('Predicting %s examples' % len(X_test))
+            result['score'] =  pd.Series(y_score(estimator, X_test),
                     index=X_test.index)
 
         return result
