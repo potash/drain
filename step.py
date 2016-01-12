@@ -96,6 +96,7 @@ class Step(object):
 
             self.__init__(target=template.target, name=template.name, **template.kwargs)
             del self.__template__
+            return self
 
     def _template_copy(self, **kwargs):
         if not self._is_template():
