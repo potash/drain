@@ -53,10 +53,10 @@ def run(step, inputs=None, output=None):
 def from_yaml(filename):
     with open(filename) as f:
         templates = yaml.load(f)
-        if isinstance(templates, StepTemplate):
-            return templates.construct()
+        if isinstance(templates, Step):
+            return templates._template_construct()
         elif hasattr(templates, '__iter__'):
-            return [t.construct() for t in templates]
+            return [t._template_construct() for t in templates]
         else:
             return templates
 
@@ -74,6 +74,36 @@ class Step(object):
 
         hasher = hashlib.md5(yaml.dump(self)) # this won't work right if we haven't called initialize()
         self.__digest__ = base64.urlsafe_b64encode(hasher.digest())
+
+    @staticmethod
+    def _template(__cls__=None, **kwargs):
+        if __cls__ is None:
+            __cls__ = Step
+        self = Step.__new__(__cls__)
+        self.__template__ = StepTemplate(**kwargs)
+        return self
+
+    def _is_template(self):
+        return hasattr(self, '__template__')
+
+    def _template_construct(self):
+        if self._is_template():
+            template = self.__template__
+
+            if 'inputs' in template.kwargs:
+                for i in template.kwargs['inputs']:
+                    i._template_construct()
+
+            self.__init__(target=template.target, name=template.name, **template.kwargs)
+            del self.__template__
+
+    def _template_copy(self, **kwargs):
+        if not self._is_template():
+            raise ValueError('Cannot copy, this is not a template')
+
+        template = self.__template__
+        kwargs = util.merge_dicts(template.kwargs, kwargs)
+        return Step._template(__cls__=self.__class__, name=template.name, target=template.target, **kwargs)
 
     def map_inputs(self):
         kwargs = {}
@@ -171,14 +201,27 @@ class Step(object):
 
     def __repr__(self):
         class_name = self.__class__.__name__
+        if self._is_template():
+            class_name += 'Template'
+            kwargs = self.__template__.kwargs
+        else:
+            kwargs = self.get_kwargs(deep=False)
+
         return '%s(%s)' % (class_name, 
-                _pprint(self.get_kwargs(deep=False), offset=len(class_name),),)
+                _pprint(kwargs, offset=len(class_name),),)
     
     def __hash__(self):
         return hash(yaml.dump(self)) # pyyaml dumps dicts in sorted order so this works
     
     def __eq__(self, other):
-        return util.eqattr(self, other, '__kwargs__')
+        if not isinstance(other, Step):
+            return False
+        elif self._is_template() and other._is_template():
+            return util.eqattr(self, other, '__class__') and util.eqattr(self, other, '__template__')
+        elif not self._is_template() and not other._is_template():
+            return util.eqattr(self, other, '__class__') and util.eqattr(self, other, '__kwargs__')
+        else:
+            return False
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -200,30 +243,13 @@ class Construct(Step):
 # used to expand ArgumentCollections by search()
 # and to set inputs by serial()
 class StepTemplate(object):
-    def __init__(self, __cls__=Step, name=None, target=False, **kwargs):
-        self.cls = __cls__
+    def __init__(self, name=None, target=False, **kwargs):
         self.name = name
         self.target = target
-        self.kwargs = kwargs if kwargs is not None else {}
+        self.kwargs = kwargs
 
-    def copy(self, **kwargs):
-        kwargs = util.merge_dicts(self.kwargs, kwargs)
-        return StepTemplate(__cls__=self.cls, name=self.name, target=self.target, **kwargs)
-    
-    def construct(self):
-        if 'inputs' in self.kwargs:
-            self.kwargs['inputs'] = [i.construct() if isinstance(i, StepTemplate) else i for i in self.kwargs['inputs']]
-        return self.cls(target=self.target, name=self.name, **self.kwargs)
-
-    def __repr__(self):
-        return '{name}({args})'.format(name=self.cls.__name__,
-                args=str.join(',', ('%s=%s' % i for i in self.kwargs.iteritems())))
- 
     def __eq__(self, other):
-        for attr in ('cls', 'name', 'target', 'kwargs'):
-            if not util.eqattr(self, other, attr):
-                return False
-        return True
+        return util.eqattr(self, other, 'name') and util.eqattr(self, other, 'target') and util.eqattr(self, other, 'kwargs')
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -261,7 +287,7 @@ def argument_product(args):
     return dicts
 
 def step_product(step):
-    return [step.copy(**d) for d in argument_product(step.kwargs)]
+    return [step._template_copy(**d) for d in argument_product(step.__template__.kwargs)]
 
 def parallel(*inputs):
     return map(util.make_list, itertools.chain(*map(util.make_list, inputs)))
@@ -276,7 +302,7 @@ def serial(*inputs):
         if psteps is not None:
             if not hasattr(psteps[0], '__iter__'):
                 psteps = (psteps,)
-            steps = list(itertools.chain(*(map(lambda s: s.copy(inputs=util.make_list(ps)), steps) for ps in psteps)))
+            steps = list(itertools.chain(*(map(lambda s: s._template_copy(inputs=util.make_list(ps)), steps) for ps in psteps)))
             
         psteps = steps
     return psteps
@@ -293,13 +319,13 @@ def step_multi_constructor(loader, tag_suffix, node):
     cls = util.get_attr(tag_suffix[1:])
     kwargs = loader.construct_mapping(node)
 
-    return StepTemplate(__cls__=cls, **kwargs)
+    return Step._template(__cls__=cls, **kwargs)
 
 def constructor_multi_constructor(loader, tag_suffix, node):
     class_name = tag_suffix[1:]
     kwargs = loader.construct_mapping(node)
 
-    return StepTemplate(__cls__=Construct, __class_name__=str(class_name), **kwargs)
+    return Step._template(__cls__=Construct, __class_name__=str(class_name), **kwargs)
 
 def get_sequence_constructor(method):
     def constructor(loader, node):

@@ -12,28 +12,28 @@ def test_argument_product_deep():
     assert argument_product({'a' : {'b': ArgumentCollection([1,2])} }) == [{'a': {'b': 1}}, {'a': {'b': 2}}]
 
 def test_step_product():
-    assert step_product(StepTemplate(a={'b': ArgumentCollection([1,2])})) == [StepTemplate(a={'b': 1}), StepTemplate(a={'b': 2})]
+    assert step_product(Step._template(a={'b': ArgumentCollection([1,2])})) == [Step._template(a={'b': 1}), Step._template(a={'b': 2})]
 
 def test_parallel():
-    assert parallel(StepTemplate(a=1), StepTemplate(b=1)) == [[StepTemplate(a=1)], [StepTemplate(b=1)]]
+    assert parallel(Step._template(a=1), Step._template(b=1)) == [[Step._template(a=1)], [Step._template(b=1)]]
 
 def test_parallel_multiple():
-    assert parallel([StepTemplate(a=1), StepTemplate(b=1)], [StepTemplate(c=1)]) == [[StepTemplate(a=1)], [StepTemplate(b=1)], [StepTemplate(c=1)]]
+    assert parallel([Step._template(a=1), Step._template(b=1)], [Step._template(c=1)]) == [[Step._template(a=1)], [Step._template(b=1)], [Step._template(c=1)]]
 
 def test_search():
-    assert search(StepTemplate(a=ArgumentCollection([1,2]))) == [StepTemplate(a=1), StepTemplate(a=2)]
+    assert search(Step._template(a=ArgumentCollection([1,2]))) == [Step._template(a=1), Step._template(a=2)]
 
 def test_search_multiple():
-    assert search(StepTemplate(a=ArgumentCollection([1,2])), StepTemplate(b=ArgumentCollection([1,2]))) == [StepTemplate(a=1), StepTemplate(a=2), StepTemplate(b=1), StepTemplate(b=2)]
+    assert search(Step._template(a=ArgumentCollection([1,2])), Step._template(b=ArgumentCollection([1,2]))) == [Step._template(a=1), Step._template(a=2), Step._template(b=1), Step._template(b=2)]
 
 def test_product():
-    assert product([StepTemplate(a=1), StepTemplate(a=2)], StepTemplate(b=1)) == [(StepTemplate(a=1), StepTemplate(b=1)), (StepTemplate(a=2), StepTemplate(b=1))]
+    assert product([Step._template(a=1), Step._template(a=2)], Step._template(b=1)) == [(Step._template(a=1), Step._template(b=1)), (Step._template(a=2), Step._template(b=1))]
     
 def test_serial():
-    assert serial([StepTemplate(a=1), StepTemplate(a=2)], [StepTemplate(b=1), StepTemplate(b=2)]) == [StepTemplate(inputs=[StepTemplate(a=1), StepTemplate(a=2)],b=1), StepTemplate(inputs=[StepTemplate(a=1), StepTemplate(a=2)],b=2)]
+    assert serial([Step._template(a=1), Step._template(a=2)], [Step._template(b=1), Step._template(b=2)]) == [Step._template(inputs=[Step._template(a=1), Step._template(a=2)],b=1), Step._template(inputs=[Step._template(a=1), Step._template(a=2)],b=2)]
 
 def test_serial2():
-    assert serial([[StepTemplate(a=1), StepTemplate(a=2)], [StepTemplate(b=1), StepTemplate(b=2)]], [StepTemplate(c=1), StepTemplate(c=2)]) == [StepTemplate(c=1, inputs=[StepTemplate(a=1), StepTemplate(a=2)]), StepTemplate(c=2, inputs=[StepTemplate(a=1), StepTemplate(a=2)]), StepTemplate(c=1, inputs=[StepTemplate(b=1), StepTemplate(b=2)]), StepTemplate(c=2, inputs=[StepTemplate(b=1), StepTemplate(b=2)])]
+    assert serial([[Step._template(a=1), Step._template(a=2)], [Step._template(b=1), Step._template(b=2)]], [Step._template(c=1), Step._template(c=2)]) == [Step._template(c=1, inputs=[Step._template(a=1), Step._template(a=2)]), Step._template(c=2, inputs=[Step._template(a=1), Step._template(a=2)]), Step._template(c=1, inputs=[Step._template(b=1), Step._template(b=2)]), Step._template(c=2, inputs=[Step._template(b=1), Step._template(b=2)])]
     
 def test_run():
     step = yaml.load("""
@@ -42,8 +42,9 @@ def test_run():
         - !step:drain.step.Scalar 
             value : !range [1,10]
       - !step:drain.step.Add {target : True}
-    """)
-    step = step[0].construct()
+    """)[0]
+    print step
+    step._template_construct()
     print step
     assert run(step) == 45
 
@@ -54,8 +55,8 @@ def test_run2():
         - !step:drain.step.Scalar {value : 1.}
         - !step:drain.step.Scalar {value : 2.}
       - !step:drain.step.Divide { inputs_mapping : [denominator, numerator] }
-    """)
-    step = step[0].construct()
+    """)[0]
+    step._template_construct()
     assert run(step) == 2
 
 
