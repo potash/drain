@@ -2,6 +2,7 @@ import os
 import datetime
 import math
 import logging
+import inspect
 
 import pandas as pd
 import numpy as np
@@ -12,19 +13,13 @@ from statsmodels.discrete.discrete_model import Logit
 import util, metrics
 from step import Step
 
-class ModelRun(object):
-    def __init__(self, estimator, y, data):
-        self.estimator = estimator
-        self.y = y
-        self.data = data
-
 class FitPredict(Step):
     def __init__(self, return_estimator=False, return_feature_importances=True, return_predictions=True, prefit=False, **kwargs):
         Step.__init__(self, return_estimator=return_estimator,
                 return_feature_importances=return_feature_importances,
                 return_predictions=return_predictions, prefit=prefit, **kwargs)
 
-    def run(self, estimator, X, y, train=None, test=None, **kwargs):
+    def run(self, estimator, X, y, train=None, test=None, aux=None, **kwargs):
         if not self.prefit:
             if train is not None:
                 X_train, y_train = X[train], y[train]
@@ -47,8 +42,12 @@ class FitPredict(Step):
                 X_test, y_test = X, y
 
             logging.info('Predicting %s examples' % len(X_test))
-            result['score'] =  pd.Series(y_score(estimator, X_test),
-                    index=X_test.index)
+            y = pd.DataFrame({'true': y_test})
+            y['score'] = y_score(estimator, X_test)
+            if aux is not None:
+                y = y.merge(aux, how='left')
+
+            result['y'] = y
 
         return result
 
@@ -61,8 +60,8 @@ class FitPredict(Step):
             filename = os.path.join(self.get_dump_dirname(), 'feature_importances.hdf')
             result['feature_importances'].to_hdf(filename, 'df')
         if self.return_feature_importances:
-            filename = os.path.join(self.get_dump_dirname(), 'score.hdf')
-            result['score'].to_hdf(filename, 'df')
+            filename = os.path.join(self.get_dump_dirname(), 'y.hdf')
+            result['y'].to_hdf(filename, 'df')
 
     def load(self):
         result = {}
@@ -73,17 +72,32 @@ class FitPredict(Step):
             filename = os.path.join(self.get_dump_dirname(), 'feature_importances.hdf')
             result['feature_importances'] = pd.read_hdf(filename, 'df')
         if self.return_feature_importances:
-            filename = os.path.join(self.get_dump_dirname(), 'score.hdf')
-            result['score'] = pd.read_hdf(filename, 'df')
+            filename = os.path.join(self.get_dump_dirname(), 'y.hdf')
+            result['y'] = pd.read_hdf(filename, 'df')
+
+        return result
 
 class Fit(FitPredict):
-    def __init__(**kwargs):
+    def __init__(self, **kwargs):
         FitPredict.__init__(self, return_predictions=False, prefit=False, **kwargs)
 
 class Predict(FitPredict):
-    def __init__(**kwargs):
+    def __init__(self, **kwargs):
         FitPredict.__init__(self, return_feature_importances=False,
                 return_predictions=True, prefit=True, **kwargs)
+
+class Metric(Step):
+    def run(self, y, **kwargs):
+        subset_args = [k for k in Y_SUBSET_ARGS
+                if k in self.__kwargs__]
+        kwargs_subset = {k:self.__kwargs__[k] for k in subset_args}
+        y_true,y_score = true_score(y, **kwargs_subset)
+
+        metric = getattr(metrics, self.metric)
+        kwargs_metric = {k:self.__kwargs__[k] for k in self.__kwargs__
+                if k not in ('inputs', 'inputs_mapping', 'metric')}
+
+        return metric(y_true, y_score, **kwargs_metric)
 
 def y_score(estimator, X):
     if hasattr(estimator, 'decision_function'):
@@ -184,41 +198,9 @@ def y_subset(y, query=None, dropna=False, outcome='true',
 
     return y
 
+# list of arguments to y_subset() for Metric above
+Y_SUBSET_ARGS = inspect.getargspec(y_subset).args 
+
 def true_score(y, outcome='true', score='score', **subset_args):
     y = y_subset(y, outcome=outcome, score=score, **subset_args) 
     return util.to_float(y[outcome], y[score])
-
-def auc(run, dropna=True, **subset_args):
-    y_true, y_score = true_score(run.y, dropna=dropna, **subset_args)
-    return metrics.auc(y_true, y_score)
-
-def count(run, countna=False, **subset_args):
-    y_true,y_score = true_score(run.y, **subset_args)
-    return metrics.count(y_true, countna=countna)
-
-def count_series(run, countna=False, **subset_args):
-    y_true,y_score = true_score(run.y, **subset_args)
-    return metrics.count_series(y_true, y_score, countna=countna)
-
-def baseline(run, **subset_args):
-    y_true,y_score = true_score(run.y, **subset_args)
-    return metrics.baseline(y_true)
-
-def precision(run, return_bounds=False, **subset_args):
-    y_true, y_score = true_score(run.y, **subset_args)
-    return metrics.precision(y_true, y_score, return_bounds=return_bounds)
-
-def precision_series(run, **subset_args):
-    y_true, y_score = true_score(run.y, **subset_args)
-    return metrics.precision_series(y_true, y_score)
-
-def recall(run, value=True, **subset_args):
-    y_true, y_score = true_score(run.y, **subset_args)
-    return metrics.recall(y_true, y_score, value=value)
-
-def recall_series(run, value=True, **subset_args):
-    y_true, y_score = true_score(run.y, **subset_args)
-    return metrics.recall_series(y_true, y_score, value=value)
-
-# TODO: should these metrics be member methods of ModelRun? e.g.:
-# ModelRun.recall = recall

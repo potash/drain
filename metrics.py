@@ -19,11 +19,11 @@ def _argtop(y_score, k=None):
     else:
         return _argsort(y_score, k)
 
-def count(y, countna=False):
+def count(y_true, y_score=None, countna=False):
     if not countna:
-        return (~np.isnan(to_float(y))).sum()
+        return (~np.isnan(to_float(y_true))).sum()
     else:
-        return len(y)
+        return len(y_true)
 
 def count_series(y_true, y_score, countna=False):
     y_true, y_score = to_float(y_true, y_score)
@@ -37,7 +37,7 @@ def count_series(y_true, y_score, countna=False):
     return pd.Series(a, index=range(1, len(a)+1))
 
 
-def baseline(y_true):
+def baseline(y_true, y_score=None):
     if len(y_true) > 0:
         return np.nansum(y_true)/count(y_true, countna=False)
     else:

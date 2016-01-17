@@ -33,15 +33,15 @@ def run(step, inputs=None, output=None):
     if output is None:
         output = []
 
-    if not step.has_output():
+    if not step.has_result():
         if step in inputs:
-            step.load()
+            step.set_result(step.load())
         else:
             for i in step.inputs:
                 run(step=i, inputs=inputs, output=output)
 
             args, kwargs = step.map_inputs()
-            logging.info('Running\n%s' % step)
+            logging.info('Running\n\t%s' % str(step).replace('\n','\n\t'))
             step.set_result(step.run(*args, **kwargs))
 
     if step == output:
@@ -140,6 +140,9 @@ class Step(object):
     def set_result(self, result):
         self.__result__ = result
 
+    def has_result(self):
+        return hasattr(self, '__result__')
+
     def get_dirname(self):
         if BASEDIR is None:
             raise ValueError('BASEDIR not initialized')
@@ -158,14 +161,11 @@ class Step(object):
     def run(self):
         raise NotImplementedError()
     
-    def has_output(self):
-        return hasattr(self, 'output')
-
     def is_target(self):
         return self.__target__
     
     def load(self, **kwargs):
-        self.set_result(joblib.load(os.path.join(self.get_dirname(), 'dump', 'output.pkl'), **kwargs))
+        return joblib.load(os.path.join(self.get_dirname(), 'dump', 'result.pkl'), **kwargs)
 
     def setup_dump(self):
         dumpdir = self.get_dump_dirname()
@@ -189,7 +189,7 @@ class Step(object):
 
     def dump(self, **kwargs):
         self.setup_dump()
-        joblib.dump(self.get_result(), os.path.join(self.get_dump_dirname(), 'output.pkl'), **kwargs)
+        joblib.dump(self.get_result(), os.path.join(self.get_dump_dirname(), 'result.pkl'), **kwargs)
 
     def get_kwargs(self, deep=True):
         if deep:
@@ -209,7 +209,7 @@ class Step(object):
             kwargs = self.get_kwargs(deep=False)
 
         return '%s(%s)' % (class_name, 
-                _pprint(kwargs, offset=len(class_name),),)
+                _pprint(kwargs, offset=len(class_name)),)
     
     def __hash__(self):
         return hash(yaml.dump(self)) # pyyaml dumps dicts in sorted order so this works
@@ -257,10 +257,9 @@ class StepTemplate(object):
 
 class Echo(Step):
     def run(self, *args, **kwargs):
-        if len(args) > 0:
-            print args
-        if len(kwargs) > 0:
-            print kwargs
+        for i in self.inputs:
+            print('%s: %s' % (i, i.get_result()))
+
 
 class Scalar(Step):
     def __init__(self, value, **kwargs):
