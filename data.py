@@ -30,6 +30,22 @@ class ClassificationData(Step):
 
         return {'X': X, 'y': y, 'train': train, 'test': ~train}
 
+class Shape(Step):
+    def run(self, X, index=None, **kwargs):
+        if index is not None:
+            X = X[index]
+        return {'n_rows': X.shape[0], 'n_cols': X.shape[1]}
+
+class HoldOut(Step):
+    def run(self, index, **kwargs):
+        mask = np.zeros(len(index), dtype=bool)
+        mask[random.choice(len(index), len(index)*self.p)] = True
+
+        new_index = pd.Series(index.values & (~mask), index=index.index)
+        holdout = pd.Series(index.values & mask, index=index.index)
+
+        return {'index': new_index, 'holdout': holdout}
+
 def percentile(series):
     return pd.Series(stats.rankdata(series)/len(series), index=series.index)
 

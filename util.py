@@ -156,7 +156,7 @@ def merge_dicts(*dict_args):
     return result
 
 def make_list(a):
-    return [a] if not hasattr(a, '__iter__') else a
+    return [a] if not type(a) in (list, tuple) else a
 
 # cartesian product of dict whose values are lists
 # if product_keys is not None then take product on those keys only

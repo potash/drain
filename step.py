@@ -255,6 +255,13 @@ class StepTemplate(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+class Echo(Step):
+    def run(self, *args, **kwargs):
+        if len(args) > 0:
+            print args
+        if len(kwargs) > 0:
+            print kwargs
+
 class Scalar(Step):
     def __init__(self, value, **kwargs):
         Step.__init__(self, value=value, **kwargs)
