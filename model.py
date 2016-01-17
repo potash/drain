@@ -76,6 +76,15 @@ class FitPredict(Step):
             filename = os.path.join(self.get_dump_dirname(), 'score.hdf')
             result['score'] = pd.read_hdf(filename, 'df')
 
+class Fit(FitPredict):
+    def __init__(**kwargs):
+        FitPredict.__init__(self, return_predictions=False, prefit=False, **kwargs)
+
+class Predict(FitPredict):
+    def __init__(**kwargs):
+        FitPredict.__init__(self, return_feature_importances=False,
+                return_predictions=True, prefit=True, **kwargs)
+
 def y_score(estimator, X):
     if hasattr(estimator, 'decision_function'):
         return estimator.decision_function(X)
