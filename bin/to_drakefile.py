@@ -5,6 +5,7 @@ import json
 import itertools
 import sys
 import argparse
+import imp
 
 from drain import step
 
@@ -29,7 +30,15 @@ if __name__ == "__main__":
     basedir = os.path.abspath(args.basedir)
     
     step.initialize(basedir)
-    steps = step.from_yaml(args.steps)
+    if args.steps.endswith('.yaml'):
+        steps = step.from_yaml(args.steps)
+    else:
+        filename, fname = args.steps.split('::')
+        mod = imp.load_source('steps', filename)
+        fn = getattr(mod, fname)
+        steps = fn()
+
+
 
     if args.Drakeinput is None and os.path.exists('Drakefile'):
         args.Drakeinput = 'Drakefile'
