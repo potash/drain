@@ -17,18 +17,6 @@ import matplotlib.pyplot as plt
 from drain import model, util, metrics
 from drain.model import params_dir
 
-def read_data(row, basedir, transform=True):
-    params = {'data': row['params']['data']}
-    datadir = os.path.join(params_dir(basedir, params, 'data'), 'output')
-    row['data'].read(datadir)
-
-    if transform:
-        row['data'].transform(**row['params']['transform'])
-
-def read_estimator(row, basedir):
-    modeldir = os.path.join(params_dir(basedir, row['params'], 'model'), 'output')
-    row['estimator'] = joblib.load(os.path.join(modeldir, 'estimator.pkl'))
-
 # pairwise returns a dataframe with intersections
 def intersection(df, pairwise=False, **subset_args):
     indexes = map(lambda row: set(model.y_subset(row[1].y, **subset_args).index), df.iterrows())
@@ -46,44 +34,6 @@ def intersection(df, pairwise=False, **subset_args):
 
 def apply(df, fn, **kwargs):
     return df.apply(lambda run: fn(run=run, **kwargs), axis=1).T
-
-def read_model(dirname, estimator=False):
-    outdirname = os.path.join(dirname, 'output/')
-    if not (os.path.isdir(outdirname) and os.path.isfile(os.path.join(dirname, 'target'))):
-        return
- 
-    mtime = util.mtime(outdirname)
-
-    estimator = (joblib.load(os.path.join(outdirname, 'estimator.pkl'))) if estimator else None
-    
-    y = pd.read_hdf(os.path.join(outdirname, 'y.hdf'), 'y')
-    features = pd.read_csv(os.path.join(outdirname, 'features.csv'))
-    params = yaml.load(open(os.path.join(outdirname, '../params.yaml')))
-
-    estimator_name = params['model']['name']
-
-    df = dict_to_df(params)
-    df['timestamp'] = [mtime]
-    df['dirname'] = [dirname]
-    df['estimator'] = [estimator]
-    df['estimator_name'] = [estimator_name]
-    df['y'] = [y]
-    df['features'] = [features]
-    df['n_features'] = [len(features)]
-    df['params'] = [params]
-    df['transform'] = [util.init_object(**params['transform'])]
-
-    return df
-
-def read_models(dirname, tagname=None, estimator=False):
-    if tagname is not None:
-        dirname = os.path.join(dirname, 'tag', tagname)
-    else:
-        dirname = os.path.join(dirname, 'model')
-    df = pd.concat((read_model(subdir, estimator) for subdir in get_subdirs(dirname)), ignore_index=True)
-
-    reset_index(df, inplace=True)
-    return df
 
 # set model runs dataframe index using diff of params
 def reset_index(df, inplace=False):
@@ -106,22 +56,6 @@ def reset_index(df, inplace=False):
 def get_subdirs(directory):
      return [os.path.join(directory, name) for name in os.listdir(directory) 
              if os.path.isdir(os.path.join(directory, name))]
-
-def get_series(df, columns, value, indices=None, index_names=None,index='year', include_baseline=True):
-    unstacked = df.set_index([index]+columns).unstack(columns)
-    if indices is not None:
-        indices2 = [(value,) + i for i in indices]
-    else:
-        indices2 = [i for i in unstacked.columns if i[0] == value]
-        
-    if include_baseline:
-        baseline = indices2[0] + tuple()
-        indices2.append(('baseline',) + indices2[0][1:])
-            
-    series = unstacked[indices2]
-    if index_names is not None:
-        series.columns=index_names + ['baseline']
-    return series
 
 # for a given example idx get the series X*\beta
 def get_example_series(run, idx):
