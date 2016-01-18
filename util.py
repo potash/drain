@@ -37,6 +37,7 @@ def intersect(sets):
 
 def union(sets):
     return reduce(lambda a,b: a | b, sets)
+
 # cast numpy arrays to float32
 # if there's more than one, return an array
 def to_float(*args):
@@ -154,6 +155,19 @@ def merge_dicts(*dict_args):
     for dictionary in dict_args:
         result.update(dictionary)
     return result
+
+def diff_dicts(dicts):
+    diffs = [{} for d in dicts]
+    keys = map(lambda d: set(d.keys()), dicts)
+
+    intersection = {k: len(set((d[k] for d in dicts))) for k in intersect(keys)}
+
+    for diff, d in zip(diffs, dicts):
+        for k in d:
+            if k not in intersection or intersection[k] > 1:
+                diff[k] = d[k]
+
+    return diffs
 
 def make_list(a):
     return [a] if not type(a) in (list, tuple) else a

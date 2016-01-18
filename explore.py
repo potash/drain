@@ -14,8 +14,16 @@ import matplotlib.colors
 from matplotlib import cm
 import matplotlib.pyplot as plt
 
-from drain import model, util, metrics
-from drain.model import params_dir
+import model, util, metrics
+
+def to_dataframe(steps):
+    args = [s.named_arguments for s in steps]
+    diffs = util.diff_dicts(args)
+
+    df = pd.DataFrame(diffs)
+    df['step'] = steps
+
+    return df
 
 # pairwise returns a dataframe with intersections
 def intersection(df, pairwise=False, **subset_args):
@@ -122,44 +130,3 @@ def export_tree(clf, filename, feature_names=None, max_depth=None):
     tree.export_graphviz(clf, out_file=dot_data, feature_names=feature_names, max_depth=max_depth)
     graph = pydot.graph_from_dot_data(dot_data.getvalue())
     graph.write_pdf(filename)
-
-# turn a dictionary into a dataframe row
-# subdictionaries get included either multilevel or prefixed
-def dict_to_df(d, multilevel=False):
-    df = pd.DataFrame(index=[0])
-    for k in d:
-        if isinstance(d[k], dict):
-            for k2 in d[k]:
-                k3 = (k,k2) if multilevel else '{}_{}'.format(str(k), str(k2))
-                df[k3] = [d[k][k2]]
-        else:
-            df[k] = [d[k]]
-    return df
-
-def dict_diff(dictionaries, multilevel=False):
-    diffs = [{} for d in dictionaries]
-    for top_key in ['model', 'transform']:
-        dicts = [d[top_key] for d in dictionaries]
-        keys = map(lambda d: set(d.keys()), dicts)
-        intersection = reduce(lambda a,b: a&b, keys)
-        
-        # uncommon keys
-        diff = [{k:d[k] for k in d if k not in intersection} for d in dicts]
-        
-        # common keys
-        for key in intersection:
-            if len(set(yaml.dump(d[key]) for d in dicts)) > 1:
-                for d1, d2 in zip(diff, dicts):
-                    d1[key] = d2[key]
-
-        for i in xrange(len(diff)):
-            if multilevel:
-                diff[i] = {(top_key, k):v for k,v in diff[i].iteritems()}
-            else:
-                diff[i] = {'{}_{}'.format(str(top_key), str(k)):v for k,v in diff[i].iteritems()}
-
-        if len(diff[0]) > 0: # add to total diff if non-empty
-            for d1, d2 in zip(diffs, diff):
-                d1.update(d2)
-
-    return diffs

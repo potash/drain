@@ -133,7 +133,8 @@ class Step(object):
     def has_name(self):
         return self.__name__ is not None
 
-    def get_named_arguments(self):
+    @property
+    def named_arguments(self):
         d = dict()
         named = self.get_named_steps()
 
@@ -238,22 +239,13 @@ class Step(object):
         self.setup_dump()
         joblib.dump(self.get_result(), os.path.join(self.get_dump_dirname(), 'result.pkl'), **kwargs)
 
-    def get_kwargs(self, deep=True):
-        if deep:
-            return self.__kwargs__
-        else:
-            kwargs = dict(self.__kwargs__)
-            if 'inputs' in kwargs:
-                kwargs.pop('inputs')
-            return kwargs
-
     def __repr__(self):
         class_name = self.__class__.__name__
         if self._is_template():
             class_name += 'Template'
             kwargs = self.__template__.kwargs
         else:
-            kwargs = self.get_kwargs(deep=False)
+            kwargs = self.get_arguments(ignore_inputs=True)
 
         return '%s(%s)' % (class_name, 
                 _pprint(kwargs, offset=len(class_name)),)
