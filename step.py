@@ -106,6 +106,53 @@ class Step(object):
         kwargs = util.merge_dicts(template.kwargs, kwargs)
         return Step._template(__cls__=self.__class__, name=template.name, target=template.target, **kwargs)
 
+    # search over self and inputs to return a dictionary of name: step pairs
+    def get_named_steps(self, named=None, visited=None):
+        if visited is None:
+            visited = set()
+        if named is None:
+            named = dict()
+
+        for i in self.inputs:
+            if i not in visited:
+                i.get_named_steps(named=named, visited=visited)
+        
+        if self.has_name():
+            name = self.get_name()
+            if name in named:
+                raise NameError('Multiple steps with the same name: %s' % name)
+            named[name] = self
+
+        visited.add(self)
+
+        return named
+
+    def get_name(self):
+        return self.__name__
+
+    def has_name(self):
+        return self.__name__ is not None
+
+    def get_named_arguments(self):
+        d = dict()
+        named = self.get_named_steps()
+
+        for name, step in named.iteritems():
+            for k,v in step.get_arguments(ignore_inputs=True).iteritems():
+                d[(name, k)] = v
+
+        return d
+
+    # returns a shallow copy
+    def get_arguments(self, ignore_inputs=False):
+        d = dict(self.__kwargs__)
+        if ignore_inputs:
+            for k in ('inputs', 'inputs_mapping'):
+                if k in d:
+                    d.pop(k)
+
+        return d
+
     def map_inputs(self):
         kwargs = {}
         args = []
