@@ -9,6 +9,7 @@ import numpy as np
 
 from sklearn.externals import joblib
 from statsmodels.discrete.discrete_model import Logit
+from sklearn.base import _pprint
 
 import util, metrics
 from step import Step
@@ -86,19 +87,24 @@ class Predict(FitPredict):
         FitPredict.__init__(self, return_feature_importances=False,
                 return_predictions=True, prefit=True, **kwargs)
 
-class Metric(Step):
-    def run(self, y, **kwargs):
-        subset_args = [k for k in Y_SUBSET_ARGS
-                if k in self.__kwargs__]
-        kwargs_subset = {k:self.__kwargs__[k] for k in subset_args}
-        y_true,y_score = true_score(y, **kwargs_subset)
+class PrintMetrics(Step):
+    def __init__(self, metrics, **kwargs):
+        Step.__init__(self, metrics=metrics, **kwargs)
 
-        metric = getattr(metrics, self.metric)
-        kwargs_metric = {k:self.__kwargs__[k] for k in self.__kwargs__
-                if k not in ('inputs', 'inputs_mapping', 'metric')}
+    def run(self, y, *args, **kwargs):
+        for metric in self.metrics:
+            subset_args = [k for k in Y_SUBSET_ARGS if k in metric]
+            kwargs_subset = {k:metric[k] for k in subset_args}
+            y_true,y_score = true_score(y, **kwargs_subset)
 
-        return metric(y_true, y_score, **kwargs_metric)
+            kwargs = dict(metric)
+            metric_name = kwargs.pop('metric')
+            metric_fn = getattr(metrics, metric_name)
+            kwargs_metric = {k:metric[k] for k in kwargs if k not in Y_SUBSET_ARGS}
 
+            r = metric_fn(y_true, y_score, **kwargs_metric)
+            print '%s(%s): %s' % (metric_name, _pprint(kwargs, offset=len(metric_name)), r)
+        
 def y_score(estimator, X):
     if hasattr(estimator, 'decision_function'):
         return estimator.decision_function(X)
