@@ -2,3 +2,4 @@
 !.gitignore
 *.pyc
 test/output/
+notebooks/
