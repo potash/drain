@@ -35,7 +35,7 @@ def run(step, inputs=None, output=None):
 
     if not step.has_result():
         if step in inputs:
-            step.set_result(step.load())
+            step.load()
         else:
             for i in step.inputs:
                 run(step=i, inputs=inputs, output=output)
@@ -59,6 +59,13 @@ def from_yaml(filename):
             return [t._template_construct() for t in templates]
         else:
             return templates
+
+def read(name, step_name=None):
+    steps = from_yaml(os.path.join(BASEDIR, '.steps', '%s.yaml' % name))
+    if step_name is not None:
+        return [s.get_input(name=step_name) for s in steps]
+    else:
+        return steps
 
 class Step(object):
     def __init__(self, name=None, target=False, **kwargs):
@@ -126,6 +133,15 @@ class Step(object):
         visited.add(self)
 
         return named
+
+    def get_input(self, name):
+        for i in self.inputs:
+            step = i.get_input(name)
+            if step is not None:
+                return step
+
+        if self.get_name() == name:
+            return self
 
     def get_name(self):
         return self.__name__
@@ -216,7 +232,7 @@ class Step(object):
         return self.__target__
     
     def load(self, **kwargs):
-        return joblib.load(os.path.join(self.get_dirname(), 'dump', 'result.pkl'), **kwargs)
+        self.set_result(joblib.load(os.path.join(self.get_dirname(), 'dump', 'result.pkl'), **kwargs))
 
     def setup_dump(self):
         dumpdir = self.get_dump_dirname()

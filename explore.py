@@ -41,7 +41,7 @@ def intersection(df, pairwise=False, **subset_args):
         return r
 
 def apply(df, fn, **kwargs):
-    return df.apply(lambda run: fn(run=run, **kwargs), axis=1).T
+    return df['step'].apply(lambda step: fn(step, **kwargs)).T
 
 # set model runs dataframe index using diff of params
 def reset_index(df, inplace=False):

@@ -1,4 +1,5 @@
 import os
+import sys
 import datetime
 import math
 import logging
@@ -76,7 +77,7 @@ class FitPredict(Step):
             filename = os.path.join(self.get_dump_dirname(), 'y.hdf')
             result['y'] = pd.read_hdf(filename, 'df')
 
-        return result
+        self.set_result(result)
 
 class Fit(FitPredict):
     def __init__(self, **kwargs):
@@ -86,25 +87,7 @@ class Predict(FitPredict):
     def __init__(self, **kwargs):
         FitPredict.__init__(self, return_feature_importances=False,
                 return_predictions=True, prefit=True, **kwargs)
-
-class PrintMetrics(Step):
-    def __init__(self, metrics, **kwargs):
-        Step.__init__(self, metrics=metrics, **kwargs)
-
-    def run(self, y, *args, **kwargs):
-        for metric in self.metrics:
-            subset_args = [k for k in Y_SUBSET_ARGS if k in metric]
-            kwargs_subset = {k:metric[k] for k in subset_args}
-            y_true,y_score = true_score(y, **kwargs_subset)
-
-            kwargs = dict(metric)
-            metric_name = kwargs.pop('metric')
-            metric_fn = getattr(metrics, metric_name)
-            kwargs_metric = {k:metric[k] for k in kwargs if k not in Y_SUBSET_ARGS}
-
-            r = metric_fn(y_true, y_score, **kwargs_metric)
-            print '%s(%s): %s' % (metric_name, _pprint(kwargs, offset=len(metric_name)), r)
-        
+       
 def y_score(estimator, X):
     if hasattr(estimator, 'decision_function'):
         return estimator.decision_function(X)
@@ -210,3 +193,34 @@ Y_SUBSET_ARGS = inspect.getargspec(y_subset).args
 def true_score(y, outcome='true', score='score', **subset_args):
     y = y_subset(y, outcome=outcome, score=score, **subset_args) 
     return util.to_float(y[outcome], y[score])
+
+def make_metric(function):
+    def metric(predict_step, **kwargs):
+        y = predict_step.get_result()['y']
+        subset_args = [k for k in Y_SUBSET_ARGS if k in kwargs]
+        kwargs_subset = {k:kwargs[k] for k in subset_args}
+        y_true,y_score = true_score(y, **kwargs_subset)
+
+        kwargs_metric = {k:kwargs[k] for k in kwargs if k not in Y_SUBSET_ARGS}
+        r = function(y_true, y_score, **kwargs_metric)
+        return r
+
+    return metric
+
+metrics = [o for o in inspect.getmembers(metrics) if inspect.isfunction(o[1]) and not o[0].startswith('_')]
+
+for name,function in metrics:
+    setattr(sys.modules[__name__], name, make_metric(function))
+
+class PrintMetrics(Step):
+    def __init__(self, metrics, **kwargs):
+        Step.__init__(self, metrics=metrics, **kwargs)
+
+    def run(self, *args, **kwargs):
+        for metric in self.metrics:
+            kwargs = dict(metric)
+            metric_name = kwargs.pop('metric')
+            metric_fn = getattr(sys.modules[__name__], metric_name) # TODO allow external metrics
+
+            r = metric_fn(self.inputs[0], **kwargs)
+            print '%s(%s): %s' % (metric_name, _pprint(kwargs, offset=len(metric_name)), r)
