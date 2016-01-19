@@ -1,6 +1,7 @@
 import os
 import sys
 import yaml
+from collections import Hashable
 from copy import deepcopy
 from tempfile import NamedTemporaryFile
 from pprint import pformat
@@ -21,6 +22,8 @@ def to_dataframe(steps):
     diffs = util.diff_dicts(args, multilevel=True)
 
     df = pd.DataFrame(diffs)
+    df = df.applymap(lambda d: d if isinstance(d, Hashable) else yaml.dump(d).replace('\n', ', ').rstrip(', '))
+
     columns = df.columns
     df['step'] = steps
     df.set_index(list(columns), inplace=True)

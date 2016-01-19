@@ -52,10 +52,6 @@ def hash_obj(obj):
     except: 
         return hash((False, id(obj)))
 
-def hash_yaml(params):
-    h = hex(hash(yaml.dump(params)))
-    return h[h.index('x')+1:]
-
 def datetime64(year,month,day):
     return np.datetime64( ("%04d" % year) + '-' +  ("%02d" % month) + '-' + ("%02d" % day))
 
@@ -156,6 +152,17 @@ def merge_dicts(*dict_args):
         result.update(dictionary)
     return result
 
+def nunique(iterable):
+    try:
+        return len(set(iterable))
+    except TypeError:
+        print 'unhashable!'
+        unique = []
+        for i in iterable:
+            if i not in unique:
+                unique.append(i)
+        return len(i)
+
 # When multilevel is true, only look for diffs within subkeys
 # TODO add tests to clarify this
 def diff_dicts(dicts, multilevel=True):
@@ -171,11 +178,11 @@ def diff_dicts(dicts, multilevel=True):
 
         intersection = dict()
         for k0 in keys:
-            intersection.update({k: len(set((d[k] for d in dicts if k in d))) for k in keys[k0]})
+            intersection.update({k: nunique(d[k] for d in dicts if k in d) for k in keys[k0]})
 
     else:
         keys = map(lambda d: set(d.keys()), dicts)
-        intersection = {k: len(set((d[k] for d in dicts))) for k in intersect(keys)}
+        intersection = {k: nunique(d[k] for d in dicts) for k in intersect(keys)}
 
     for diff, d in zip(diffs, dicts):
         for k in d:
