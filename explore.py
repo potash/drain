@@ -43,24 +43,6 @@ def intersection(df, pairwise=False, **subset_args):
 def apply(df, fn, **kwargs):
     return df['step'].apply(lambda step: fn(step, **kwargs)).T
 
-# set model runs dataframe index using diff of params
-def reset_index(df, inplace=False):
-    diffs = dict_diff(df.params.values)
-
-    first = True
-    for c in util.union(map(set, diffs)):
-        s = df[c]
-
-        # shorten model and transform names by removing module name
-        if c.endswith('name'):
-            s = s.apply(lambda d: d[d.rfind('.')+1:]) 
-        s = s.fillna('') # make nan empty to look nicer
-        df.set_index(s.apply(lambda d: str(d)), append=(not first), inplace=True)
-   
-        first=False
-
-    return df
-
 def get_subdirs(directory):
      return [os.path.join(directory, name) for name in os.listdir(directory) 
              if os.path.isdir(os.path.join(directory, name))]
