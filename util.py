@@ -156,11 +156,26 @@ def merge_dicts(*dict_args):
         result.update(dictionary)
     return result
 
-def diff_dicts(dicts):
+# When multilevel is true, only look for diffs within subkeys
+# TODO add tests to clarify this
+def diff_dicts(dicts, multilevel=True):
     diffs = [{} for d in dicts]
-    keys = map(lambda d: set(d.keys()), dicts)
 
-    intersection = {k: len(set((d[k] for d in dicts))) for k in intersect(keys)}
+    if multilevel:
+        keys = dict()
+        for d in union(set(d.keys()) for d in dicts):
+            if d[0] in keys:
+                keys[d[0]].add(d)
+            else:
+                keys[d[0]] = {d}
+
+        intersection = dict()
+        for k0 in keys:
+            intersection.update({k: len(set((d[k] for d in dicts if k in d))) for k in keys[k0]})
+
+    else:
+        keys = map(lambda d: set(d.keys()), dicts)
+        intersection = {k: len(set((d[k] for d in dicts))) for k in intersect(keys)}
 
     for diff, d in zip(diffs, dicts):
         for k in d:

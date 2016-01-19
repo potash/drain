@@ -63,7 +63,12 @@ def from_yaml(filename):
 def read(name, step_name=None):
     steps = from_yaml(os.path.join(BASEDIR, '.steps', '%s.yaml' % name))
     if step_name is not None:
-        steps = [s.get_input(name=step_name) for s in steps]
+        temp = []
+        for s in steps:
+            s = s.get_input(name=step_name)
+            if s is not None:
+                temp.append(s)
+        steps = temp
 
     for s in steps:
         s.load()

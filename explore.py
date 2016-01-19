@@ -18,10 +18,12 @@ import model, util, metrics
 
 def to_dataframe(steps):
     args = [s.named_arguments for s in steps]
-    diffs = util.diff_dicts(args)
+    diffs = util.diff_dicts(args, multilevel=True)
 
     df = pd.DataFrame(diffs)
+    columns = df.columns
     df['step'] = steps
+    df.set_index(list(columns), inplace=True)
 
     return df
 
