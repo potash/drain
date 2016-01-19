@@ -44,7 +44,8 @@ def baseline(y_true, y_score=None):
         return 0.0
 
 def auc(y_true, y_score):
-    fpr, tpr, thresholds = sklearn.metrics.roc_curve(y_true, y_score)
+    notnull = ~np.isnan(y_true)
+    fpr, tpr, thresholds = sklearn.metrics.roc_curve(y_true[notnull], y_score[notnull])
     return sklearn.metrics.auc(fpr, tpr)
 
 # return_bounds for missing labels:

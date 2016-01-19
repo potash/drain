@@ -28,6 +28,8 @@ class FitPredict(Step):
             else:
                 X_train, y_train = X, y
 
+            y_train = y_train.astype(bool)
+
             logging.info('Fitting with %s examples, %s features' % X_train.shape)
             estimator.fit(X_train, y_train)
 
