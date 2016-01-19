@@ -47,7 +47,7 @@ class FitPredict(Step):
             y = pd.DataFrame({'true': y_test})
             y['score'] = y_score(estimator, X_test)
             if aux is not None:
-                y = y.merge(aux, how='left')
+                y = y.join(aux, how='left')
 
             result['y'] = y
 
