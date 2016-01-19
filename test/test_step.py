@@ -153,4 +153,4 @@ def test_get_named_inputs2():
 def test_get_named_arguments():
     step1 = Step(a=1, name='Step1')
     step2 = Step(b=1, inputs=[Step(c=1, inputs=[step1, Step(d=1)])])
-    assert step2.get_named_arguments() == {('Step1', 'a'): 1}
+    assert step2.named_arguments == {('Step1', 'a'): 1}

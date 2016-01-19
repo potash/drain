@@ -139,18 +139,21 @@ class Step(object):
         named = self.get_named_steps()
 
         for name, step in named.iteritems():
-            for k,v in step.get_arguments(ignore_inputs=True).iteritems():
+            for k,v in step.get_arguments(inputs=False, inputs_mapping=False, target=False, name=False).iteritems():
                 d[(name, k)] = v
 
         return d
 
     # returns a shallow copy
-    def get_arguments(self, ignore_inputs=False):
+    # any argument specified is excluded if False
+    def get_arguments(self, **include):
         d = dict(self.__kwargs__)
-        if ignore_inputs:
-            for k in ('inputs', 'inputs_mapping'):
-                if k in d:
-                    d.pop(k)
+        d['name'] = self.__name__
+        d['target'] = self.__target__
+
+        for k in include:
+            if not include[k] and k in d:
+                d.pop(k)
 
         return d
 
@@ -245,7 +248,7 @@ class Step(object):
             class_name += 'Template'
             kwargs = self.__template__.kwargs
         else:
-            kwargs = self.get_arguments(ignore_inputs=True)
+            kwargs = self.get_arguments(inputs=False, inputs_mapping=False, target=False, name=False)
 
         return '%s(%s)' % (class_name, 
                 _pprint(kwargs, offset=len(class_name)),)
@@ -267,7 +270,7 @@ class Step(object):
         return not self.__eq__(other)
 
 class Construct(Step):
-    def __init__(self, __class_name__, name=None, target=None, **kwargs):
+    def __init__(self, __class_name__, name=None, target=False, **kwargs):
         Step.__init__(self, __class_name__=__class_name__, name=name, target=target, **kwargs)
 
     def run(self, **update_kwargs):
@@ -359,7 +362,11 @@ def product(*inputs):
     
 def step_multi_representer(dumper, data):
     tag = '!step:%s.%s' % (data.__class__.__module__, data.__class__.__name__)
-    return dumper.represent_mapping(tag, data.__kwargs__)
+    return dumper.represent_mapping(tag, data.get_arguments(name=False, target=False))
+
+def step_multi_representer_all_args(dumper, data):
+    tag = '!step:%s.%s' % (data.__class__.__module__, data.__class__.__name__)
+    return dumper.represent_mapping(tag, data.get_arguments())
 
 def step_multi_constructor(loader, tag_suffix, node):
     cls = util.get_attr(tag_suffix[1:])
@@ -391,10 +398,8 @@ def powerset_constructor(loader, node):
     args = loader.construct_sequence(node)
     return ArgumentCollection(itertools.chain.from_iterable(itertools.combinations(args, r) for r in range(len(args)+1)))
 
-def initialize(basedir):
-    global BASEDIR
-    BASEDIR = basedir
-    yaml.add_multi_representer(Step, step_multi_representer)
+def configure_yaml(dump_all_args=False):
+    yaml.add_multi_representer(Step, step_multi_representer if not dump_all_args else step_multi_representer_all_args)
     yaml.add_multi_constructor('!step', step_multi_constructor)
     yaml.add_multi_constructor('!construct', constructor_multi_constructor)
     
@@ -406,6 +411,8 @@ def initialize(basedir):
     yaml.add_constructor('!range', range_constructor)
     yaml.add_constructor('!powerset', powerset_constructor)
     yaml.add_constructor('!list', list_constructor)
+
+
 
 def get_targets(step, ignore):
     outputs = set()

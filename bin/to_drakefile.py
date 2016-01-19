@@ -17,6 +17,7 @@ if __name__ == "__main__":
     parser.add_argument('-D', '--Drakeinput', type=str, default=None, help='dependent drakefile')
     parser.add_argument('-d', '--debug', action='store_true', help='run python -m pdb')
     parser.add_argument('-P', '--preview', action='store_true', help='Preview Drakefile')
+    parser.add_argument('-n', '--name', help='Name to store this workflow under')
     parser.add_argument('--basedir', type=str, help='output base directory')
     
     parser.add_argument('steps', type=str, help='yaml params filename')
@@ -27,9 +28,9 @@ if __name__ == "__main__":
     if args.drakeoutput is None or args.drakeargsfile is None:
         args.preview = True
 
-    basedir = os.path.abspath(args.basedir)
-    
-    step.initialize(basedir)
+    step.BASEDIR = os.path.abspath(args.basedir)
+    step.configure_yaml()
+
     if args.steps.endswith('.yaml'):
         steps = step.from_yaml(args.steps)
     else:
@@ -59,3 +60,12 @@ if __name__ == "__main__":
     if args.drakeargsfile is not None and not args.preview:
         with open(args.drakeargsfile, 'w') as drakeargsfile:
             drakeargsfile.write(str.join(' ', drake_args))
+
+    if args.name is not None and not args.preview:
+        steps_dirname = os.path.join(args.basedir, '.steps')
+        if not os.path.isdir(steps_dirname):
+            os.makedirs(steps_dirname)
+
+        with open(os.path.join(steps_dirname, '%s.yaml' % args.name), 'w') as steps_file:
+            step.configure_yaml(dump_all_args=True)
+            yaml.dump(steps, steps_file)

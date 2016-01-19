@@ -21,7 +21,9 @@ if len(sys.argv) == 1:
 args = sys.argv[1:]
 
 basedir = os.path.dirname(os.path.dirname(os.path.dirname(args[0])))
-drain.step.initialize(basedir)
+
+drain.step.BASEDIR = basedir
+drain.step.configure_yaml()
 
 if is_target(args[0]):
     output = get_step(args[0])
