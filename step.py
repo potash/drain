@@ -63,9 +63,11 @@ def from_yaml(filename):
 def read(name, step_name=None):
     steps = from_yaml(os.path.join(BASEDIR, '.steps', '%s.yaml' % name))
     if step_name is not None:
-        return [s.get_input(name=step_name) for s in steps]
-    else:
-        return steps
+        steps = [s.get_input(name=step_name) for s in steps]
+
+    for s in steps:
+        s.load()
+    return steps
 
 class Step(object):
     def __init__(self, name=None, target=False, **kwargs):
@@ -286,8 +288,8 @@ class Step(object):
         return not self.__eq__(other)
 
 class Construct(Step):
-    def __init__(self, __class_name__, name=None, target=False, **kwargs):
-        Step.__init__(self, __class_name__=__class_name__, name=name, target=target, **kwargs)
+    def __init__(self, __class__, name=None, target=False, **kwargs):
+        Step.__init__(self, __class__=__class__, name=name, target=target, **kwargs)
 
     def run(self, **update_kwargs):
         kwargs = dict(self.__kwargs__)
@@ -295,7 +297,7 @@ class Construct(Step):
             if k in kwargs:
                 kwargs.pop(k)
         kwargs.update(update_kwargs)
-        cls = util.get_attr(kwargs.pop('__class_name__'))
+        cls = util.get_attr(kwargs.pop('__class__'))
         return cls(**kwargs)
 
 # temporary holder of step arguments
@@ -394,7 +396,7 @@ def constructor_multi_constructor(loader, tag_suffix, node):
     class_name = tag_suffix[1:]
     kwargs = loader.construct_mapping(node)
 
-    return Step._template(__cls__=Construct, __class_name__=str(class_name), **kwargs)
+    return Step._template(__cls__=Construct, __class__=str(class_name), **kwargs)
 
 def get_sequence_constructor(method):
     def constructor(loader, node):
