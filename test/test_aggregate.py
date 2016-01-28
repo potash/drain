@@ -6,14 +6,17 @@ def test_aggregator():
                       'population':range(100,600,100) + range(1000,6000,1000)})
 
     df['income'] = df['population'] * (10+(df['type'] == 'urban')*5)
+    print df
 
     aggregates = [
         Count(name='cities'), 
         Count(lambda c: c.type == 'rural', 'rural', prop=True),
-        MultiAggregate('population', ['sum', 'mean', 'median'])]
+        Aggregate('population', ['sum', 'mean', 'median']),
+        Proportion('population', parent=lambda d: d['income']**2)
+    ]
 
     a = Aggregator(df, aggregates)
-    return a.aggregate('state')
+    print a.aggregate('state')
 
 class TestAggregator(SpacetimeAggregator):
     def __init__(self, basedir):

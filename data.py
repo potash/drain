@@ -4,6 +4,7 @@ import re
 import os
 import util
 import warnings
+import logging
 
 import pandas as pd
 from scipy import stats
@@ -29,6 +30,43 @@ class ClassificationData(Step):
         train = pd.Series(train)
 
         return {'X': X, 'y': y, 'train': train, 'test': ~train}
+
+class CreateEngine(Step):
+    def run(self):
+        return util.create_engine()
+
+class FromSQL(Step):
+    def __init__(self, query, **kwargs):
+        Step.__init__(self, query=query, **kwargs)
+        if 'inputs' not in kwargs:
+            self.inputs = [CreateEngine()]
+ 
+    def run(self, engine):
+        return pd.read_sql(self.query, engine)
+
+# write DataFrames to an HDF store
+# pass put_arguments (format, mode, data_columns, etc.) to init
+# pass DataFrames by name via inputs
+class ToHDF(Step):
+    def run(self, **kwargs):
+        store = pd.HDFStore(os.path.join(self.get_dump_dirname(), 'result.h5'))
+
+        for key, df in kwargs.iteritems():
+            logging.info('Writing %s %s' % (key, str(df.shape)))
+            if 'put_args' in self.get_arguments() and key in self.put_args:
+            	args = self.put_args[key]
+            else:
+				args = {}
+
+            store.put(key, df, mode='w', **args)
+
+        return store
+
+    def dump(self):
+        return
+
+    def load(self):
+        self.set_result(pd.HDFStore(os.path.join(self.get_dump_dirname(), 'result.h5')))
 
 class Shape(Step):
     def run(self, X, index=None, **kwargs):

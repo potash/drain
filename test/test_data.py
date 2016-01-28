@@ -1,18 +1,21 @@
-from drain import data
+from drain import data,step
+import tempfile
 import os
 
-def test_read_write(tmpdir):
-    cd = data.ClassificationData()
-    cd.read()
-    cd.write(tmpdir.dirname)
+def setup_module(module):
+    tmpdir = tempfile.mkdtemp()
+    step.BASEDIR=tmpdir
+    step.configure_yaml()
 
-    cd2 = data.ClassificationData()
-    cd2.read(tmpdir.dirname)
+def test_to_hdf():
+   d = data.ClassificationData()
+   h = data.ToHDF(inputs=[d], target=True)
 
-    assert(cd.df.equals(cd2.df))
+   h.setup_dump()
+   step.run(h)
 
-def test_prefix_column():
-    assert data.prefix_column('level_id', 'column') == 'st_level_column'
-    assert data.prefix_column('level_id', 'column', prefix='prefix') == 'st_level_prefix_column'
-    assert data.prefix_column('level_id', 'column', prefix='prefix', delta=1) == 'st_level_1y_prefix_column'
-    assert data.prefix_column('level_id', 'column', prefix='prefix', delta=-1) == 'st_level_all_prefix_column'
+   r0, r1 = h.get_result(), d.get_result()
+
+   for key in r1.keys():
+       assert r0[key].equals(r1[key])
+       

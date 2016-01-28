@@ -13,32 +13,35 @@ import numpy as np
 import util, data
 from util import merge_dicts, hash_obj
 
-# AggregateSeries consist of a series and a function
 # the series can be:
 #    - a callable (taking the DataFrame), e.g. lambda df: df.column**2
 #    - one of the columns in the frame, e.g. 'column'
 #    - a non-string value, e.g. 1
+def get_series(series, df):
+    if hasattr(series, '__call__'):
+        return series(df)
+    elif series in df.columns:
+        return df[series]
+    elif not isinstance(series, basestring):
+        return pd.Series(series, index=df.index)
+    else:
+        raise ValueError('Invalid series: %s' % series)
+ 
+# AggregateSeries consist of a series and a function
 class AggregateSeries(object):
     def __init__(self, series, function):
         self.series = series
         self.function = function
     
     def apply_series(self, df):
-        if hasattr(self.series, '__call__'):
-            return self.series(df)
-        elif self.series in df.columns:
-            return df[self.series]
-        elif not isinstance(self.series, basestring):
-            return pd.Series(self.series, index=df.index)
-        else:
-            raise ValueError('Invalid series: %s' % self.series)
+        return get_series(self.series, df)
     
     def __hash__(self):
         s = hash_obj(self.series)
         f = hash_obj(self.function)
         
         return hash((s,f))
-        
+       
 class AggregateBase(object):
     def __init__(self, columns, aggregate_series):
         self.columns = columns
@@ -54,6 +57,7 @@ class AggregateBase(object):
 # default name is str(series), default function name is str(function)
 # column names are {name}_{function_name}
 # unless single function and function_names=False, then column name is just name
+# TODO: allow list of series, take product(series, functions)
 class Aggregate(AggregateBase):
     def __init__(self, series, functions, name=None, function_names=None):
         if not hasattr(functions, '__iter__'):
@@ -76,30 +80,54 @@ class Aggregate(AggregateBase):
 
 # with no params just counts
 # Default name is column + _count
-# When parent is specified count parent and 
+# When parent is specified count parent
+# TODO: refactor this as a Fraction with include_numerator, include_denominator, include_fraction
+# TODO: overload division of AggregateBase to return Fraction object
 class Count(AggregateBase):
-    def __init__(self, series=None, name=None, prop=None, parent=1):
+    def __init__(self, series=None, name=None, prop=False, parent=1.0, prop_only=True):
+        # if parent is specified, assume we want proportion
+        if parent != 1.0:
+            prop = True
+        self.prop = prop
+        self.prop_only = prop_only
+
         if series is None:
             columns = [name if name is not None else 'count']
-            aggregate_series = [AggregateSeries(1, 'sum')]
+            aggregate_series = [AggregateSeries(1.0, 'sum')]
         else:
             if name is None: name = series
             columns = ['%s_count' % name]
             # converting to float32 before summing is an order of magnitude faster
-            aggregate_series = [AggregateSeries(lambda d: d[series].astype(np.float32), 'sum')]
+            # if series is a function we need to compose it with the cast
+            count_series = lambda d: get_series(series, d).astype(np.float32)
+            aggregate_series = [AggregateSeries(count_series, 'sum')]
             
             if prop:
                 columns.append('%s_prop' % name)
+                count_series = lambda d: get_series(parent, d).astype(np.float32)
                 aggregate_series.append(AggregateSeries(parent, 'sum'))
+
+                if prop_only:
+                    columns = [columns[1]]
             
         AggregateBase.__init__(self, columns, aggregate_series)
     
     def apply(self, series):
-        series[0].name = self.columns[0]
-        if len(self.columns) == 2:
-            series[1] = (series[0] / series[1]).where(series[1] != 0)
-            series[1].name = self.columns[1]
-        return series
+        count = series[0]
+        count.name = self.columns[0]
+        if self.prop:
+            prop = (series[0] / series[1]).where(series[1] != 0)
+            prop.name = self.columns[0] if self.prop_only else self.columns[1]
+
+        if self.prop:
+            return [prop] if self.prop_only else [count, prop]
+        else:
+            return [count]
+
+# a shorthand for Count(prop_only=True)
+class Proportion(Count):
+    def __init__(self, series, **kwargs):
+        Count.__init__(self, series=series, prop_only=True, **kwargs)
 
 def _collect_columns(aggregates):
     columns = set()
@@ -159,14 +187,29 @@ class Aggregator(object):
                for a,r in zip(self.aggregates, self.series_refs))
         return pd.concat(chain(*series), axis=1)
 
+class AggregationBase(Step):
+    def __init__(self, df, aggregates, indexes):
+
 # given a series an end date and number of days, return subset in the date range
-# if deta is -1 then there is no starting date
-def censor(df, date_column, end_date, delta):
+# if deta is None then there is no starting date
+def date_select(df, date_column, end_date, delta):
     df = df[ df[date_column] < end_date ]
 
     if delta is not None:
         start_date = end_date - delta
         df = df[ df[date_column] >= start_date ]
+
+    return df.copy()
+
+# a dictionary of date_column: [dependent_column1, ...] pairs
+# censor the dependent columns when the date column is before the given end_date
+# then censor the date column itself
+def date_censor(df, date_columns, end_date):
+    for date_column, censor_columns in date_columns.iteritems():
+        for censor_column in censor_columns:
+            df[censor_column] = df[censor_column].where(df[date_column] < end_date)
+
+        df[date_column] = df[date_column].where(df[date_column] < end_date)
 
     return df
 
@@ -190,7 +233,7 @@ def aggregate_counts(l):
 # date_col is used by the default censor method
 # TODO: read(left, pivot) support for multiple spatial indexes
 class SpacetimeAggregator(object):
-    def __init__(self, spacedeltas, dates, prefix, basedir, date_col='date'):
+    def __init__(self, spacedeltas, dates, prefix, basedir, date_col='date', censor_cols={}):
         self.spacedeltas = spacedeltas
         self.prefix = prefix
         
@@ -200,6 +243,7 @@ class SpacetimeAggregator(object):
         self.dates = dates
         self.dirname = os.path.join(basedir, prefix)
         self.date_col = date_col
+        self.censor_cols = censor_cols
         
         self.filenames = {d: os.path.join(self.dirname, '%s.hdf' % d.strftime('%Y%m%d')) for d in dates}
 
@@ -272,14 +316,11 @@ class SpacetimeAggregator(object):
 
         return df
 
-    # override this method for more complex censoring
     def censor(self, df, date, delta):
-        return censor(df, self.date_col, date, delta) 
+        df = date_select(df, self.date_col, date, delta)
+        return date_censor(df, self.censor_cols, date)
 
     def get_data(self, date):
-        raise NotImplementedError()
-
-    def get_aggregator(self, date):
         raise NotImplementedError()
 
     def aggregate(self, date):
@@ -295,6 +336,7 @@ class SpacetimeAggregator(object):
                 logging.info('Aggregating %s %s %s' % (date, space, s))
 
                 df_st = self.censor(df_s, date, delta)
+
                 aggregator = Aggregator(df_st, aggregates)
                 aggregated = aggregator.aggregate(index=spatial_index)
 
@@ -350,6 +392,8 @@ delta_chars = {
 
 delta_regex = re.compile('^([0-9]+)(u|s|M|h|d|m|y)$')
 
+# parse a string to a delta
+# 'all' is represented by None
 def parse_delta(s):
     if s == 'all':
         return None
