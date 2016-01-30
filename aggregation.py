@@ -117,7 +117,7 @@ class SimpleAggregation(AggregationBase):
     """
     A simple AggreationBase subclass with a single aggregrator
     The only argument is the index
-    An implementation need only define an aggregates attributes
+    An implementation need only define an aggregates attributes, see test_aggregation.SimpleCrimeAggregation for an example.
     """
     def __init__(self, inputs, indexes, **kwargs):
         self.insert_args = []
@@ -150,6 +150,7 @@ class SpacetimeAggregation(AggregationBase):
     To change that, pass aggregator_args=['date', 'delta', 'index'] and override get_aggregator to accept an index argument.
     Note that dates should be datetime.datetime, not numpy.datetime64, for yaml serialization and to work with dateutil.relativedelta.
     However since pandas automatically turns a datetime column in the index into datetime64 DatetimeIndex, the left dataframe passed to join() should use datetime64!
+    See test_aggregation.SpacetimeCrimeAggregation for an example.
     """
     def __init__(self, inputs, spacedeltas, dates, date_column,
             censor_columns=None, aggregator_args=None, concat_args=None, **kwargs):
