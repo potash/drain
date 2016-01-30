@@ -1,19 +1,17 @@
 import pytest
 import pandas as pd
+import os
 from drain.step import Step
 
 @pytest.fixture
-def df():
-    df = pd.DataFrame({'type':['urban']*5+['rural']*5, 'state':['MI', 'IL']*5,
-            'population':range(100,600,100) + range(1000,6000,1000)})
-    df['income'] = df['population'] * (10+(df['type'] == 'urban')*5)
+def crime_df():
+    return pd.read_csv(os.path.join(os.path.dirname(__file__), 'crimes.csv'),
+            parse_dates=['Date'])
 
-    return df
-
-class TestDataStep(Step):
+class CrimeDataStep(Step):
     def run(self):
-        return df()
+        return crime_df()
 
 @pytest.fixture
-def df_step():
-    return TestDataStep()
+def crime_step():
+    return CrimeDataStep()

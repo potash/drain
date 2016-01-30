@@ -1,34 +1,14 @@
 import pandas as pd
 from drain.aggregate import *
 
-def test_aggregator(df):
-    print df
+def test_aggregator(crime_df):
+    print crime_df
 
     aggregates = [
-        Count(name='cities'), 
-        Count(lambda c: c.type == 'rural', 'rural', prop=True),
-        Aggregate('population', ['sum', 'mean', 'median']),
-        Proportion('population', parent=lambda d: d['income']**2)
+        Count(name='ID'), 
+        Count(name='Arrest'), 
+        Count(lambda c: c['Primary Type'] == 'THEFT', 'theft', prop=True),
     ]
 
-    a = Aggregator(df, aggregates)
-    print a.aggregate('state')
-
-class TestAggregator(SpacetimeAggregator):
-    def __init__(self, basedir):
-        SpacetimeAggregator.__init__(self, 
-                {'state': Spacedeltas('state_id', ['all', '2y']),
-                 'city': Spacedeltas('city_id', ['all','5y'])}, 
-                [date(2000+y,1,1) for y in range(10)],
-                'test', basedir)
-                                     
-    def get_data(self, d):
-        return pd.DataFrame({'type':['urban']*5+['rural']*5, 'state':['MI', 'IL']*5, 'date':[date(2014,1,1)]*10,
-                      'population':range(100,600,100) + range(1000,6000,1000)})
-
-        
-    def get_aggregates(self, d):
-        return [Aggregate('population', ['sum', 'mean']), Aggregate('income', ['sum','mean'])]
-
-#def test_spacetime_aggregator():
-# TODO
+    a = Aggregator(crime_df, aggregates)
+    print a.aggregate('District')
