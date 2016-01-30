@@ -37,7 +37,7 @@ class SpacetimeCrimeAggregation(SpacetimeAggregation):
 def test_spacetime_aggregation(crime_step):
     s = SpacetimeCrimeAggregation(inputs=[crime_step], 
             spacedeltas={'district': ('District', ['12h', '24h']),
-                         'community':('Community Area', ['1d', '2d'])},
+                         'community':('Community Area', ['1d', '2d'])}, parallel=True,
             dates=[date(2015,12,30), date(2015,12,31)])
 
     step.run(s)
@@ -55,7 +55,7 @@ def test_spacetime_join(crime_step):
     s = SpacetimeCrimeAggregation(inputs=[crime_step], 
             spacedeltas={'district': ('District', ['12h', '24h']),
                          'community':('Community Area', ['1d', '2d'])},
-            dates=[date(2015,12,30), date(2015,12,31)])
+            dates=[date(2015,12,30), date(2015,12,31)], parallel=True)
     step.run(s)
 
     left = pd.DataFrame({'District':[1,2], 'Community Area':[1,2], 'date':[np.datetime64(date(2015,12,30)), np.datetime64(date(2015,12,31))]})

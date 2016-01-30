@@ -2,7 +2,7 @@ from drain.step import Step
 from drain.aggregate import Aggregator
 from drain import util, data
 
-from itertools import product
+from itertools import product,chain
 import pandas as pd
 import logging
 
@@ -10,7 +10,7 @@ class AggregationBase(Step):
     """
     AggregationBase uses aggregate.Aggregator to aggregate data. It can include aggregations over multiple indexes and multiple data transformations (e.g. subsets). The combinations can be run in parallel and can be returned disjointl or concatenated. Finally the results may be pivoted and joined to other datasets.
     """
-    def __init__(self, inputs, parallel=False, concat=True, target=False, prefix='', **kwargs):
+    def __init__(self, inputs, parallel=False, target=False, prefix='', **kwargs):
         """
         insert_args is a collection of argument names to insert into the results
         argument names that are not in insert_args will get pivoted
@@ -18,7 +18,7 @@ class AggregationBase(Step):
         """
 
         Step.__init__(self, inputs=inputs, prefix=prefix,
-                parallel=parallel, concat=concat, target=target, **kwargs)
+                parallel=parallel, target=target, **kwargs)
 
         if parallel:
             self.inputs = []
@@ -26,7 +26,7 @@ class AggregationBase(Step):
             # pass our input to those steps
             # those become the inputs to this step
             for kwargs in self.parallel_kwargs:
-                a = self.__class__(inputs=inputs, parallel=False, concat=concat,
+                a = self.__class__(inputs=inputs, parallel=False,
                         target=target, prefix=prefix, **kwargs)
                 self.inputs.append(a)
 
@@ -56,17 +56,14 @@ class AggregationBase(Step):
         # this only works if concat is true!
         index = left.index
         
-        for prefix, df in self.get_result().iteritems():
+        for prefix, df in self.get_concat_result().iteritems():
             data.prefix_columns(df, prefix + '_')
             left = left.merge(df, left_on=df.index.names, right_index=True, how='left')
         return left
 
     def run(self,*args, **kwargs):
         if self.parallel:
-            if self.concat:
-                return kwargs
-            else:
-                return args
+            return chain(*args)
 
         if not self.parallel:
             dfs = []
@@ -82,18 +79,20 @@ class AggregationBase(Step):
                 df.set_index(self.insert_args, append=True, inplace=True)
                 dfs.append(df)
 
-            if self.concat:
-                to_concat = {}
-                for argument, df in zip(self.arguments, dfs):
-                    # use concat_args_prefix as the key because step.run() wants keys to be valid python variable names! maybe need to make that optional...
-                    concat_args_prefix = self.concat_args_prefix(argument)
-                    if concat_args_prefix not in to_concat:
-                        to_concat[concat_args_prefix] = [df]
-                    else:
-                        to_concat[concat_args_prefix].append(df)
-                dfs = {conat_args_prefix:pd.concat(dfs) 
-                        for conat_args_prefix,dfs in to_concat.iteritems()}
+            return dfs
 
+    def get_concat_result(self):
+        to_concat = {}
+        dfs = self.get_result()
+        for argument, df in zip(self.arguments, dfs):
+            # use concat_args_prefix as the key because step.run() wants keys to be valid python variable names! maybe need to make that optional...
+            concat_args_prefix = self.concat_args_prefix(argument)
+            if concat_args_prefix not in to_concat:
+                to_concat[concat_args_prefix] = [df]
+            else:
+                to_concat[concat_args_prefix].append(df)
+        dfs = {concat_args_prefix:pd.concat(dfs) 
+                for concat_args_prefix,dfs in to_concat.iteritems()}
         return dfs
 
     def _get_aggregator(self, **kwargs):
@@ -150,6 +149,7 @@ class SpacetimeAggregation(AggregationBase):
     By default the aggregator_args are date and delta (i.e. independent of aggregation index).
     To change that, pass aggregator_args=['date', 'delta', 'index'] and override get_aggregator to accept an index argument.
     Note that dates should be datetime.datetime, not numpy.datetime64, for yaml serialization and to work with dateutil.relativedelta.
+    However since pandas automatically turns a datetime column in the index into datetime64 DatetimeIndex, the left dataframe passed to join() should use datetime64!
     """
     def __init__(self, inputs, spacedeltas, dates, date_column,
             censor_columns=None, aggregator_args=None, concat_args=None, **kwargs):
