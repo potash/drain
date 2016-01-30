@@ -11,6 +11,7 @@ from scipy import stats
 
 import numpy as np
 from numpy import random
+
 import collections
 from itertools import product
 

@@ -152,6 +152,9 @@ def merge_dicts(*dict_args):
         result.update(dictionary)
     return result
 
+def dict_subset(d, keys):
+    return {k:d[k] for k in keys}
+
 def nunique(iterable):
     try:
         return len(set(iterable))

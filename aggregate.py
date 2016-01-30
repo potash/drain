@@ -187,9 +187,6 @@ class Aggregator(object):
                for a,r in zip(self.aggregates, self.series_refs))
         return pd.concat(chain(*series), axis=1)
 
-class AggregationBase(Step):
-    def __init__(self, df, aggregates, indexes):
-
 # given a series an end date and number of days, return subset in the date range
 # if deta is None then there is no starting date
 def date_select(df, date_column, end_date, delta):
