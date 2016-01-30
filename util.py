@@ -67,9 +67,6 @@ def get_attr(name):
     mod = __import__(module, fromlist=[cls])
     return getattr(mod,cls)
 
-def prefix_columns(df, prefix, ignore=[]):
-    df.columns =  [prefix + c if c not in ignore else c for c in df.columns]
-
 def init_object(name, **kwargs):
     return get_attr(name)(**kwargs)
 

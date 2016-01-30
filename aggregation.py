@@ -1,6 +1,6 @@
 from drain.step import Step
 from drain.aggregate import Aggregator
-from drain import util
+from drain import util, data
 
 from itertools import product
 import pandas as pd
@@ -29,6 +29,8 @@ class AggregationBase(Step):
                 a = self.__class__(inputs=inputs, parallel=False, concat=concat,
                         target=target, prefix=prefix, **kwargs)
                 self.inputs.append(a)
+
+        self._aggregators = {}
     
         """
         arguments is a list of dictionaries of argument names and values.
@@ -39,6 +41,25 @@ class AggregationBase(Step):
         called by __init__ when parallel=True
         to get keyword args to pass to parallelized inputs
         """
+    @property
+    def argument_names(self):
+        return list(util.union(map(set, self.arguments)))
+
+    def concat_args_prefix(self, argument):
+        """
+        given an agggregator argument, get the corresponding prefix
+        """
+        concat_args = tuple(argument[k] for k in self.concat_args)
+        return str.join('_', map(str, concat_args))
+
+    def join(self, left):
+        # this only works if concat is true!
+        index = left.index
+        
+        for prefix, df in self.get_result().iteritems():
+            data.prefix_columns(df, prefix + '_')
+            left = left.merge(df, left_on=df.index.names, right_index=True, how='left')
+        return left
 
     def run(self,*args, **kwargs):
         if self.parallel:
@@ -52,29 +73,32 @@ class AggregationBase(Step):
 
             for argument in self.arguments:
                 logging.info('Aggregating %s' % argument)
-                aggregator = self.get_aggregator(**argument)
+                aggregator = self._get_aggregator(**argument)
                 df = aggregator.aggregate(self.indexes[argument['index']])
                 # insert insert_args
                 for k in argument:
                     if k in self.insert_args:
                         df[k] = argument[k]
+                df.set_index(self.insert_args, append=True, inplace=True)
                 dfs.append(df)
 
             if self.concat:
                 to_concat = {}
                 for argument, df in zip(self.arguments, dfs):
-                    name = argument['index']
-                    if name not in to_concat:
-                        to_concat[name] = [df]
+                    # use concat_args_prefix as the key because step.run() wants keys to be valid python variable names! maybe need to make that optional...
+                    concat_args_prefix = self.concat_args_prefix(argument)
+                    if concat_args_prefix not in to_concat:
+                        to_concat[concat_args_prefix] = [df]
                     else:
-                        to_concat[name].append(df)
-                dfs = {name:pd.concat(dfs) for name,dfs in to_concat.iteritems()}
+                        to_concat[concat_args_prefix].append(df)
+                dfs = {conat_args_prefix:pd.concat(dfs) 
+                        for conat_args_prefix,dfs in to_concat.iteritems()}
 
         return dfs
 
     def _get_aggregator(self, **kwargs):
         args_tuple = (kwargs[k] for k in self.aggregator_args)
-        if aggregator_args in self._aggregators:
+        if args_tuple in self._aggregators:
             return self._aggregators[args_tuple]
         else:
             aggregator = self.get_aggregator(
@@ -98,6 +122,7 @@ class SimpleAggregation(AggregationBase):
     """
     def __init__(self, inputs, indexes, **kwargs):
         self.insert_args = []
+        self.concat_args = ['index']
         self.aggregator_args = []
 
         AggregationBase.__init__(self, inputs=inputs, indexes=indexes, **kwargs)
@@ -124,20 +149,13 @@ class SpacetimeAggregation(AggregationBase):
     We assume that the index and deltas are independent of the date, so every date is aggregated to all spacedeltas
     By default the aggregator_args are date and delta (i.e. independent of aggregation index).
     To change that, pass aggregator_args=['date', 'delta', 'index'] and override get_aggregator to accept an index argument.
+    Note that dates should be datetime.datetime, not numpy.datetime64, for yaml serialization and to work with dateutil.relativedelta.
     """
     def __init__(self, inputs, spacedeltas, dates, date_column,
-            censor_columns=None, aggregator_args=None, **kwargs):
-
-        self.insert_args=['date']
-        if aggregator_args is None:
-            self.aggregator_args = ['date', 'delta']
-        else:
-            self.aggregator_args = aggregator_args
-
-        if censor_columns is None:
-            self.censor_columns = []
-        else:
-            self.censor_columns = censor_columns
+            censor_columns=None, aggregator_args=None, concat_args=None, **kwargs):
+        if aggregator_args is None: aggregator_args = ['date', 'delta']
+        if concat_args is None: concat_args = ['index', 'delta']
+        if censor_columns is None: censor_columns = {}
 
         """
         spacedeltas is a dict of the form {name: (index, deltas)} where deltas is an array of delta strings
@@ -145,17 +163,17 @@ class SpacetimeAggregation(AggregationBase):
         """
         AggregationBase.__init__(self, inputs=inputs,
                 spacedeltas=spacedeltas, dates=dates, 
-                date_column=date_column, censor_columns=censor_columns, **kwargs)
+                date_column=date_column, insert_args=['date'], aggregator_args=aggregator_args, concat_args=concat_args, censor_columns=censor_columns, **kwargs)
 
     @property
     def indexes(self):
-        return [{name:value[0]} for name,value in self.spacedeltas.iteritems()]
+        return {name:value[0] for name,value in self.spacedeltas.iteritems()}
 
     @property
     def arguments(self):
         a = []
         for date in self.dates:
-            for name,spacedelta in self.spacedeltas.iteritems():
+            for name,spacedeltas in self.spacedeltas.iteritems():
                 for delta in spacedeltas[1]:
                     a.append({'date':date, 'delta': delta, 'index':name})
 
@@ -167,13 +185,13 @@ class SpacetimeAggregation(AggregationBase):
 
     def get_aggregator(self, date, delta):
         df = self.get_data(date, delta)
-        aggregator = Aggregator(df, get_aggregates(date, delta))
+        aggregator = Aggregator(df, self.get_aggregates(date, delta))
         return aggregator
 
     def get_data(self, date, delta):
         df = self.inputs[0].get_result()
-        df = select_dates(df, self.date_column, date, delta)
-        df = censor_dates(df, self.censor_columns, date, delta)
+        df = data.date_select(df, self.date_column, date, delta)
+        df = data.date_censor(df, self.censor_columns, date)
         return df
 
     def get_aggregates(self, date, delta):

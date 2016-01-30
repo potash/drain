@@ -11,6 +11,7 @@ from scipy import stats
 
 import numpy as np
 from numpy import random
+from dateutil.relativedelta import relativedelta
 
 import collections
 from itertools import product
@@ -18,7 +19,6 @@ from itertools import product
 from sklearn import preprocessing, datasets
 from sklearn.utils.validation import _assert_all_finite
 
-from util import prefix_columns, join_years
 from step import Step
 
 class ClassificationData(Step):
@@ -87,6 +87,9 @@ class HoldOut(Step):
 
 def percentile(series):
     return pd.Series(stats.rankdata(series)/len(series), index=series.index)
+
+def prefix_columns(df, prefix, ignore=[]):
+    df.columns =  [prefix + c if c not in ignore else c for c in df.columns]
 
 # generate year, month, day features from specified date features
 def expand_dates(df, columns=[]):
@@ -298,11 +301,59 @@ def undersample_to(y, train, p):
     q = p*T/((1-p)*F)
     return undersample_by(y, train, q)
 
-def censor_column(date_column, today, column = None):
+def date_censor_sql(date_column, today, column = None):
     if column is None:
         column = date_column
     return "(CASE WHEN {date_column} < '{today}' THEN {column} ELSE null END)".format(
             date_column=date_column, today=today, column=column)
+
+def date_select(df, date_column, date, delta):
+    """
+    given a series an end date and number of days, return subset in the date range
+    if deta is None then there is no starting date
+    """
+    delta = parse_delta(delta)
+    df = df[ df[date_column] < date ]
+
+    if delta is not None:
+        start_date = date - delta
+        df = df[ df[date_column] >= start_date ]
+
+    return df.copy()
+
+def date_censor(df, date_columns, date):
+    """
+    a dictionary of date_column: [dependent_column1, ...] pairs
+    censor the dependent columns when the date column is before the given end_date
+    then censor the date column itself
+    """
+    for date_column, censor_columns in date_columns.iteritems():
+        for censor_column in censor_columns:
+            df[censor_column] = df[censor_column].where(df[date_column] < date)
+
+        df[date_column] = df[date_column].where(df[date_column] < date)
+
+    return df
+
+
+delta_chars = {
+        'y':'years', 'm':'months', 'w':'weeks', 'd':'days', 'h':'hours',
+        'M':'minutes', 's':'seconds', 'u':'microseconds'
+}
+
+delta_regex = re.compile('^([0-9]+)(u|s|M|h|d|m|y)$')
+
+# parse a string to a delta
+# 'all' is represented by None
+def parse_delta(s):
+    if s == 'all':
+        return None
+    else:
+        l = delta_regex.findall(s)
+        if len(l) == 1:
+            return relativedelta(**{delta_chars[l[0][1]]:int(l[0][0])})
+        else:
+            raise ValueError('Invalid delta string: %s' % s)
 
 def nearest_neighbors_impute(df, coordinate_columns, data_columns, knr_params={}):
     from sklearn.neighbors import KNeighborsRegressor

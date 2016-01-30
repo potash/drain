@@ -1,14 +1,16 @@
 from drain.aggregation import SimpleAggregation, SpacetimeAggregation
 from drain.aggregate import Count
 from drain import step
+from datetime import date
+import pandas as pd
 import numpy as np
 
 class SimpleCrimeAggregation(SimpleAggregation):
     @property
     def aggregates(self):
         return [
-       	    Count(name='ID'),
-            Count(name='Arrest'),
+       	    Count(),
+            Count('Arrest'),
       	    Count(lambda c: c['Primary Type'] == 'THEFT', 'theft', prop=True),
 	]
 
@@ -34,9 +36,28 @@ class SpacetimeCrimeAggregation(SpacetimeAggregation):
 
 def test_spacetime_aggregation(crime_step):
     s = SpacetimeCrimeAggregation(inputs=[crime_step], 
-            spacedeltas={'district': ('District', ['1m', '2m']),
-                         'community':('Community Area', ['1m', '6m'])},
-            dates=[np.datetime64('2013-01-01'), np.datetime64('2013-06-01')])
+            spacedeltas={'district': ('District', ['12h', '24h']),
+                         'community':('Community Area', ['1d', '2d'])},
+            dates=[date(2015,12,30), date(2015,12,31)])
 
     step.run(s)
     print s.get_result()
+
+def test_simple_join(crime_step):
+    s = SimpleCrimeAggregation(inputs=[crime_step],
+        indexes=['District', 'Community Area'], parallel=True)
+    step.run(s)
+
+    left = pd.DataFrame({'District':[1,2], 'Community Area':[1,2]})
+    print s.join(left)
+
+def test_spacetime_join(crime_step):
+    s = SpacetimeCrimeAggregation(inputs=[crime_step], 
+            spacedeltas={'district': ('District', ['12h', '24h']),
+                         'community':('Community Area', ['1d', '2d'])},
+            dates=[date(2015,12,30), date(2015,12,31)])
+    step.run(s)
+
+    left = pd.DataFrame({'District':[1,2], 'Community Area':[1,2], 'date':[np.datetime64(date(2015,12,30)), np.datetime64(date(2015,12,31))]})
+    print s.join(left)
+
