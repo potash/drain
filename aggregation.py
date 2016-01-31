@@ -10,15 +10,20 @@ class AggregationBase(Step):
     """
     AggregationBase uses aggregate.Aggregator to aggregate data. It can include aggregations over multiple indexes and multiple data transformations (e.g. subsets). The combinations can be run in parallel and can be returned disjointl or concatenated. Finally the results may be pivoted and joined to other datasets.
     """
-    def __init__(self, inputs, parallel=False, target=False, prefix='', **kwargs):
+    def __init__(self, insert_args, aggregator_args, concat_args, 
+            parallel=False, target=False, prefix='', **kwargs):
         """
         insert_args is a collection of argument names to insert into the results
         argument names that are not in insert_args will get pivoted
         block_args will run together when parallel=True
         """
 
-        Step.__init__(self, inputs=inputs, prefix=prefix,
-                parallel=parallel, target=target, **kwargs)
+        self.insert_args = insert_args
+        self.concat_args = concat_args
+        self.aggregator_args = aggregator_args
+        self.prefix = prefix
+
+        Step.__init__(self, parallel=parallel, target=target and not parallel, **kwargs)
 
         if parallel:
             self.inputs = []
@@ -26,8 +31,7 @@ class AggregationBase(Step):
             # pass our input to those steps
             # those become the inputs to this step
             for kwargs in self.parallel_kwargs:
-                a = self.__class__(inputs=inputs, parallel=False,
-                        target=target, prefix=prefix, **kwargs)
+                a = self.__class__(parallel=False, target=target, **kwargs)
                 self.inputs.append(a)
 
         self._aggregators = {}
@@ -119,12 +123,9 @@ class SimpleAggregation(AggregationBase):
     The only argument is the index
     An implementation need only define an aggregates attributes, see test_aggregation.SimpleCrimeAggregation for an example.
     """
-    def __init__(self, inputs, indexes, **kwargs):
-        self.insert_args = []
-        self.concat_args = ['index']
-        self.aggregator_args = []
+    def __init__(self, indexes, **kwargs):
 
-        AggregationBase.__init__(self, inputs=inputs, indexes=indexes, **kwargs)
+        AggregationBase.__init__(self, indexes=indexes, insert_args=[], concat_args=['index'], aggregator_args=[], **kwargs)
 
         # if indexes was not a dict but a list, make it a dict
         if not isinstance(indexes, dict):
@@ -152,19 +153,22 @@ class SpacetimeAggregation(AggregationBase):
     However since pandas automatically turns a datetime column in the index into datetime64 DatetimeIndex, the left dataframe passed to join() should use datetime64!
     See test_aggregation.SpacetimeCrimeAggregation for an example.
     """
-    def __init__(self, inputs, spacedeltas, dates, date_column,
+    def __init__(self, spacedeltas, dates, date_column,
             censor_columns=None, aggregator_args=None, concat_args=None, **kwargs):
         if aggregator_args is None: aggregator_args = ['date', 'delta']
         if concat_args is None: concat_args = ['index', 'delta']
-        if censor_columns is None: censor_columns = {}
+
+        self.censor_columns = censor_columns if censor_columns is not None else {}
+        self.date_column = date_column
 
         """
         spacedeltas is a dict of the form {name: (index, deltas)} where deltas is an array of delta strings
         dates are end dates for the aggregators
         """
-        AggregationBase.__init__(self, inputs=inputs,
+        AggregationBase.__init__(self,
                 spacedeltas=spacedeltas, dates=dates, 
-                date_column=date_column, insert_args=['date'], aggregator_args=aggregator_args, concat_args=concat_args, censor_columns=censor_columns, **kwargs)
+                insert_args=['date'], aggregator_args=aggregator_args,
+                concat_args=concat_args, **kwargs)
 
     @property
     def indexes(self):

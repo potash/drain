@@ -39,8 +39,6 @@ if __name__ == "__main__":
         fn = getattr(mod, fname)
         steps = fn()
 
-
-
     if args.Drakeinput is None and os.path.exists('Drakefile'):
         args.Drakeinput = 'Drakefile'
 

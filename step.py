@@ -83,7 +83,7 @@ class Step(object):
         for k in kwargs:
             setattr(self, k, kwargs[k])
         
-        if 'inputs' not in kwargs:
+        if not hasattr(self, 'inputs'):
             self.inputs = []
 
         hasher = hashlib.md5(yaml.dump(self)) # this won't work right if we haven't called initialize()
@@ -455,7 +455,6 @@ def get_output_targets(step):
 
 # returns three Step:set<Step> dicts
 # output_inputs: maps output to inputs
-# output_no_outputs: maps output to no-outputs that depend on it (for no-output steps with single target input)
 # no_output_inputs: maps no_output step with *multiple* target inputs to them
 def get_drake_data_helper(steps):
     output_inputs = {}
