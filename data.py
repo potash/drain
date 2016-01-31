@@ -43,7 +43,9 @@ class FromSQL(Step):
             self.inputs = [CreateEngine()]
  
     def run(self, engine):
-        return pd.read_sql(self.query, engine)
+        kwargs = dict(self.__kwargs__)
+        kwargs.pop('query')
+        return pd.read_sql(self.query, engine, **kwargs)
 
 # write DataFrames to an HDF store
 # pass put_arguments (format, mode, data_columns, etc.) to init
