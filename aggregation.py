@@ -26,12 +26,14 @@ class AggregationBase(Step):
         Step.__init__(self, parallel=parallel, target=target and not parallel, **kwargs)
 
         if parallel:
+            inputs = self.inputs
             self.inputs = []
             # create a new Aggregation according to parallel_kwargs
             # pass our input to those steps
             # those become the inputs to this step
             for kwargs in self.parallel_kwargs:
                 a = self.__class__(parallel=False, target=target, **kwargs)
+                a.inputs = inputs
                 self.inputs.append(a)
 
         self._aggregators = {}

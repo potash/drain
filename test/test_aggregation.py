@@ -15,8 +15,9 @@ class SimpleCrimeAggregation(SimpleAggregation):
 	]
 
 def test_simple_aggregation(crime_step):
-    s = SimpleCrimeAggregation(inputs=[crime_step], 
+    s = SimpleCrimeAggregation( 
 	indexes=['District', 'Community Area'], parallel=True)
+    s.inputs=[crime_step]
     step.run(s)
     print s.get_result()
 
