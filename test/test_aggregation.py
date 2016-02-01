@@ -14,9 +14,16 @@ class SimpleCrimeAggregation(SimpleAggregation):
       	    Count(lambda c: c['Primary Type'] == 'THEFT', 'theft', prop=True),
 	]
 
-def test_simple_aggregation(crime_step):
+def test_simple_aggregation_parallel(crime_step):
     s = SimpleCrimeAggregation(inputs=[crime_step], 
 	indexes=['District', 'Community Area'], parallel=True)
+    s.inputs=[crime_step]
+    step.run(s)
+    print s.get_result()
+
+def test_simple_aggregation(crime_step):
+    s = SimpleCrimeAggregation(inputs=[crime_step], 
+	indexes=['District', 'Community Area'], parallel=False)
     s.inputs=[crime_step]
     step.run(s)
     print s.get_result()

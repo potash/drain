@@ -11,10 +11,9 @@ import base64
 import hashlib
 import itertools
 import logging
+import shutil
 
-from . import util
-
-#from model import SklearnEstimatorStep
+from drain import util
 
 # TODO:
 #    - random grid search
@@ -27,11 +26,14 @@ BASEDIR=None
 # run the given step
 # inputs should be loaded from disk
 # output should be written to disk
+# recreate the dump directory before dumping
 def run(step, inputs=None, output=None):
+    if step == output:
+        shutil.rmtree(step.get_dump_dirname())
+        os.makedirs(step.get_dump_dirname())
+
     if inputs is None:
         inputs = []
-    if output is None:
-        output = []
 
     if not step.has_result():
         if step in inputs:
@@ -239,7 +241,11 @@ class Step(object):
         return self.__target__
     
     def load(self, **kwargs):
-        self.set_result(joblib.load(os.path.join(self.get_dirname(), 'dump', 'result.pkl'), **kwargs))
+        hdf_filename = os.path.join(self.get_dirname(), 'dump', 'result.h5')
+        if os.path.isfile(hdf_filename):
+            self.set_result(pd.read_hdf(hdf_filename), 'df')
+        else:
+            self.set_result(joblib.load(os.path.join(self.get_dirname(), 'dump', 'result.pkl')))
 
     def setup_dump(self):
         dumpdir = self.get_dump_dirname()
@@ -261,9 +267,12 @@ class Step(object):
             with open(yaml_filename, 'w') as f:
                 yaml.dump(self, f)
 
-    def dump(self, **kwargs):
+    def dump(self):
         self.setup_dump()
-        joblib.dump(self.get_result(), os.path.join(self.get_dump_dirname(), 'result.pkl'), **kwargs)
+        result = self.get_result()
+        if isinstance(result, pd.DataFrame):
+            result.to_hdf(os.path.join(self.get_dump_dirname(), 'result.h5'), 'df')
+        joblib.dump(self.get_result(), os.path.join(self.get_dump_dirname(), 'result.pkl'))
 
     def __repr__(self):
         class_name = self.__class__.__name__
