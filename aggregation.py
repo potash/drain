@@ -10,7 +10,7 @@ class AggregationBase(Step):
     """
     AggregationBase uses aggregate.Aggregator to aggregate data. It can include aggregations over multiple indexes and multiple data transformations (e.g. subsets). The combinations can be run in parallel and can be returned disjointl or concatenated. Finally the results may be pivoted and joined to other datasets.
     """
-    def __init__(self, inputs, insert_args, aggregator_args, concat_args, 
+    def __init__(self, insert_args, aggregator_args, concat_args, 
             parallel=False, target=False, prefix='', **kwargs):
         """
         insert_args is a collection of argument names to insert into the results
@@ -18,7 +18,6 @@ class AggregationBase(Step):
         block_args will run together when parallel=True
         """
 
-        self.inputs = inputs
         self.insert_args = insert_args
         self.concat_args = concat_args
         self.aggregator_args = aggregator_args
@@ -27,6 +26,7 @@ class AggregationBase(Step):
         Step.__init__(self, parallel=parallel, target=target and not parallel, **kwargs)
 
         if parallel:
+            inputs = self.inputs if hasattr(self, 'inputs') else []
             self.inputs = []
             # create a new Aggregation according to parallel_kwargs
             # pass our input to those steps
@@ -77,6 +77,7 @@ class AggregationBase(Step):
                 logging.info('Aggregating %s' % argument)
                 aggregator = self._get_aggregator(**argument)
                 df = aggregator.aggregate(self.indexes[argument['index']])
+                logging.info('Aggregated %s: %s' % (argument, df.shape))
                 # insert insert_args
                 for k in argument:
                     if k in self.insert_args:
