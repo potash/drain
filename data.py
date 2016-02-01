@@ -37,15 +37,22 @@ class CreateEngine(Step):
         return util.create_engine()
 
 class FromSQL(Step):
-    def __init__(self, query, **kwargs):
-        Step.__init__(self, query=query, **kwargs)
+    def __init__(self, query, to_str=[], **kwargs):
+        Step.__init__(self, query=query, to_str=[], **kwargs)
         if 'inputs' not in kwargs:
             self.inputs = [CreateEngine()]
  
     def run(self, engine):
         kwargs = dict(self.__kwargs__)
         kwargs.pop('query')
-        return pd.read_sql(self.query, engine, **kwargs)
+        kwargs.pop('to_str')
+
+        df = pd.read_sql(self.query, engine, **kwargs)
+        for column in self.to_str:
+            if column in df.columns:
+                df[column] = df[column].astype(str)
+
+        return df
 
 # write DataFrames to an HDF store
 # pass put_arguments (format, mode, data_columns, etc.) to init
@@ -65,10 +72,6 @@ class ToHDF(Step):
             	args = self.put_args[key]
             else:
                 args = {}
-
-            for column in self.to_str:
-                if column in df.columns:
-                    df[column] = df[column].astype(str)
 
             store.put(key, df, mode='w', **args)
 
