@@ -38,7 +38,7 @@ class CreateEngine(Step):
 
 class FromSQL(Step):
     def __init__(self, query, to_str=[], **kwargs):
-        Step.__init__(self, query=query, to_str=[], **kwargs)
+        Step.__init__(self, query=query, to_str=to_str, **kwargs)
         if 'inputs' not in kwargs:
             self.inputs = [CreateEngine()]
  
@@ -333,7 +333,7 @@ def date_select(df, date_column, date, delta):
         start_date = date - delta
         df = df[ df[date_column] >= start_date ]
 
-    return df.copy()
+    return df
 
 def date_censor(df, date_columns, date):
     """

@@ -226,3 +226,32 @@ class PrintMetrics(Step):
 
             r = metric_fn(self.inputs[0], **kwargs)
             print '%s(%s): %s' % (metric_name, _pprint(kwargs, offset=len(metric_name)), r)
+
+def perturb(estimator, x, i, x_min=-1, x_max=1, N=100):
+    """
+    calculates predictions on peturbations of a feature vector
+    estimator: a fitted sklearn estimator
+    x: an example vector
+    i: feature index
+    x_min, x_max: range of values to sample
+    N: number of samples
+    """
+    X = np.empty((N, len(x)))
+    X[:] = x
+
+    values = np.linspace(x_min, x_max, N)
+    X[:,i] = values
+    
+    y = r.estimator.predict_proba(X)[:,1]
+    return pd.Series(y, index=values)
+
+def feature_index(X, name):     
+    return np.where(X.columns == feature)[0][0]
+
+def plot_perturbation(estimator, X, row, feature, **perturb_args):
+    """
+    given a dataframe a row number and feature name, plot results of perturb
+    """
+    perturbed = preturb(estimator, X.iloc[row], feature_index(feature), **perturb_args)
+    ax = perturbed.plot()
+    ax.vlines(x=X.iloc[row][feature], ymin=perturbed.min(), ymax=perturbed.max())

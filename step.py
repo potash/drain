@@ -234,8 +234,8 @@ class Step(object):
     def get_target_filename(self):
         return os.path.join(self.get_dirname(), 'target')
         
-    def run(self):
-        raise NotImplementedError()
+    def run(self, *args, **kwargs):
+        pass
     
     def is_target(self):
         return self.__target__
@@ -243,7 +243,7 @@ class Step(object):
     def load(self, **kwargs):
         hdf_filename = os.path.join(self.get_dirname(), 'dump', 'result.h5')
         if os.path.isfile(hdf_filename):
-            self.set_result(pd.read_hdf(hdf_filename), 'df')
+            self.set_result(pd.read_hdf(hdf_filename, 'df'))
         else:
             self.set_result(joblib.load(os.path.join(self.get_dirname(), 'dump', 'result.pkl')))
 

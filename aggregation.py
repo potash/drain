@@ -198,7 +198,7 @@ class SpacetimeAggregation(AggregationBase):
     def get_data(self, date, delta):
         df = self.inputs[0].get_result()
         df = data.date_select(df, self.date_column, date, delta)
-        df = data.date_censor(df, self.censor_columns, date)
+        df = data.date_censor(df.copy(), self.censor_columns, date)
         return df
 
     def get_aggregates(self, date, delta):
