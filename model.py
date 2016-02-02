@@ -229,7 +229,7 @@ class PrintMetrics(Step):
 
 def perturb(estimator, x, i, x_min=-1, x_max=1, N=100):
     """
-    calculates predictions on peturbations of a feature vector
+    Predict on peturbations of a feature vector
     estimator: a fitted sklearn estimator
     x: an example vector
     i: feature index
@@ -245,13 +245,16 @@ def perturb(estimator, x, i, x_min=-1, x_max=1, N=100):
     y = r.estimator.predict_proba(X)[:,1]
     return pd.Series(y, index=values)
 
-def feature_index(X, name):     
+def feature_index(X, name):
+    """
+    Get the column position in a DataFrame given its name
+    """
     return np.where(X.columns == feature)[0][0]
 
 def plot_perturbation(estimator, X, row, feature, **perturb_args):
     """
-    given a dataframe a row number and feature name, plot results of perturb
+    Given a DataFrame, a row number, and feature name, plot results of perturb
     """
-    perturbed = preturb(estimator, X.iloc[row], feature_index(feature), **perturb_args)
+    perturbed = preturb(estimator, X.iloc[row], feature_index(X, feature), **perturb_args)
     ax = perturbed.plot()
     ax.vlines(x=X.iloc[row][feature], ymin=perturbed.min(), ymax=perturbed.max())
