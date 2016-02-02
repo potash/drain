@@ -3,11 +3,10 @@ import logging
 import itertools
 import os
 import numpy as np
-import datetime
 import sys
 import yaml
 import pandas as pd
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from sklearn import preprocessing
 from scipy import stats
 
@@ -52,8 +51,16 @@ def hash_obj(obj):
     except: 
         return hash((False, id(obj)))
 
-def datetime64(year,month,day):
-    return np.datetime64( ("%04d" % year) + '-' +  ("%02d" % month) + '-' + ("%02d" % day))
+def timestamp(year,month,day):
+    return pd.Timestamp( ("%04d" % year) + '-' +  ("%02d" % month) + '-' + ("%02d" % day))
+
+def date_ceil(t, month, day):
+    c = timestamp(t.year, month, day)
+    return c if c >= t else timestamp(t.year+1, month, day)
+
+def date_floor(month, day):
+    f = timestamp(t.year, month, day)
+    return f if f <= t else timestamp(t.year-1, month, day)
 
 def eqattr(object1, object2, attr):
     return hasattr(object1, attr) and hasattr(object2, attr) and (getattr(object1, attr) == getattr(object2, attr))
@@ -84,23 +91,6 @@ def randdates(start,end, size):
         d[i] = start + r[i]
     return d
 
-# return the index (given level) as a series with the original index
-def index_as_series(df, level=None):
-    if level is not None:
-        values = df.index.get_level_values(level)
-    else:
-        values = df.index.values
-
-    return pd.Series(values, index=df.index)
-
-# get a column or index level as series
-# if name is none return the whole index
-def get_series(df, name):
-    if name in df.columns:
-        return df[name]
-    else:
-        return index_as_series(df, name)
-
 # pandas mode is "empty if nothing has 2+ occurrences."
 # this method always returns something (nan if the series is empty/nan), breaking ties arbitrarily
 def mode(series):
@@ -124,13 +114,13 @@ def get_collinear(df, tol=.1, verbose=False):
     if verbose:
         for i in range(len(diag)):
             if np.abs(diag[i]) < tol:
-                print r[:,i] # TODO print equation with column names!
+                print(r[:,i]) # TODO print equation with column names!
     return [df.columns[i] for i in range(len(diag)) if np.abs(diag[i]) < tol]
 
 def drop_collinear(df, tol=.1, verbose=True):
     columns = get_collinear(df, tol=tol)
     if (len(columns) > 0) and verbose:
-        print 'Dropping collinear columns: ' + str(columns)
+        logging.info('Dropping collinear columns: ' + str(columns))
     df.drop(columns, axis=1, inplace=True)
     return df
 
@@ -156,7 +146,7 @@ def nunique(iterable):
     try:
         return len(set(iterable))
     except TypeError:
-        print 'unhashable!'
+        logging.info('unhashable!')
         unique = []
         for i in iterable:
             if i not in unique:
@@ -339,7 +329,7 @@ class PgSQLDatabase(pandas.io.sql.SQLDatabase):
         frame.to_csv(p.stdin, index=index)
 
         psql_out = p.communicate()[0]
-        print psql_out.decode(),
+        logging.info(psql_out.decode()),
         
         r = p.wait()
         if raise_on_error and (r > 0):
@@ -358,7 +348,7 @@ class PgSQLDatabase(pandas.io.sql.SQLDatabase):
         df = pd.read_csv(p.stdout)
 
         psql_out = p.communicate()[0]
-        print psql_out.decode(),
+        logging.info(psql_out.decode()),
 
         r = p.wait()
         if raise_on_error and (r > 0):

@@ -303,7 +303,7 @@ def get_correlates(df, c=.99):
     for i in range(len(df.columns)):
         for j in range(i):
             if corr[i][j] >= c:
-                print df.columns[i] + ', ' + df.columns[j] + ': ' + str(corr[i][j])
+                print(df.columns[i] + ', ' + df.columns[j] + ': ' + str(corr[i][j]))
                 
 def undersample_by(y, train, p):
     a = pd.Series([random.random() < p for i in range(len(y))], index=y.index)
@@ -368,6 +368,23 @@ def parse_delta(s):
             return relativedelta(**{delta_chars[l[0][1]]:int(l[0][0])})
         else:
             raise ValueError('Invalid delta string: %s' % s)
+
+# return the index (given level) as a series with the original index 
+def index_as_series(df, level=None): 
+    if level is not None: 
+        values = df.index.get_level_values(level) 
+    else: 
+        values = df.index.values 
+ 
+    return pd.Series(values, index=df.index) 
+ 
+# get a column or index level as series 
+# if name is none return the whole index 
+def get_series(df, name): 
+    if name in df.columns: 
+        return df[name] 
+    else: 
+        return index_as_series(df, name) 
 
 def nearest_neighbors_impute(df, coordinate_columns, data_columns, knr_params={}):
     from sklearn.neighbors import KNeighborsRegressor
