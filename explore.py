@@ -22,11 +22,9 @@ def to_dataframe(steps):
     diffs = util.diff_dicts(args, multilevel=True)
 
     df = pd.DataFrame(diffs)
-    df = df.applymap(lambda d: d if isinstance(d, Hashable) else yaml.dump(d).replace('\n', ', ').rstrip(', '))
+    df.columns = [str.join('_', c) for c in df.columns]
 
-    columns = df.columns
     df['step'] = steps
-    df.set_index(list(columns), inplace=True)
 
     return df
 
@@ -45,8 +43,19 @@ def intersection(df, pairwise=False, **subset_args):
                 r.values[i][j] = len(indexes[i] & indexes[j])
         return r
 
-def apply(df, fn, **kwargs):
-    return df['step'].apply(lambda step: fn(step, **kwargs)).T
+def apply(df, fn, include_baseline=False,**kwargs):
+    # make all arguments hashable so they can be column names for result
+    df = df.copy()
+    non_step = list(df.columns.difference({'step'}))
+    df.loc[:,non_step] = df.loc[:,non_step].applymap(
+        lambda d: d if isinstance(d, Hashable) 
+                    else yaml.dump(d).replace('\n', ', ').rstrip(', '))
+
+    result = df.set_index(non_step)['step'].apply(lambda step: fn(step, **kwargs)).T
+
+    if include_baseline:
+        result['baseline'] = model.baseline(df.iloc[0]['step'])
+    return result
 
 def get_subdirs(directory):
      return [os.path.join(directory, name) for name in os.listdir(directory) 
