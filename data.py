@@ -384,7 +384,7 @@ def get_series(df, name):
     if name in df.columns: 
         return df[name] 
     else: 
-        return index_as_series(df, name) 
+        return index_as_series(df, name)
 
 def nearest_neighbors_impute(df, coordinate_columns, data_columns, knr_params={}):
     from sklearn.neighbors import KNeighborsRegressor

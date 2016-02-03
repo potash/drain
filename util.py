@@ -10,6 +10,9 @@ from datetime import datetime, timedelta, date
 from sklearn import preprocessing
 from scipy import stats
 
+# useful for finding number of days in an interval: (date1 - date2) /day
+day = np.timedelta64(1, 'D')
+
 def create_engine():
     return sqlalchemy.create_engine('postgresql://{user}:{pwd}@{host}:5432/{db}'.format(
             host=os.environ['PGHOST'], db=os.environ['PGDATABASE'], user=os.environ['PGUSER'], pwd=os.environ['PGPASSWORD']))
