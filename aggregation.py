@@ -138,7 +138,7 @@ class SimpleAggregation(AggregationBase):
 
     @property
     def parallel_kwargs(self):
-        return [{'indexes': [index]} for index in self.indexes]
+        return [{'indexes': {name:index}} for name,index in self.indexes.iteritems()]
 
     @property
     def arguments(self):
