@@ -276,8 +276,8 @@ def select_features(df, exclude, include=None):
 def null_columns(df, train=None):
     if train is not None:
         df = df[train]
-    nulcols = df.isnull().sum() == len(df)
-    return nulcols[nulcols==True].index
+    nulcols = df.isnull().sum() > 0
+    return nulcols[nulcols].index
 
 def infinite_columns(df):
     columns = []

@@ -58,17 +58,16 @@ class AggregationBase(Step):
         return str.join('_', map(str, concat_args))
 
     def join(self, left):
-        # this only works if concat is true!
         index = left.index
         
         for prefix, df in self.get_concat_result().iteritems():
-            data.prefix_columns(df, prefix + '_')
+            data.prefix_columns(df, self.prefix + '_' + prefix + '_')
             left = left.merge(df, left_on=df.index.names, right_index=True, how='left')
         return left
 
     def run(self,*args, **kwargs):
         if self.parallel:
-            return chain(*args)
+            return list(chain(*args))
 
         if not self.parallel:
             dfs = []
@@ -127,7 +126,7 @@ class SimpleAggregation(AggregationBase):
     """
     def __init__(self, indexes, **kwargs):
 
-        AggregationBase.__init__(self, indexes=indexes, insert_args=[], concat_args=['index'], aggregator_args=[], **kwargs)
+        AggregationBase.__init__(self, indexes=indexes, prefix=prefix, insert_args=[], concat_args=['index'], aggregator_args=[], **kwargs)
 
         # if indexes was not a dict but a list, make it a dict
         if not isinstance(indexes, dict):
