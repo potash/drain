@@ -126,7 +126,7 @@ class SimpleAggregation(AggregationBase):
     """
     def __init__(self, indexes, **kwargs):
 
-        AggregationBase.__init__(self, indexes=indexes, prefix=prefix, insert_args=[], concat_args=['index'], aggregator_args=[], **kwargs)
+        AggregationBase.__init__(self, indexes=indexes, insert_args=[], concat_args=['index'], aggregator_args=[], **kwargs)
 
         # if indexes was not a dict but a list, make it a dict
         if not isinstance(indexes, dict):
