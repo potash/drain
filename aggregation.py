@@ -11,7 +11,7 @@ class AggregationBase(Step):
     AggregationBase uses aggregate.Aggregator to aggregate data. It can include aggregations over multiple indexes and multiple data transformations (e.g. subsets). The combinations can be run in parallel and can be returned disjointl or concatenated. Finally the results may be pivoted and joined to other datasets.
     """
     def __init__(self, insert_args, aggregator_args, concat_args, 
-            parallel=False, target=False, prefix='', **kwargs):
+            parallel=False, target=False, prefix=None, **kwargs):
         """
         insert_args is a collection of argument names to insert into the results
         argument names that are not in insert_args will get pivoted
@@ -61,7 +61,7 @@ class AggregationBase(Step):
         index = left.index
         
         for prefix, df in self.get_concat_result().iteritems():
-            data.prefix_columns(df, self.prefix + '_' + prefix + '_')
+            data.prefix_columns(df, ('' if self.prefix is None else self.prefix + '_') + prefix + '_')
             left = left.merge(df, left_on=df.index.names, right_index=True, how='left')
         return left
 
@@ -125,12 +125,11 @@ class SimpleAggregation(AggregationBase):
     An implementation need only define an aggregates attributes, see test_aggregation.SimpleCrimeAggregation for an example.
     """
     def __init__(self, indexes, **kwargs):
-
-        AggregationBase.__init__(self, indexes=indexes, insert_args=[], concat_args=['index'], aggregator_args=[], **kwargs)
-
         # if indexes was not a dict but a list, make it a dict
         if not isinstance(indexes, dict):
-            self.indexes = {index:index for index in indexes}
+            indexes = {index:index for index in indexes}
+
+        AggregationBase.__init__(self, indexes=indexes, insert_args=[], concat_args=['index'], aggregator_args=[], **kwargs)
 
     def get_aggregator(self, **kwargs):
         return Aggregator(self.inputs[0].get_result(), self.aggregates)

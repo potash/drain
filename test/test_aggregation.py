@@ -36,8 +36,8 @@ class SpacetimeCrimeAggregation(SpacetimeAggregation):
 
     def get_aggregates(self, date, delta):
         return [
-            Count(name='ID'),
-            Count(name='Arrest'),
+            Count('ID'),
+            Count('Arrest'),
             Count(lambda c: c['Primary Type'] == 'THEFT', 'theft', prop=True)
         ]
 

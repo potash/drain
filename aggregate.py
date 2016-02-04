@@ -53,6 +53,60 @@ class AggregateBase(object):
             s.name = name
         return series
 
+    def __div__(self, other):
+        f = Fraction(numerator=self, denominator=other)
+        return f
+
+class Fraction(AggregateBase):
+    def __init__(self, numerator, denominator, include_numerator=False, include_denominator=False, include_fraction=True):
+        self.numerator = numerator
+        self.denominator = denominator
+
+        self.include_numerator=include_numerator
+        self.include_denominator=include_denominator
+        self.include_fraction=include_fraction
+
+        columns = []
+        if include_fraction:
+            columns.extend(['%s_per_%s' % f for f in product(numerator.columns, denominator.columns)])
+        if include_numerator:
+            columns.extend(numerator.columns)
+        if include_denominator:
+            columns.extend(denominator.columns)
+
+        aggregate_series = []
+        if include_fraction:
+            aggregate_series += numerator.aggregate_series + denominator.aggregate_series
+        else:
+            if include_numerator:
+                aggregate_series += numerator.aggregate_series
+            if include_denominator:
+                aggregate_series += denominator.aggregate_series
+
+        AggregateBase.__init__(self, columns=columns, aggregate_series=aggregate_series)
+
+    def apply(self, series):
+        if self.include_fraction or (self.include_numerator and self.include_denominator):
+            ncolumns = self.numerator.apply(series[:len(self.numerator.aggregate_series)])
+            dcolumns = self.denominator.apply(series[len(self.numerator.aggregate_series):])
+        elif self.include_numerator:
+            ncolumns = self.numerator.apply(series)
+        elif self.include_denominator:
+            dcolumns = self.denominator.apply(series)
+
+        columns = []
+        if self.include_fraction:
+            columns = [n/d for n,d in product(ncolumns, dcolumns)]
+        if self.include_numerator:
+            columns.extend(ncolumns)
+        if self.include_denominator:
+            columns.extend(dcolumns)
+
+        for s,name in zip(columns, self.columns):
+            s.name = name
+
+        return columns
+
 # functions can be a single function or iterable
 # default name is str(series), default function name is str(function)
 # column names are {name}_{function_name}
@@ -78,56 +132,23 @@ class Aggregate(AggregateBase):
         AggregateBase.__init__(self, columns,
                     [AggregateSeries(series, f) for f in functions])
 
-# with no params just counts
-# Default name is column + _count
-# When parent is specified count parent
-# TODO: refactor this as a Fraction with include_numerator, include_denominator, include_fraction
-# TODO: overload division of AggregateBase to return Fraction object
-class Count(AggregateBase):
-    def __init__(self, series=None, name=None, prop=False, parent=1.0, prop_only=True):
-        # if parent is specified, assume we want proportion
-        if parent != 1.0:
-            prop = True
-        self.prop = prop
-        self.prop_only = prop_only
+def count(series, name=None):
+    print series,name
+    if series is None:
+        return Aggregate(1.0, 'sum', name='count', function_names=False)
+    elif isinstance(series, basestring):
+        return Aggregate(lambda t: t[series].astype(np.float32), 'sum', name=series, function_names=False)
+    elif hasattr(series, '__call__'):
+        return Aggregate(lambda t: series(t).astype(np.float32), 'sum', name=name, function_names=False)
+    else:
+        return series
 
-        if series is None:
-            columns = [name if name is not None else 'count']
-            aggregate_series = [AggregateSeries(1.0, 'sum')]
+class Count(Fraction):
+    def __init__(self, series=None, name=None, parent=None, parent_name=None, prop=False):
+        if not prop:
+            Fraction.__init__(self, numerator=count(series, name), denominator=None, include_fraction=False, include_numerator=True)
         else:
-            if name is None: name = series
-            columns = ['%s_count' % name]
-            # converting to float32 before summing is an order of magnitude faster
-            # if series is a function we need to compose it with the cast
-            count_series = lambda d: get_series(series, d).astype(np.float32)
-            aggregate_series = [AggregateSeries(count_series, 'sum')]
-            
-            if prop:
-                columns.append('%s_prop' % name)
-                count_series = lambda d: get_series(parent, d).astype(np.float32)
-                aggregate_series.append(AggregateSeries(parent, 'sum'))
-
-                if prop_only:
-                    columns = [columns[1]]
-            
-        AggregateBase.__init__(self, columns, aggregate_series)
-    
-    def apply(self, series):
-        count = series[0]
-        count.name = self.columns[0]
-        if self.prop:
-            prop = (series[0] / series[1]).where(series[1] != 0)
-            prop.name = self.columns[0] if self.prop_only else self.columns[1]
-
-        if self.prop:
-            return [prop] if self.prop_only else [count, prop]
-        else:
-            return [count]
-
-# a shorthand for Count(prop_only=True)
-class Proportion(Count):
-    def __init__(self, series, **kwargs):
-        Count.__init__(self, series=series, prop_only=True, **kwargs)
+            Fraction.__init__(self, numerator=count(series, name), denominator=count(parent, parent_name), include_numerator=True)
 
 def _collect_columns(aggregates):
     columns = set()
@@ -135,6 +156,10 @@ def _collect_columns(aggregates):
         intersection = columns.intersection(a.columns)
         if len(intersection) > 0: raise ValueError('Repeated columns: %s' % intersection)
         columns.update(a.columns)
+
+    if len(columns) == 0:
+        raise ValueError('Aggregator needs at least one output columns')
+
     return columns
 
 class Aggregator(object):
@@ -185,6 +210,7 @@ class Aggregator(object):
         aggregated = merge_dicts(*[self.get_series_aggregates(groupby, h) for h in self.aggregate_series])
         series = (a.apply([aggregated[i].copy() for i in r]) 
                for a,r in zip(self.aggregates, self.series_refs))
+        # TODO: automatically apply aggregates.columns as names to these series here
         return pd.concat(chain(*series), axis=1)
 
 def aggregate_list(l):
