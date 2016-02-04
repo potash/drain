@@ -58,7 +58,7 @@ class AggregateBase(object):
         return f
 
 class Fraction(AggregateBase):
-    def __init__(self, numerator, denominator, include_numerator=False, include_denominator=False, include_fraction=True):
+    def __init__(self, numerator, denominator, name='{numerator}_per_{denominator}', include_numerator=False, include_denominator=False, include_fraction=True):
         self.numerator = numerator
         self.denominator = denominator
 
@@ -68,7 +68,8 @@ class Fraction(AggregateBase):
 
         columns = []
         if include_fraction:
-            columns.extend(['%s_per_%s' % f for f in product(numerator.columns, denominator.columns)])
+            columns.extend([name.format(numerator=n, denominator=d)
+                for n,d in product(numerator.columns, denominator.columns)])
         if include_numerator:
             columns.extend(numerator.columns)
         if include_denominator:
@@ -132,23 +133,28 @@ class Aggregate(AggregateBase):
         AggregateBase.__init__(self, columns,
                     [AggregateSeries(series, f) for f in functions])
 
-def count(series, name=None):
-    print series,name
+# turn a given series (as accepted by get_series above) into a float for summing
+# this can be up to an order of magnitude faster than summing int or float directly
+def float_sum(series, name=None):
     if series is None:
-        return Aggregate(1.0, 'sum', name='count', function_names=False)
-    elif isinstance(series, basestring):
-        return Aggregate(lambda t: t[series].astype(np.float32), 'sum', name=series, function_names=False)
-    elif hasattr(series, '__call__'):
-        return Aggregate(lambda t: series(t).astype(np.float32), 'sum', name=name, function_names=False)
-    else:
-        return series
+        if name is None:
+            name = 'count'
+        return Aggregate(1.0, 'sum', name=name, function_names=False)
+    elif name is None:
+        name = series
+
+    return Aggregate(lambda d: get_series(series, d).astype(np.float32), 'sum', name=name, function_names=False)
 
 class Count(Fraction):
     def __init__(self, series=None, name=None, parent=None, parent_name=None, prop=False):
         if not prop:
-            Fraction.__init__(self, numerator=count(series, name), denominator=None, include_fraction=False, include_numerator=True)
+            Fraction.__init__(self, numerator=float_sum(series, name), 
+                    denominator=None, include_fraction=False, 
+                    include_numerator=True)
         else:
-            Fraction.__init__(self, numerator=count(series, name), denominator=count(parent, parent_name), include_numerator=True)
+            Fraction.__init__(self, numerator=float_sum(series, name), 
+                    denominator=float_sum(parent, parent_name), 
+                    include_numerator=True, name='{numerator}_prop')
 
 def _collect_columns(aggregates):
     columns = set()
