@@ -184,10 +184,9 @@ class Aggregator(object):
         self.columns = _collect_columns(aggregates)
         
         # collect all the series
-        series = {} # unique
-        aggregate_series = {} # references to those series (one for each (series, function)
-        aggregate_functions = {} # corresponding functions
-        series_refs = [] # ordered references for feeding results back to Aggregate.apply() later
+        series = {} # unique series
+        aggregate_series = {} # references to those series, one for each (series, function)
+        series_refs = [] # series_refs[i] contains references to aggregate_series for aggregates[i]
         for a in aggregates:
             sr = []
             for aseries in a.aggregate_series:
