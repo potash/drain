@@ -85,10 +85,11 @@ class Step(object):
         for k in kwargs:
             setattr(self, k, kwargs[k])
         
+        # avoid overriding inputs if it was set somewhere else
         if not hasattr(self, 'inputs'):
             self.inputs = []
 
-        hasher = hashlib.md5(yaml.dump(self)) # this won't work right if we haven't called initialize()
+        hasher = hashlib.md5(yaml.dump(self)) # this won't work right if we haven't called configure_yaml()
         self.__digest__ = base64.urlsafe_b64encode(hasher.digest())
 
     @staticmethod

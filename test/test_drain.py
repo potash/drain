@@ -1,3 +1,7 @@
+# run this using the following command:
+# drain --basedir drain/test/output/ drain/test/test_drain.py::cal
+# TODO: add this as an executable test?
+
 from drain import step, model, data
 from itertools import product
 

@@ -1,10 +1,5 @@
 import os
-import re
 import logging
-
-import datetime
-from datetime import date
-from dateutil.relativedelta import relativedelta
 from itertools import product,chain
 
 import pandas as pd
@@ -17,30 +12,35 @@ from util import merge_dicts, hash_obj
 #    - a callable (taking the DataFrame), e.g. lambda df: df.column**2
 #    - one of the columns in the frame, e.g. 'column'
 #    - a non-string value, e.g. 1
-def get_series(series, df):
+def get_series(series, df, astype=None):
     if hasattr(series, '__call__'):
-        return series(df)
+        r = series(df)
     elif series in df.columns:
-        return df[series]
+        r = df[series]
     elif not isinstance(series, basestring):
-        return pd.Series(series, index=df.index)
+        r = pd.Series(series, index=df.index)
     else:
         raise ValueError('Invalid series: %s' % series)
+
+    if astype is not None:
+        r = r.astype(astype)
+    return r
  
 # AggregateSeries consist of a series and a function
 class AggregateSeries(object):
-    def __init__(self, series, function):
+    def __init__(self, series, function, astype=None):
         self.series = series
         self.function = function
+        self.astype = astype
     
     def apply_series(self, df):
-        return get_series(self.series, df)
+        return get_series(self.series, df, self.astype)
     
     def __hash__(self):
         s = hash_obj(self.series)
         f = hash_obj(self.function)
         
-        return hash((s,f))
+        return hash((s,f, self.astype))
        
 class AggregateBase(object):
     def __init__(self, columns, aggregate_series):
@@ -49,8 +49,6 @@ class AggregateBase(object):
       
     # default is that series and columns are one-to-one
     def apply(self, series):
-        for s,name in zip(series, self.columns):
-            s.name = name
         return series
 
     def __div__(self, other):
@@ -58,7 +56,8 @@ class AggregateBase(object):
         return f
 
 class Fraction(AggregateBase):
-    def __init__(self, numerator, denominator, name='{numerator}_per_{denominator}', include_numerator=False, include_denominator=False, include_fraction=True):
+    def __init__(self, numerator, denominator, name='{numerator}_per_{denominator}', 
+            include_numerator=False, include_denominator=False, include_fraction=True):
         self.numerator = numerator
         self.denominator = denominator
 
@@ -103,57 +102,66 @@ class Fraction(AggregateBase):
         if self.include_denominator:
             columns.extend(dcolumns)
 
-        for s,name in zip(columns, self.columns):
-            s.name = name
-
         return columns
 
-# functions can be a single function or iterable
-# default name is str(series), default function name is str(function)
-# column names are {name}_{function_name}
-# unless single function and function_names=False, then column name is just name
-# TODO: allow list of series, take product(series, functions)
 class Aggregate(AggregateBase):
-    def __init__(self, series, functions, name=None, function_names=None):
-        if not hasattr(functions, '__iter__'):
-            functions = [functions]
-            if function_names is not None and function_names is not False:
-                function_names = [function_names]
+    def __init__(self, series, f, name=None, fname=None):
+        """
+        series can be single or iterable
+        functions can be a single function or iterable
+        total aggregates are the products of series and functions
+        default name is str(series), default function name is str(f)
+        column names are {name}_{fname}
+        unless single function and function_names=False, then column name is just name
+        """
+        series = util.make_list(series)
+        f = util.make_list(f)
 
-        if name is None: name = series
+        name = series if name is None else util.make_list(name)
+        fname = series if fname is None else util.make_list(fname)
 
-        if function_names is False:
-            if len(functions) > 1:
+        if not (len(series) == len(name)):
+            raise ValueError('series and name must have same length or name must be None')
+        if not (len(series) == len(name)):
+            raise ValueError('f and fname must have same length or fname must be None')
+
+        if fname == [False]:
+            if len(f) > 1:
                 raise ValueError('Must use function names for multiple functions')
-            columns = [name]
+            columns = name
         else:
-            if function_names is None: function_names = functions
-            columns = ['%s_%s' % (name,f) for f in function_names]
+            columns = ['%s_%s' % n for n in product(name, fname)]
 
         AggregateBase.__init__(self, columns,
-                    [AggregateSeries(series, f) for f in functions])
-
-# turn a given series (as accepted by get_series above) into a float for summing
-# this can be up to an order of magnitude faster than summing int or float directly
-def float_sum(series, name=None):
-    if series is None:
-        if name is None:
-            name = 'count'
-        return Aggregate(1.0, 'sum', name=name, function_names=False)
-    elif name is None:
-        name = series
-
-    return Aggregate(lambda d: get_series(series, d).astype(np.float32), 'sum', name=name, function_names=False)
+                [AggregateSeries(*sf) for sf in product(series, f)])
 
 class Count(Fraction):
+    """
+    Aggregate a given series (as accepted by get_series above) by summing
+    By default that series is 1, resulting in a count (hence the name).
+    Also useful when series is a boolean.
+    If prop=True then also divide that series by a specified parent series, also summed.
+    """
     def __init__(self, series=None, name=None, parent=None, parent_name=None, prop=False):
+        if series is None:
+            series = 1
+            if name is None:
+                name = 'count'
+
+        numerator = Aggregate(series, 'sum', name, fname=False)
+        for aseries in numerator.aggregate_series:
+            aseries.astype = np.float32
         if not prop:
-            Fraction.__init__(self, numerator=float_sum(series, name), 
+            Fraction.__init__(self, numerator=numerator, 
                     denominator=None, include_fraction=False, 
                     include_numerator=True)
         else:
-            Fraction.__init__(self, numerator=float_sum(series, name), 
-                    denominator=float_sum(parent, parent_name), 
+            if parent is None:
+                parent = 1
+
+            denominator = Aggregate(parent, 'sum', parent_name)
+            Fraction.__init__(self, numerator=numerator, 
+                    denominator=denominator, 
                     include_numerator=True, name='{numerator}_prop')
 
 def _collect_columns(aggregates):
@@ -214,10 +222,15 @@ class Aggregator(object):
             self.adf.index = self.df.index
         
         aggregated = merge_dicts(*[self.get_series_aggregates(groupby, h) for h in self.aggregate_series])
-        series = (a.apply([aggregated[i].copy() for i in r]) 
-               for a,r in zip(self.aggregates, self.series_refs))
-        # TODO: automatically apply aggregates.columns as names to these series here
-        return pd.concat(chain(*series), axis=1)
+
+        all_series = []
+        for a,r in zip(self.aggregates, self.series_refs):
+            series = a.apply([aggregated[i].copy() for i in r])
+            # rename series according to aggregate.columns
+            for s,c in zip(series, a.columns): s.name = c
+            all_series.extend(series)
+
+        return pd.concat(all_series, axis=1)
 
 def aggregate_list(l):
     return list(np.concatenate(l.values))

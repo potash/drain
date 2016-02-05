@@ -6,7 +6,9 @@ def test_aggregator(crime_df):
     aggregates = [
         Count(), 
         Count('Arrest'), 
-        Count(lambda c: c['Primary Type'] == 'THEFT', 'theft', prop=True),
+        Count([lambda c: c['Primary Type'] == 'THEFT',
+               lambda c: c['Primary Type'] == 'ASSAULT'], 
+               ['theft', 'assault'], prop=True),
     ]
 
     a = Aggregator(crime_df, aggregates)

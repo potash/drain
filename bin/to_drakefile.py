@@ -36,8 +36,8 @@ if __name__ == "__main__":
     else:
         filename, fname = args.steps.split('::')
         mod = imp.load_source('steps', filename)
-        fn = getattr(mod, fname)
-        steps = fn()
+        steps = getattr(mod, fname)
+        steps = steps() if hasattr(steps, '__call__') else steps
 
     if args.Drakeinput is None and os.path.exists('Drakefile'):
         args.Drakeinput = 'Drakefile'
