@@ -118,7 +118,7 @@ class Aggregate(AggregateBase):
         f = util.make_list(f)
 
         name = series if name is None else util.make_list(name)
-        fname = series if fname is None else util.make_list(fname)
+        fname = f if fname is None else util.make_list(fname)
 
         if not (len(series) == len(name)):
             raise ValueError('series and name must have same length or name must be None')

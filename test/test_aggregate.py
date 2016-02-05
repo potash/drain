@@ -9,6 +9,7 @@ def test_aggregator(crime_df):
         Count([lambda c: c['Primary Type'] == 'THEFT',
                lambda c: c['Primary Type'] == 'ASSAULT'], 
                ['theft', 'assault'], prop=True),
+        Aggregate(['Latitude', 'Longitude'], ['min','max','mean'])
     ]
 
     a = Aggregator(crime_df, aggregates)
