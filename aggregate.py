@@ -67,8 +67,14 @@ class Fraction(AggregateBase):
 
         columns = []
         if include_fraction:
-            columns.extend([name.format(numerator=n, denominator=d)
-                for n,d in product(numerator.columns, denominator.columns)])
+            if hasattr(name, '__iter__') and len(name) == \
+                    len(numerator.columns)*len(denominator.columns):
+                columns.extend(name)
+            elif isinstance(name, basestring):
+                columns.extend([name.format(numerator=n, denominator=d)
+                    for n,d in product(numerator.columns, denominator.columns)])
+            else:
+                raise ValueError('Name must either be a list of names of the correct length or a format string')
         if include_numerator:
             columns.extend(numerator.columns)
         if include_denominator:
@@ -142,13 +148,18 @@ class Count(Fraction):
     Also useful when series is a boolean.
     If prop=True then also divide that series by a specified parent series, also summed.
     """
-    def __init__(self, series=None, name=None, parent=None, parent_name=None, prop=False):
+    def __init__(self, series=None, name=None, parent=None, parent_name=None, prop=False, prop_only=False):
+        fname = 'count'
         if series is None:
             series = 1
             if name is None:
                 name = 'count'
+                fname = False # don't use fname when series is 'count'
 
-        numerator = Aggregate(series, 'sum', name, fname=False)
+        if parent is not None or prop_only:
+            prop=True
+
+        numerator = Aggregate(series, 'sum', name, fname=fname)
         for aseries in numerator.aggregate_series:
             aseries.astype = np.float32
         if not prop:
@@ -162,7 +173,14 @@ class Count(Fraction):
             denominator = Aggregate(parent, 'sum', parent_name)
             Fraction.__init__(self, numerator=numerator, 
                     denominator=denominator, 
-                    include_numerator=True, name='{numerator}_prop')
+                    include_numerator=not prop_only, 
+                    # fraction names are numerator names with
+                    # 'count' replaced by 'prop'
+                    name=[n[:-5]+'prop' for n in numerator.columns])
+
+class Proportion(Count):
+    def __init__(self, series=None, name=None, parent=None, parent_name=None):
+        Count.__init__(self, series=series, name=name, parent=parent, parent_name=parent_name, prop_only=True)
 
 def _collect_columns(aggregates):
     columns = set()
