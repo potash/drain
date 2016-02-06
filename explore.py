@@ -53,8 +53,12 @@ def apply(df, fn, include_baseline=False,**kwargs):
 
     result = df.set_index(non_step)['step'].apply(lambda step: fn(step, **kwargs)).T
 
+
     if include_baseline:
-        result['baseline'] = model.baseline(df.iloc[0]['step'])
+        baseline_kwargs = util.dict_subset(kwargs, 
+                ['dropna', 'outcome', 'score', 'query'])
+        result['baseline'] = model.baseline(df.iloc[0]['step'], 
+                **baseline_kwargs)
     return result
 
 def get_subdirs(directory):

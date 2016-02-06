@@ -143,7 +143,7 @@ def merge_dicts(*dict_args):
     return result
 
 def dict_subset(d, keys):
-    return {k:d[k] for k in keys}
+    return {k:d[k] for k in keys if k in d}
 
 def nunique(iterable):
     try:
