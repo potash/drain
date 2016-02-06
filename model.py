@@ -21,7 +21,7 @@ class FitPredict(Step):
                 return_feature_importances=return_feature_importances,
                 return_predictions=return_predictions, prefit=prefit, **kwargs)
 
-    def run(self, estimator, X, y, train=None, test=None, aux=None, **kwargs):
+    def run(self, estimator, X, y, train=None, test=None, aux=None, sample_weight=None, **kwargs):
         if not self.prefit:
             if train is not None:
                 X_train, y_train = X[train], y[train]
@@ -31,7 +31,11 @@ class FitPredict(Step):
             y_train = y_train.astype(bool)
 
             logging.info('Fitting with %s examples, %s features' % X_train.shape)
-            estimator.fit(X_train, y_train)
+            if 'sample_weight' in inspect.getargspec(estimator.fit) and sample_weight is not None:
+                logging.info('Using sample weight')
+                estimator.fit(X_train, y_train, sample_weight=sample_weight)
+            else:
+                estimator.fit(X_train, y_train)
 
         result = {}
 
