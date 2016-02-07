@@ -11,11 +11,16 @@ class AggregationBase(Step):
     AggregationBase uses aggregate.Aggregator to aggregate data. It can include aggregations over multiple indexes and multiple data transformations (e.g. subsets). The combinations can be run in parallel and can be returned disjointl or concatenated. Finally the results may be pivoted and joined to other datasets.
     """
     def __init__(self, insert_args, aggregator_args, concat_args, 
-            parallel=False, target=False, prefix=None, **kwargs):
+            parallel=False, target=False, prefix=None,
+            **kwargs):
         """
-        insert_args is a collection of argument names to insert into the results
-        argument names that are not in insert_args will get pivoted
-        block_args will run together when parallel=True
+        insert_args: collection of argument names to insert into results
+        aggregator_args: collection of argument names to pass 
+                to get_aggregator
+        concat_args: collection of argument names on which to 
+                concatenate results. Typically a subset (or equal 
+                to) aggregator_args.
+
         """
 
         self.insert_args = insert_args
@@ -50,20 +55,30 @@ class AggregationBase(Step):
     def argument_names(self):
         return list(util.union(map(set, self.arguments)))
 
-    def concat_args_prefix(self, argument):
-        """
-        given an agggregator argument, get the corresponding prefix
-        """
-        concat_args = tuple(argument[k] for k in self.concat_args)
-        return str.join('_', map(str, concat_args))
-
     def join(self, left):
         index = left.index
         
-        for prefix, df in self.get_concat_result().iteritems():
-            data.prefix_columns(df, ('' if self.prefix is None else self.prefix + '_') + prefix + '_')
-            left = left.merge(df, left_on=df.index.names, right_index=True, how='left')
+        for concat_args, df in self.get_concat_result().iteritems():
+            prefix = '' if self.prefix is None else self.prefix + '_'
+            prefix += str.join('_', map(str, concat_args)) + '_'
+            data.prefix_columns(df, prefix)
+
+            left = left.merge(df, left_on=df.index.names, 
+                    right_index=True, how='left')
+            left.fillna(value = self.fillna_value(df, **{k:v for k,v 
+                        in zip(self.concat_args, concat_args)}), 
+                    inplace=True)
         return left
+
+    def fillna_value(self, df, **concat_args):
+        """
+        This method gives subclasses the opportunity to define how 
+        join() fills missing values. Return value must be compatible with
+        DataFrame.fillna() value argument. Examples:
+            - return 0: replace missing values with zero
+            - return df.mean(): replace missing values with column mean
+        """
+        return {}
 
     def run(self,*args, **kwargs):
         if self.parallel:
@@ -90,14 +105,13 @@ class AggregationBase(Step):
         to_concat = {}
         dfs = self.get_result()
         for argument, df in zip(self.arguments, dfs):
-            # use concat_args_prefix as the key because step.run() wants keys to be valid python variable names! maybe need to make that optional...
-            concat_args_prefix = self.concat_args_prefix(argument)
-            if concat_args_prefix not in to_concat:
-                to_concat[concat_args_prefix] = [df]
+            concat_args = tuple(argument[k] for k in self.concat_args)
+            if concat_args not in to_concat:
+                to_concat[concat_args] = [df]
             else:
-                to_concat[concat_args_prefix].append(df)
-        dfs = {concat_args_prefix:pd.concat(dfs) 
-                for concat_args_prefix,dfs in to_concat.iteritems()}
+                to_concat[concat_args].append(df)
+        dfs = {concat_args:pd.concat(dfs) 
+                for concat_args,dfs in to_concat.iteritems()}
         return dfs
 
     def _get_aggregator(self, **kwargs):
