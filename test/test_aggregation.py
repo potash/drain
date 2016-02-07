@@ -11,7 +11,8 @@ class SimpleCrimeAggregation(SimpleAggregation):
         return [
        	    Count(),
             Count('Arrest'),
-      	    Count(lambda c: c['Primary Type'] == 'THEFT', 'theft', prop=True),
+      	    Count(lambda c: c['Primary Type'] == 'THEFT', 
+                    'theft', prop=True),
 	]
 
 def test_simple_aggregation_parallel(crime_step):
@@ -34,11 +35,15 @@ class SpacetimeCrimeAggregation(SpacetimeAggregation):
                 inputs=inputs, spacedeltas=spacedeltas, dates=dates,
                 date_column='Date', **kwargs)
 
+    def fillna_value(self, df, index, delta):
+        return 0
+
     def get_aggregates(self, date, delta):
         return [
             Count(),
             Count('Arrest'),
-            Count(lambda c: c['Primary Type'] == 'THEFT', 'theft', prop=True)
+            Count(lambda c: c['Primary Type'] == 'THEFT', 
+                    'theft', prop=True)
         ]
 
 
@@ -67,5 +72,15 @@ def test_spacetime_join(crime_step):
     step.run(s)
 
     left = pd.DataFrame({'District':[1,2], 'Community Area':[1,2], 'date':[np.datetime64(date(2015,12,30)), np.datetime64(date(2015,12,31))]})
+    print s.join(left)
+
+def test_spacetime_join_fillna(crime_step):
+    s = SpacetimeCrimeAggregation(inputs=[crime_step], 
+            spacedeltas={'district': ('District', ['12h', '24h']),
+                         'community':('Community Area', ['1d', '2d'])},
+            dates=[date(2015,12,30), date(2015,12,31)], parallel=True)
+    step.run(s)
+
+    left = pd.DataFrame({'District':[1,2], 'Community Area':[1,100], 'date':[np.datetime64(date(2015,12,30)), np.datetime64(date(2015,12,31))]})
     print s.join(left)
 
