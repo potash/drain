@@ -55,15 +55,31 @@ def hash_obj(obj):
         return hash((False, id(obj)))
 
 def timestamp(year,month,day):
-    return pd.Timestamp( ("%04d" % year) + '-' +  ("%02d" % month) + '-' + ("%02d" % day))
+    """
+    Convenient constructor for pandas Timestamp
+    """
+    return pd.Timestamp('%04d-%02d-%02d' % (year, month, day))
 
-def date_ceil(t, month, day):
-    c = timestamp(t.year, month, day)
-    return c if c >= t else timestamp(t.year+1, month, day)
+epoch = pd.Timestamp(0)
+def date_to_days(date):
+    """
+    Number of days since epoch
+    """
+    return (date - epoch)/day
+
+def date_ceil( month, day):
+    def ceil(t):
+        c = timestamp(t.year, month, day)
+        return c if c >= t else timestamp(t.year+1, month, day)
+
+    return ceil
 
 def date_floor(month, day):
-    f = timestamp(t.year, month, day)
-    return f if f <= t else timestamp(t.year-1, month, day)
+    def floor(t):
+        f = timestamp(t.year, month, day)
+        return f if f <= t else timestamp(t.year-1, month, day)
+
+    return floor
 
 def eqattr(object1, object2, attr):
     return hasattr(object1, attr) and hasattr(object2, attr) and (getattr(object1, attr) == getattr(object2, attr))

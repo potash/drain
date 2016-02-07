@@ -59,18 +59,25 @@ class AggregationBase(Step):
         index = left.index
         
         for concat_args, df in self.get_concat_result().iteritems():
+            logging.info('Joining %s' % str(concat_args))
             prefix = '' if self.prefix is None else self.prefix + '_'
             prefix += str.join('_', map(str, concat_args)) + '_'
             data.prefix_columns(df, prefix)
 
             left = left.merge(df, left_on=df.index.names, 
                     right_index=True, how='left')
-            left.fillna(value = self.fillna_value(df=df, **{k:v for k,v 
-                        in zip(self.concat_args, concat_args)}), 
-                    inplace=True)
+            logging.info('Filling missing values %s' % str(concat_args))
+            # TODO: is this faster if we don't use .loc but inplace=True
+            # then we'd need to ensure that fillna_value 
+            left.fillna(inplace=True, value = self.fillna_value(df=df, 
+                    left=left, **{k:v for k,v in 
+                        zip(self.concat_args, concat_args)}))
+#            left.loc[:, df.columns] = left.loc[:,df.columns].fillna(
+#                value = self.fillna_value(df=df, **{k:v for k,v in 
+#                         zip(self.concat_args, concat_args)}))
         return left
 
-    def fillna_value(self, df, **concat_args):
+    def fillna_value(self, df, left, **concat_args):
         """
         This method gives subclasses the opportunity to define how 
         join() fills missing values. Return value must be compatible with
@@ -145,8 +152,8 @@ class SimpleAggregation(AggregationBase):
 
         AggregationBase.__init__(self, indexes=indexes, insert_args=[], concat_args=['index'], aggregator_args=[], **kwargs)
 
-    def fillna_value(self, df, index):
-        return df.mean()
+    def fillna_value(self, df, left, index):
+        return left[df.columns].mean()
 
     def get_aggregator(self, **kwargs):
         return Aggregator(self.inputs[0].get_result(), self.aggregates)
@@ -191,8 +198,8 @@ class SpacetimeAggregation(AggregationBase):
     def indexes(self):
         return {name:value[0] for name,value in self.spacedeltas.iteritems()}
 
-    def fillna_value(self, df, **kwargs):
-        return 0
+    def fillna_value(self, df, left, **kwargs):
+        return {c:0 for c in df.columns}
 
     @property
     def arguments(self):

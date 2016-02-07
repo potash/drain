@@ -37,8 +37,18 @@ class CreateEngine(Step):
         return util.create_engine()
 
 class FromSQL(Step):
-    def __init__(self, query, to_str=[], **kwargs):
+    def __init__(self, query=None, to_str=None, table=None, **kwargs):
+        if query is None:
+            if table is None:
+                raise ValueError("Must specify query or table")
+            query = "SELECT * FROM %s" % table
+
+        if to_str is None:
+            to_str = []
+
         Step.__init__(self, query=query, to_str=to_str, **kwargs)
+
+
         if 'inputs' not in kwargs:
             self.inputs = [CreateEngine()]
  
@@ -51,6 +61,14 @@ class FromSQL(Step):
         for column in self.to_str:
             if column in df.columns:
                 df[column] = df[column].astype(str)
+
+        return df
+
+class Merge(Step):
+    def run(self, *dfs):
+        df = dfs[0] 
+        for d in dfs[1:]:
+            df = df.merge(d, **self.get_arguments(inputs=False))
 
         return df
 

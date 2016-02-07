@@ -37,6 +37,7 @@ def run(step, inputs=None, output=None):
 
     if not step.has_result():
         if step in inputs:
+            logging.info('Loading\n\t%s' % str(step).replace('\n','\n\t'))
             step.load()
         else:
             for i in step.inputs:
@@ -165,7 +166,7 @@ class Step(object):
         named = self.get_named_steps()
 
         for name, step in named.iteritems():
-            for k,v in step.get_arguments(inputs=False, inputs_mapping=False, target=False, name=False).iteritems():
+            for k,v in step.get_arguments(inputs=False, inputs_mapping=False).iteritems():
                 d[(name, k)] = v
 
         return d
@@ -174,8 +175,10 @@ class Step(object):
     # any argument specified is excluded if False
     def get_arguments(self, **include):
         d = dict(self.__kwargs__)
-        d['name'] = self.__name__
-        d['target'] = self.__target__
+        if include.get('name', False):
+            d['name'] = self.__name__
+        if include.get('target', False):
+            d['target'] = self.__target__
 
         for k in include:
             if not include[k] and k in d:
@@ -281,7 +284,7 @@ class Step(object):
             class_name += 'Template'
             kwargs = self.__template__.kwargs
         else:
-            kwargs = self.get_arguments(inputs=False, inputs_mapping=False, target=False, name=False)
+            kwargs = self.get_arguments(inputs=False, inputs_mapping=False)
 
         return '%s(%s)' % (class_name, 
                 _pprint(kwargs, offset=len(class_name)),)
@@ -395,11 +398,12 @@ def product(*inputs):
     
 def step_multi_representer(dumper, data):
     tag = '!step:%s.%s' % (data.__class__.__module__, data.__class__.__name__)
-    return dumper.represent_mapping(tag, data.get_arguments(name=False, target=False))
+    return dumper.represent_mapping(tag, data.get_arguments())
 
 def step_multi_representer_all_args(dumper, data):
     tag = '!step:%s.%s' % (data.__class__.__module__, data.__class__.__name__)
-    return dumper.represent_mapping(tag, data.get_arguments())
+    return dumper.represent_mapping(tag, 
+        data.get_arguments(name=True, target=True))
 
 def step_multi_constructor(loader, tag_suffix, node):
     cls = util.get_attr(tag_suffix[1:])
