@@ -342,7 +342,7 @@ def date_censor_sql(date_column, today, column = None):
 def date_select(df, date_column, date, delta):
     """
     given a series an end date and number of days, return subset in the date range
-    if deta is None then there is no starting date
+    if delta is None then there is no starting date
     """
     delta = parse_delta(delta)
     df = df[ df[date_column] < date ]
