@@ -65,7 +65,7 @@ class AggregationBase(Step):
 
             left = left.merge(df, left_on=df.index.names, 
                     right_index=True, how='left')
-            left.fillna(value = self.fillna_value(df, **{k:v for k,v 
+            left.fillna(value = self.fillna_value(df=df, **{k:v for k,v 
                         in zip(self.concat_args, concat_args)}), 
                     inplace=True)
         return left
@@ -145,6 +145,9 @@ class SimpleAggregation(AggregationBase):
 
         AggregationBase.__init__(self, indexes=indexes, insert_args=[], concat_args=['index'], aggregator_args=[], **kwargs)
 
+    def fillna_value(self, df, index):
+        return df.mean()
+
     def get_aggregator(self, **kwargs):
         return Aggregator(self.inputs[0].get_result(), self.aggregates)
 
@@ -187,6 +190,9 @@ class SpacetimeAggregation(AggregationBase):
     @property
     def indexes(self):
         return {name:value[0] for name,value in self.spacedeltas.iteritems()}
+
+    def fillna_value(self, df, **kwargs):
+        return 0
 
     @property
     def arguments(self):

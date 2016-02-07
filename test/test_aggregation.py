@@ -35,9 +35,6 @@ class SpacetimeCrimeAggregation(SpacetimeAggregation):
                 inputs=inputs, spacedeltas=spacedeltas, dates=dates,
                 date_column='Date', **kwargs)
 
-    def fillna_value(self, df, index, delta):
-        return 0
-
     def get_aggregates(self, date, delta):
         return [
             Count(),
@@ -62,6 +59,14 @@ def test_simple_join(crime_step):
     step.run(s)
 
     left = pd.DataFrame({'District':[1,2], 'Community Area':[1,2]})
+    print s.join(left)
+
+def test_simple_join_fillna(crime_step):
+    s = SimpleCrimeAggregation(inputs=[crime_step],
+        indexes=['District', 'Community Area'], parallel=True)
+    step.run(s)
+
+    left = pd.DataFrame({'District':[1,2], 'Community Area':[1,100]})
     print s.join(left)
 
 def test_spacetime_join(crime_step):
