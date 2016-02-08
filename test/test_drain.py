@@ -11,7 +11,7 @@ def calibration():
         d = data.ClassificationData(target=True, n_samples=1000, n_features=100)
 
         est = step.Construct('sklearn.ensemble.RandomForestClassifier',
-                n_estimators=n_estimators, name='estimator')
+                n_estimators=n_estimators, name='estimator') 
 
         fit_est = model.FitPredict(inputs=[est, d], target=True, name='uncalibrated')
 

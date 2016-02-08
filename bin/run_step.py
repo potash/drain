@@ -35,6 +35,9 @@ if not is_step(args[0]):
     raise ValueError('Need a step to run')
 
 step = get_step(args[0])
-inputs = map(get_step, args[1:])
+inputs = []
+for i in args[1:]:
+    if is_step(i) or is_target(i):
+        inputs.append(get_step(i))
 
 drain.step.run(step=step, output=output, inputs=inputs)

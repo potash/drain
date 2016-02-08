@@ -1,4 +1,5 @@
 import yaml
+import inspect
 import sys
 import itertools
 import pandas as pd
@@ -36,7 +37,7 @@ def run(step, inputs=None, output=None):
         inputs = []
 
     if not step.has_result():
-        if step in inputs:
+        if step in inputs and not step.has_result():
             logging.info('Loading\n\t%s' % str(step).replace('\n','\n\t'))
             step.load()
         else:
@@ -79,6 +80,10 @@ def read(name, step_name=None):
 
 class Step(object):
     def __init__(self, name=None, target=False, **kwargs):
+        """
+        name and target are special because a Step's result 
+        is independent of their values.
+        """
         self.__kwargs__ = kwargs
         self.__name__ = name
         self.__target__ = target
@@ -89,6 +94,9 @@ class Step(object):
         # avoid overriding inputs if it was set somewhere else
         if not hasattr(self, 'inputs'):
             self.inputs = []
+
+        if not hasattr(self, 'dependencies'):
+            self.dependencies = []
 
         hasher = hashlib.md5(yaml.dump(self)) # this won't work right if we haven't called configure_yaml()
         self.__digest__ = base64.urlsafe_b64encode(hasher.digest())
@@ -166,7 +174,7 @@ class Step(object):
         named = self.get_named_steps()
 
         for name, step in named.iteritems():
-            for k,v in step.get_arguments(inputs=False, inputs_mapping=False).iteritems():
+            for k,v in step.get_arguments().iteritems():
                 d[(name, k)] = v
 
         return d
@@ -175,14 +183,21 @@ class Step(object):
     # any argument specified is excluded if False
     def get_arguments(self, **include):
         d = dict(self.__kwargs__)
-        if include.get('name', False):
-            d['name'] = self.__name__
-        if include.get('target', False):
-            d['target'] = self.__target__
+
+        # exclude these by default
+        for k in ['inputs', 'inputs_mapping', 'dependencies']:
+            if k not in include:
+                include[k] = False
 
         for k in include:
             if not include[k] and k in d:
                 d.pop(k)
+
+        # these are stored specially
+        if include.get('name', False):
+            d['name'] = self.__name__
+        if include.get('target', False):
+            d['target'] = self.__target__
 
         return d
 
@@ -284,7 +299,7 @@ class Step(object):
             class_name += 'Template'
             kwargs = self.__template__.kwargs
         else:
-            kwargs = self.get_arguments(inputs=False, inputs_mapping=False)
+            kwargs = self.get_arguments()
 
         return '%s(%s)' % (class_name, 
                 _pprint(kwargs, offset=len(class_name)),)
@@ -310,10 +325,7 @@ class Construct(Step):
         Step.__init__(self, __class_name__=__class_name__, name=name, target=target, **kwargs)
 
     def run(self, **update_kwargs):
-        kwargs = dict(self.__kwargs__)
-        for k in ['inputs', 'inputs_mapping']:
-            if k in kwargs:
-                kwargs.pop(k)
+        kwargs = self.get_arguments()
         kwargs.update(update_kwargs)
         cls = util.get_attr(kwargs.pop('__class_name__'))
         return cls(**kwargs)
@@ -398,12 +410,14 @@ def product(*inputs):
     
 def step_multi_representer(dumper, data):
     tag = '!step:%s.%s' % (data.__class__.__module__, data.__class__.__name__)
-    return dumper.represent_mapping(tag, data.get_arguments())
+    return dumper.represent_mapping(tag, data.get_arguments(
+            inputs=True, inputs_mapping=True, dependencies=True))
 
 def step_multi_representer_all_args(dumper, data):
     tag = '!step:%s.%s' % (data.__class__.__module__, data.__class__.__name__)
-    return dumper.represent_mapping(tag, 
-        data.get_arguments(name=True, target=True))
+    return dumper.represent_mapping(tag, data.get_arguments(inputs=True, 
+            inputs_mapping=True, dependencies=True, 
+            name=True, target=True))
 
 def step_multi_constructor(loader, tag_suffix, node):
     cls = util.get_attr(tag_suffix[1:])
@@ -510,13 +524,15 @@ def get_drake_data(steps):
     return drake_data
 
 def to_drake_step(inputs, output):
-    inputs = map(lambda i: i.get_target_filename(), list(inputs))
-    inputs.insert(0, output.get_yaml_filename())
+    i = [output.get_yaml_filename()]
+    i.extend(map(lambda i: i.get_target_filename(), list(inputs)))
+    i.extend(map(lambda i: inspect.getsourcefile(i.__class__), list(inputs) + [output]))
+    i.extend(output.dependencies)
 
     output_str = '%' + output.__class__.__name__
     if output.is_target():
         output_str += ', ' + os.path.join(output.get_target_filename())
-    return '{output} <- {inputs} [method:drain]\n\n'.format(output=output_str, inputs=str.join(', ', inputs))
+    return '{output} <- {inputs} [method:drain]\n\n'.format(output=output_str, inputs=str.join(', ', i))
 
 # if preview then don't create the dump directories and step yaml files
 def to_drakefile(steps, preview=True, debug=False, bindir=None):

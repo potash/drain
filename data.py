@@ -23,7 +23,7 @@ from step import Step
 
 class ClassificationData(Step):
     def run(self):
-        X,y = datasets.make_classification(**self.__kwargs__)
+        X,y = datasets.make_classification(**self.get_arguments())
         X,y = pd.DataFrame(X), pd.Series(y)
 
         train = np.zeros(len(X), dtype=bool)
@@ -53,9 +53,7 @@ class FromSQL(Step):
             self.inputs = [CreateEngine()]
  
     def run(self, engine):
-        kwargs = dict(self.__kwargs__)
-        kwargs.pop('query')
-        kwargs.pop('to_str')
+        kwargs = self.get_arguments(query=False, to_str=False)
 
         df = pd.read_sql(self.query, engine, **kwargs)
         for column in self.to_str:
