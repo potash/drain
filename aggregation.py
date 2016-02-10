@@ -57,7 +57,8 @@ class AggregationBase(Step):
 
     def join(self, left):
         index = left.index
-        
+        fillna_value = pd.Series()
+ 
         for concat_args, df in self.get_concat_result().iteritems():
             logging.info('Joining %s' % str(concat_args))
             prefix = '' if self.prefix is None else self.prefix + '_'
@@ -66,15 +67,13 @@ class AggregationBase(Step):
 
             left = left.merge(df, left_on=df.index.names, 
                     right_index=True, how='left')
-            logging.info('Filling missing values %s' % str(concat_args))
-            # TODO: is this faster if we don't use .loc but inplace=True
-            # then we'd need to ensure that fillna_value 
-            left.fillna(inplace=True, value = self.fillna_value(df=df, 
+            fillna_value.append(self.fillna_value(df=df, 
                     left=left, **{k:v for k,v in 
                         zip(self.concat_args, concat_args)}))
-#            left.loc[:, df.columns] = left.loc[:,df.columns].fillna(
-#                value = self.fillna_value(df=df, **{k:v for k,v in 
-#                         zip(self.concat_args, concat_args)}))
+
+        logging.info('Filling missing values %s' % str(concat_args))
+        left.fillna(fillna_value, inplace=True)
+
         return left
 
     def fillna_value(self, df, left, **concat_args):
@@ -199,7 +198,10 @@ class SpacetimeAggregation(AggregationBase):
         return {name:value[0] for name,value in self.spacedeltas.iteritems()}
 
     def fillna_value(self, df, left, **kwargs):
-        return {c:0 for c in df.columns}
+        non_count_columns = [c for c in df.columns if not c.endswith('_count')]
+        value = left[non_count_columns].mean()
+        value.reindex(df.columns, fill_value=0)
+        return value
 
     @property
     def arguments(self):

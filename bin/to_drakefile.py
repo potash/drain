@@ -7,7 +7,7 @@ import sys
 import argparse
 import imp
 
-from drain import step
+from drain import step, util
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Use this script to generate a Drakefile for grid search')
@@ -37,7 +37,7 @@ if __name__ == "__main__":
         filename, fname = args.steps.split('::')
         mod = imp.load_source('steps', filename)
         steps = getattr(mod, fname)
-        steps = steps() if hasattr(steps, '__call__') else steps
+        steps = util.make_list(steps() if hasattr(steps, '__call__') else steps)
 
     if args.Drakeinput is None and os.path.exists('Drakefile'):
         args.Drakeinput = 'Drakefile'

@@ -37,17 +37,25 @@ class CreateEngine(Step):
         return util.create_engine()
 
 class FromSQL(Step):
-    def __init__(self, query=None, to_str=None, table=None, **kwargs):
+    def __init__(self, query=None, to_str=None, table=None, tables=None, **kwargs):
+        """
+        Use tables to automatically set dependecies
+        """
         if query is None:
             if table is None:
                 raise ValueError("Must specify query or table")
             query = "SELECT * FROM %s" % table
+            tables = [table]
+        
+        if tables is not None and 'SQL_DIR' in os.environ:
+            self.dependencies = [os.path.join(
+                    os.environ['SQL_DIR'], table.replace('.','/')) 
+                        for table in tables]
 
         if to_str is None:
             to_str = []
 
         Step.__init__(self, query=query, to_str=to_str, **kwargs)
-
 
         if 'inputs' not in kwargs:
             self.inputs = [CreateEngine()]

@@ -291,7 +291,8 @@ class Step(object):
         result = self.get_result()
         if isinstance(result, pd.DataFrame):
             result.to_hdf(os.path.join(self.get_dump_dirname(), 'result.h5'), 'df')
-        joblib.dump(self.get_result(), os.path.join(self.get_dump_dirname(), 'result.pkl'))
+        else:
+            joblib.dump(self.get_result(), os.path.join(self.get_dump_dirname(), 'result.pkl'))
 
     def __repr__(self):
         class_name = self.__class__.__name__

@@ -61,6 +61,9 @@ def apply(df, fn, include_baseline=False,**kwargs):
                 **baseline_kwargs)
     return result
 
+def apply_y(df, fn, **kwargs):
+    return apply(df, lambda s: fn(model.y_subset(s.get_result()['y'], **kwargs)))
+
 def get_subdirs(directory):
      return [os.path.join(directory, name) for name in os.listdir(directory) 
              if os.path.isdir(os.path.join(directory, name))]
