@@ -1,9 +1,11 @@
 from drain.step import *
+from drain import step
 import tempfile
 
 def setup_module(module):
     tmpdir = tempfile.mkdtemp()
-    initialize(tmpdir)
+    step.BASEDIR = tmpdir
+    configure_yaml()
 
 def test_argument_product():
     assert argument_product({'a' : ArgumentCollection([1,2])}) == [{'a': 1}, {'a': 2}]
@@ -154,3 +156,51 @@ def test_get_named_arguments():
     step1 = Step(a=1, name='Step1')
     step2 = Step(b=1, inputs=[Step(c=1, inputs=[step1, Step(d=1)])])
     assert step2.named_arguments == {('Step1', 'a'): 1}
+
+class DumpStep(Step):
+    def __init__(self, n, n_df, return_list, **kwargs):
+        # number of objects to return and number of them to be dataframes
+        # and whether to use a list or dict
+        if n_df == None:
+            n_df = n
+        Step.__init__(self, n=n, n_df=n_df, return_list=return_list, **kwargs)
+
+    def run(self):
+        l = ['a']*self.n + [pd.DataFrame(range(5))]*self.n_df
+        if len(l) == 1:
+            return l[0]
+
+        if self.return_list:
+            return l
+        else:
+            d = {'k'+str(k):v for k,v in zip(range(len(l)), l)}
+            return d
+
+def test_dump_joblib():
+    t = DumpStep(n=10, n_df=0, return_list=False, target=True)
+    run(t)
+    t.dump()
+    t.load()
+    print t.get_result()
+
+def test_dump_hdf_single():
+    t = DumpStep(n=0, n_df=1, return_list=False, target=True)
+    run(t)
+    t.dump()
+    t.load()
+    print t.get_result()
+
+
+def test_dump_hdf_list():
+    t = DumpStep(n=0, n_df=5, return_list=True, target=True)
+    run(t)
+    t.dump()
+    t.load()
+    print t.get_result()
+
+def test_dump_hdf_dict():
+    t = DumpStep(n=0, n_df=5, return_list=False, target=True)
+    run(t)
+    t.dump()
+    t.load()
+    print t.get_result()

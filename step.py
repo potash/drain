@@ -262,7 +262,17 @@ class Step(object):
     def load(self, **kwargs):
         hdf_filename = os.path.join(self.get_dirname(), 'dump', 'result.h5')
         if os.path.isfile(hdf_filename):
-            self.set_result(pd.read_hdf(hdf_filename, 'df'))
+            store = pd.HDFStore(hdf_filename)
+            keys = store.keys()
+            if len(keys) == 1:
+                self.set_result(store['df'])
+            else:
+                if set(keys) == set(map(lambda i: '/%s' % i, range(len(keys)))):
+                    # keys are not necessarily ordered
+                    self.set_result([store[str(k)] for k in range(len(keys))])
+                else:
+                    self.set_result({k[1:]:store[k] for k in keys})
+                
         else:
             self.set_result(joblib.load(os.path.join(self.get_dirname(), 'dump', 'result.pkl')))
 
@@ -291,6 +301,17 @@ class Step(object):
         result = self.get_result()
         if isinstance(result, pd.DataFrame):
             result.to_hdf(os.path.join(self.get_dump_dirname(), 'result.h5'), 'df')
+        elif hasattr(result, '__iter__') and is_dataframe_collection(result):
+            if not isinstance(result, dict):
+                keys = map(str, range(len(result)))
+                values = result
+            else:
+                keys = result.keys()
+                values = result.values()
+
+            store = pd.HDFStore(os.path.join(self.get_dump_dirname(), 'result.h5'))
+            for key, df in zip(keys, values):
+                store.put(key, df, mode='w')
         else:
             joblib.dump(self.get_result(), os.path.join(self.get_dump_dirname(), 'result.pkl'))
 
@@ -320,6 +341,15 @@ class Step(object):
 
     def __ne__(self, other):
         return not self.__eq__(other)
+
+def is_dataframe_collection(l):
+    if isinstance(l, dict):
+        l = l.values()
+
+    for i in l:
+        if not isinstance(i, pd.DataFrame):
+            return False
+    return True
 
 class Construct(Step):
     def __init__(self, __class_name__, name=None, target=False, **kwargs):
@@ -463,8 +493,6 @@ def configure_yaml(dump_all_args=False):
     yaml.add_constructor('!range', range_constructor)
     yaml.add_constructor('!powerset', powerset_constructor)
     yaml.add_constructor('!list', list_constructor)
-
-
 
 def get_targets(step, ignore):
     outputs = set()

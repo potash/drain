@@ -360,14 +360,18 @@ class PgSQLDatabase(pandas.io.sql.SQLDatabase):
         table_name=name
         if schema is not None:
             table_name = schema + '.' + table_name
+
+        return self.read_query('select * from %s' % table_name)
+
+    def read_sql(self, query, raise_on_error=True, **kwargs):
         from subprocess import Popen, PIPE, STDOUT
 
-        sql = "COPY {table_name} TO STDOUT WITH (FORMAT CSV, HEADER TRUE)".format(table_name=table_name)
+        sql = "COPY (%s) TO STDOUT WITH (FORMAT CSV, HEADER TRUE)" % query
         p = Popen(['psql', '-c', sql], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
-        df = pd.read_csv(p.stdout)
+        df = pd.read_csv(p.stdout, **kwargs)
 
-        psql_out = p.communicate()[0]
-        logging.info(psql_out.decode()),
+        psql_out = p.communicate()
+        logging.info(psql_out[0].decode(),)
 
         r = p.wait()
         if raise_on_error and (r > 0):
