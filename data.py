@@ -81,16 +81,19 @@ class Merge(Step):
 # write DataFrames to an HDF store
 # pass put_arguments (format, mode, data_columns, etc.) to init
 # pass DataFrames by name via inputs
-# to_str is a list of columns to convert to str (because HDF table doesn't support unicode)
 class ToHDF(Step):
-    def __init__(self, target=True, to_str=None, **kwargs):
-        if to_str is None: to_str = []
-        Step.__init__(self, target=True, to_str=to_str, **kwargs)
+    def __init__(self, target=True, objects_to_ascii=False, **kwargs):
+        Step.__init__(self, target=True, objects_to_ascii=objects_to_ascii, **kwargs)
 
     def run(self, **kwargs):
         store = pd.HDFStore(os.path.join(self.get_dump_dirname(), 'result.h5'))
 
         for key, df in kwargs.iteritems():
+            if self.objects_to_ascii:
+                for c,dtype in df.dtypes.iteritems():
+                    if dtype == object:
+                        df[c] = df[c].str.encode("ascii", "ignore")
+
             logging.info('Writing %s %s' % (key, str(df.shape)))
             if 'put_args' in self.get_arguments() and key in self.put_args:
             	args = self.put_args[key]

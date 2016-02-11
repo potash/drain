@@ -264,7 +264,7 @@ class Step(object):
         if os.path.isfile(hdf_filename):
             store = pd.HDFStore(hdf_filename)
             keys = store.keys()
-            if len(keys) == 1:
+            if keys == ['/df']:
                 self.set_result(store['df'])
             else:
                 if set(keys) == set(map(lambda i: '/%s' % i, range(len(keys)))):

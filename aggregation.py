@@ -71,7 +71,7 @@ class AggregationBase(Step):
                     left=left, **{k:v for k,v in 
                         zip(self.concat_args, concat_args)}))
 
-        logging.info('Filling missing values %s' % str(concat_args))
+        logging.info('Filling missing values')
         left.fillna(fillna_value, inplace=True)
 
         return left
@@ -94,7 +94,7 @@ class AggregationBase(Step):
             dfs = []
 
             for argument in self.arguments:
-                logging.info('Aggregating %s' % argument)
+                logging.info('Aggregating %s %s' % (self.prefix, argument))
                 aggregator = self._get_aggregator(**argument)
                 df = aggregator.aggregate(self.indexes[argument['index']])
                 logging.info('Aggregated %s: %s' % (argument, df.shape))

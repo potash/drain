@@ -256,4 +256,7 @@ def aggregate_set(l):
     return set(np.concatenate(l.values))
 
 def aggregate_counts(l):
+    return np.unique(l.values, return_counts=True)
+
+def concatenate_aggregate_counts(l):
     return np.unique(np.concatenate(l.values), return_counts=True)
