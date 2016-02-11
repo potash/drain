@@ -67,7 +67,7 @@ class AggregationBase(Step):
 
             left = left.merge(df, left_on=df.index.names, 
                     right_index=True, how='left')
-            fillna_value.append(self.fillna_value(df=df, 
+            fillna_value = fillna_value.append(self.fillna_value(df=df, 
                     left=left, **{k:v for k,v in 
                         zip(self.concat_args, concat_args)}))
 
@@ -200,7 +200,7 @@ class SpacetimeAggregation(AggregationBase):
     def fillna_value(self, df, left, **kwargs):
         non_count_columns = [c for c in df.columns if not c.endswith('_count')]
         value = left[non_count_columns].mean()
-        value.reindex(df.columns, fill_value=0)
+        value = value.reindex(list(df.columns), fill_value=0)
         return value
 
     @property
