@@ -1,11 +1,13 @@
 import sqlalchemy
 import logging
-import itertools
 import os
-import numpy as np
 import sys
 import yaml
+
+import numpy as np
 import pandas as pd
+
+from itertools import chain, product
 from datetime import datetime, timedelta, date
 from sklearn import preprocessing
 from scipy import stats
@@ -161,6 +163,22 @@ def merge_dicts(*dict_args):
 def dict_subset(d, keys):
     return {k:d[k] for k in keys if k in d}
 
+
+def list_expand(d, prefix=None):
+    """
+    Recursively expand dictionaries into lists
+    e.g. list_expand({1:{2:[3,4]}, 5:[6]}) == [(1,2,3), (1,2,4), (5,6)]
+    """
+    if prefix is None:
+        prefix = tuple()
+    for k in d:
+        if isinstance(d, dict):
+            for i in list_expand(d[k], prefix=list(chain(prefix, (k,)))):
+                yield i
+        else:
+            yield list(chain(prefix, make_list(k)))
+
+
 def nunique(iterable):
     try:
         return len(set(iterable))
@@ -218,7 +236,7 @@ def dict_product(d, product_keys=None):
         dicts =  [{}]
     else:
         keys, values = zip(*items)
-        dicts = [dict_filter_none(dict(zip(keys, v))) for v in itertools.product(*values)]
+        dicts = [dict_filter_none(dict(zip(keys, v))) for v in product(*values)]
     
     if product_keys is not None:
         for d in dicts:

@@ -86,6 +86,18 @@ class AggregationBase(Step):
         """
         return {}
 
+    def select(self, df, *args):
+        """
+        After joining, selects a subset of arguments
+        df: the result of a call to self.join(left)
+        args: a list of arguments to select. each element in the list is either
+            - a tuple corresponding to concat_args, e.g. ('District', '12h')
+            - a dict to be exanded into the above, e.g. [{'District': ['12h', '24h'}] get expanded to
+                    ('District', '12h'), ('District', '24h')
+        """
+#        args = [ ((k,v) for v in a[k]) if isinstance(a, dict) else a   for a in args
+                
+
     def run(self,*args, **kwargs):
         if self.parallel:
             return list(chain(*args))
