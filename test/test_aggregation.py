@@ -14,21 +14,6 @@ class SimpleCrimeAggregation(SimpleAggregation):
       	    Count(lambda c: c['Primary Type'] == 'THEFT', 
                     'theft', prop=True),
 	]
-
-def test_simple_aggregation_parallel(crime_step):
-    s = SimpleCrimeAggregation(inputs=[crime_step], 
-	indexes=['District', 'Community Area'], parallel=True)
-    s.inputs=[crime_step]
-    step.run(s)
-    print s.get_result()
-
-def test_simple_aggregation(crime_step):
-    s = SimpleCrimeAggregation(inputs=[crime_step], 
-	indexes=['District', 'Community Area'], parallel=False)
-    s.inputs=[crime_step]
-    step.run(s)
-    print s.get_result()
-
 class SpacetimeCrimeAggregation(SpacetimeAggregation):
     def __init__(self, inputs, spacedeltas, dates, **kwargs):
         SpacetimeAggregation.__init__(self,
@@ -43,13 +28,17 @@ class SpacetimeCrimeAggregation(SpacetimeAggregation):
                     'theft', prop=True)
         ]
 
+def test_simple_aggregation_parallel(crime_step):
+    s = SimpleCrimeAggregation(inputs=[crime_step], 
+	indexes=['District', 'Community Area'], parallel=True)
+    s.inputs=[crime_step]
+    step.run(s)
+    print s.get_result()
 
-def test_spacetime_aggregation(crime_step):
-    s = SpacetimeCrimeAggregation(inputs=[crime_step], 
-            spacedeltas={'district': ('District', ['12h', '24h']),
-                         'community':('Community Area', ['1d', '2d'])}, parallel=True,
-            dates=[date(2015,12,30), date(2015,12,31)])
-
+def test_simple_aggregation(crime_step):
+    s = SimpleCrimeAggregation(inputs=[crime_step], 
+	indexes=['District', 'Community Area'], parallel=False)
+    s.inputs=[crime_step]
     step.run(s)
     print s.get_result()
 
@@ -69,23 +58,29 @@ def test_simple_join_fillna(crime_step):
     left = pd.DataFrame({'District':[1,2], 'Community Area':[1,100]})
     print s.join(left)
 
-def test_spacetime_join(crime_step):
-    s = SpacetimeCrimeAggregation(inputs=[crime_step], 
-            spacedeltas={'district': ('District', ['12h', '24h']),
-                         'community':('Community Area', ['1d', '2d'])},
-            dates=[date(2015,12,30), date(2015,12,31)], parallel=True)
-    step.run(s)
+def test_spacetime_aggregation(spacetime_crime_agg):
+    step.run(spacetime_crime_agg)
+    print spacetime_crime_agg.get_result()
 
-    left = pd.DataFrame({'District':[1,2], 'Community Area':[1,2], 'date':[np.datetime64(date(2015,12,30)), np.datetime64(date(2015,12,31))]})
-    print s.join(left)
+def test_spacetime_join(spacetime_crime_agg):
+    step.run(spacetime_crime_agg)
 
-def test_spacetime_join_fillna(crime_step):
-    s = SpacetimeCrimeAggregation(inputs=[crime_step], 
-            spacedeltas={'district': ('District', ['12h', '24h']),
-                         'community':('Community Area', ['1d', '2d'])},
-            dates=[date(2015,12,30), date(2015,12,31)], parallel=True)
-    step.run(s)
+    left = pd.DataFrame({'District':[1,2], 'Community Area':[1,2], 
+        'date':[np.datetime64(date(2015,12,30)), np.datetime64(date(2015,12,31))]})
+    print spacetime_crime_agg.join(left)
 
-    left = pd.DataFrame({'District':[1,2], 'Community Area':[1,100], 'date':[np.datetime64(date(2015,12,30)), np.datetime64(date(2015,12,31))]})
-    print s.join(left)
+def test_spacetime_join_select(spacetime_crime_agg):
+    step.run(spacetime_crime_agg)
+
+    left = pd.DataFrame({'District':[1,2], 'Community Area':[1,2], 
+        'date':[np.datetime64(date(2015,12,30)), np.datetime64(date(2015,12,31))]})
+    df = spacetime_crime_agg.join(left)
+    print spacetime_crime_agg.select(df, {'district': ['12h']})
+
+def test_spacetime_join_fillna(spacetime_crime_agg):
+    step.run(spacetime_crime_agg)
+
+    left = pd.DataFrame({'District':[1,2], 'Community Area':[1,100], 
+        'date':[np.datetime64(date(2015,12,30)), np.datetime64(date(2015,12,31))]})
+    print spacetime_crime_agg.join(left)
 

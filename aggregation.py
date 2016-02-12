@@ -8,7 +8,7 @@ import logging
 
 class AggregationBase(Step):
     """
-    AggregationBase uses aggregate.Aggregator to aggregate data. It can include aggregations over multiple indexes and multiple data transformations (e.g. subsets). The combinations can be run in parallel and can be returned disjointl or concatenated. Finally the results may be pivoted and joined to other datasets.
+    AggregationBase uses aggregate.Aggregator to aggregate data. It can include aggregations over multiple indexes and multiple data transformations (e.g. subsets). The combinations can be run in parallel and can be returned disjoint or concatenated. Finally the results may be pivoted and joined to other datasets.
     """
     def __init__(self, insert_args, aggregator_args, concat_args, 
             parallel=False, target=False, prefix=None,
@@ -55,15 +55,19 @@ class AggregationBase(Step):
     def argument_names(self):
         return list(util.union(map(set, self.arguments)))
 
+    def args_prefix(self, args):
+        prefix = '' if self.prefix is None else self.prefix + '_'
+        prefix += str.join('_', map(str, args)) + '_'
+        return prefix
+
     def join(self, left):
         index = left.index
         fillna_value = pd.Series()
  
         for concat_args, df in self.get_concat_result().iteritems():
+            # TODO: print warning if df.index.names is not a subset of left.columns and skip this df
             logging.info('Joining %s' % str(concat_args))
-            prefix = '' if self.prefix is None else self.prefix + '_'
-            prefix += str.join('_', map(str, concat_args)) + '_'
-            data.prefix_columns(df, prefix)
+            data.prefix_columns(df, self.args_prefix(concat_args))
 
             left = left.merge(df, left_on=df.index.names, 
                     right_index=True, how='left')
@@ -86,17 +90,24 @@ class AggregationBase(Step):
         """
         return {}
 
-    def select(self, df, *args):
+    def select(self, df, args):
         """
         After joining, selects a subset of arguments
         df: the result of a call to self.join(left)
-        args: a list of arguments to select. each element in the list is either
-            - a tuple corresponding to concat_args, e.g. ('District', '12h')
-            - a dict to be exanded into the above, e.g. [{'District': ['12h', '24h'}] get expanded to
-                    ('District', '12h'), ('District', '24h')
+        args: a collcetion of arguments to select, as accepted by drain.util.list_expand:
+            - a tuple corresponding to concat_args, e.g. [('District', '12h'), ('Distict', '24h')]
+            - a dict to be exanded into the above, e.g. {'District': ['12h', '24h']}
         """
-#        args = [ ((k,v) for v in a[k]) if isinstance(a, dict) else a   for a in args
-                
+        if self.prefix is None:
+            raise ValueError('Cannot do selection on an Aggregation without a prefix')
+
+        args = list(util.list_expand(args))
+        print args
+        # TODO: make sure args are a subset of arguments
+        df = data.select_features(df, exclude=[self.prefix + '_.*'], 
+                include= map(lambda a: self.args_prefix(a) + '.*', args))
+
+        return df
 
     def run(self,*args, **kwargs):
         if self.parallel:
