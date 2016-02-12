@@ -6,6 +6,7 @@ import util
 import warnings
 import logging
 
+from copy import deepcopy
 import pandas as pd
 from scipy import stats
 
@@ -95,12 +96,9 @@ class ToHDF(Step):
                         df[c] = df[c].str.encode("ascii", "ignore")
 
             logging.info('Writing %s %s' % (key, str(df.shape)))
-            if 'put_args' in self.get_arguments() and key in self.put_args:
-            	args = self.put_args[key]
-            else:
-                args = {}
+            args = self.get_arguments().get('put_args', {}).get(key, {})
 
-            store.put(key, df, mode='w', **args)
+            store.put(key, df, mode='w', **deepcopy(args))
 
         return store
 

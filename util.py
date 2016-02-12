@@ -173,10 +173,10 @@ def list_expand(d, prefix=None):
         prefix = tuple()
     for k in d:
         if isinstance(d, dict):
-            for i in list_expand(d[k], prefix=list(chain(prefix, (k,)))):
+            for i in list_expand(d[k], prefix=tuple(chain(prefix, (k,)))):
                 yield i
         else:
-            yield list(chain(prefix, make_list(k)))
+            yield tuple(chain(prefix, make_list(k)))
 
 
 def nunique(iterable):

@@ -66,7 +66,7 @@ class AggregationBase(Step):
  
         for concat_args, df in self.get_concat_result().iteritems():
             # TODO: print warning if df.index.names is not a subset of left.columns and skip this df
-            logging.info('Joining %s' % str(concat_args))
+            logging.info('Joining %s %s' % (self.prefix, str(concat_args)))
             data.prefix_columns(df, self.args_prefix(concat_args))
 
             left = left.merge(df, left_on=df.index.names, 
@@ -101,9 +101,18 @@ class AggregationBase(Step):
         if self.prefix is None:
             raise ValueError('Cannot do selection on an Aggregation without a prefix')
 
-        args = list(util.list_expand(args))
-        print args
-        # TODO: make sure args are a subset of arguments
+        # run list_expand and ensure all args to tuples for validation
+        args = [tuple(i) for i in util.list_expand(args)]
+
+        # check that the args passed are valid
+        for a in args:
+            has_arg = False
+            for argument in self.arguments:
+                if a == tuple(argument[k] for k in self.concat_args):
+                    has_arg = True; break
+            if not has_arg:
+                raise ValueError('Invalid argument for selection: %s' % str(a))
+                    
         df = data.select_features(df, exclude=[self.prefix + '_.*'], 
                 include= map(lambda a: self.args_prefix(a) + '.*', args))
 
@@ -223,7 +232,7 @@ class SpacetimeAggregation(AggregationBase):
     def fillna_value(self, df, left, **kwargs):
         non_count_columns = [c for c in df.columns if not c.endswith('_count')]
         value = left[non_count_columns].mean()
-        value = value.reindex(list(df.columns), fill_value=0)
+        value = value.reindex(df.columns, fill_value=0)
         return value
 
     @property
