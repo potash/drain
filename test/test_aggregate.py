@@ -26,4 +26,5 @@ def test_fraction(crime_df):
         f = Fraction(n,d, include_numerator=i_n, include_denominator=i_d, include_fraction=i_f)
         a = Aggregator(crime_df, [f])
         df = a.aggregate('District')
+        print df
 
