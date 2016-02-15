@@ -19,3 +19,4 @@ def test_dict_expand():
 
 def test_dict_expand_deep():
     assert dict_expand({1:2, 3:{4:{5:6}}}) == {1:2, (3,4,5):6}
+

@@ -196,7 +196,6 @@ def dict_expand(d, prefix=None):
                 for k,v in result.iteritems()}
     return result
 
-
 def nunique(iterable):
     try:
         return len(set(iterable))
