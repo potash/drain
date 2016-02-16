@@ -1,190 +1,304 @@
-import os
-import logging
-from itertools import product,chain
+from itertools import product, chain
+from collections import defaultdict
 
 import pandas as pd
 import numpy as np
+import sys
+import dis
+import StringIO
+import inspect
+import types
 
 import util, data
 from util import merge_dicts, hash_obj
 
-# the series can be:
-#    - a callable (taking the DataFrame), e.g. lambda df: df.column**2
-#    - one of the columns in the frame, e.g. 'column'
-#    - a non-string value, e.g. 1
-def get_series(series, df, astype=None):
-    if hasattr(series, '__call__'):
-        r = series(df)
-    elif series in df.columns:
-        r = df[series]
-    elif not isinstance(series, basestring):
-        r = pd.Series(series, index=df.index)
-    else:
-        raise ValueError('Invalid series: %s' % series)
+'''
+transform first (per raw column), then aggregate (per transformed column), then do column operations (which now have shared index)
 
-    if astype is not None:
-        r = r.astype(astype)
-    return r
- 
-# AggregateSeries consist of a series and a function
-class AggregateSeries(object):
-    def __init__(self, series, function, astype=None):
-        self.series = series
-        self.function = function
+allow syntax like ([lambda x: x.gpa**2, 'suspensions'], ['sum','avg']), and like
+Aggregator(df, [Count(), Count('Arrest')], 'district')
 
-        # default for pandas keywords is float32
-        # e.g. 'mean', 'min', 'sum', etc.
-        # much faster!
-        if astype is None and isinstance(function, basestring):
-            astype = np.float32
-        self.astype = astype
-    
-    def apply_series(self, df):
-        return get_series(self.series, df, self.astype)
-    
+make sure all transformations and aggregations are only done once
+'''
+
+def capture_print(f, *args):
+    '''helper to capture stdout'''
+    stdout_ = sys.stdout
+    stream = StringIO.StringIO()
+    sys.stdout = stream
+    f(*args)
+    sys.stdout = stdout_ 
+    return stream.getvalue()
+
+class FuncHash:
+    '''utility class that wraps functions; makes lambdas hashable via bytecode'''
+    def __init__(self, func):
+        self.func = func
     def __hash__(self):
-        s = hash_obj(self.series)
-        f = hash_obj(self.function)
+        # anonymous functions can only be cashed based on their bytecode
+        if isinstance(self.func, types.LambdaType):
+            return hash(capture_print(dis.dis, self.func))
+        return hash(self.func)
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+    def __call__(self, *args, **kwargs):
+        return self.func(*args, **kwargs)
+    def __repr__(self):
+        return self.func.__repr__()
+
+'''
+class Column:
+    __init__( name or lambda or function, or scalar)
+    pd.Series <- .apply(df)
+    __hash__: gets hashed based on input argument (so lambda function based on bytecode)
+'''
+class Column:
+
+    def __init__(self, definition, astype=None):
+        if hasattr(definition, '__call__'):
+            self.definition = FuncHash(definition)
+        else:
+            self.definition = definition
+        self.astype = astype
+
+    def apply(self, df):
+        if hasattr(self.definition, '__call__'):
+            r =  self.definition(df)
+        elif self.definition in df.columns:
+            r = df[self.definition]
+        elif not isinstance(self.definition, basestring):
+            r = pd.Series(self.definition, index=df.index)
+        else:
+            raise ValueError("Invalid column definition: %s"%str(self.definition))
+        return r.astype(self.astype) if self.astype else r
+
+    def __hash__(self):
+        return hash((self.definition, self.astype))
+    def __eq__(self, other):
+        return hash(self) == hash(other)
         
-        return hash((s,f, self.astype))
-       
-class AggregateBase(object):
-    def __init__(self, columns, aggregate_series):
-        self.columns = columns
-        self.aggregate_series = aggregate_series
-      
-    # default is that series and columns are one-to-one
-    def apply(self, series):
-        return series
+class ColumnReduction:
+    '''
+        __init__(column, and a reduction (i.e., a row-aggregating function); maybe also takes an astype
+        __hash__: gets hashed by aggregate row reduction (or lambda bytecode) and Column
+    '''
+    # TODO: add astype
+    def __init__(self, column, agg_func):
+        if not isinstance(column, Column):
+            raise ValueError("ColumnReduction needs a Column")
+        self.column = column
+        self.agg_func = FuncHash(agg_func) if hasattr(agg_func, '__call__') else agg_func # necessary because we sometimes pass strings for Pandas' agg()
+    def __hash__(self):
+        return hash((self.column, self.agg_func))
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+        
+class ColumnFunction:
+    '''
+    __init__(list of column reductions, list of names)
+    - the second list names the outputs that apply() produces
+    apply_and_name() -  asks aggregator to provide the reduced columns from the list of column reductions; they need to be indexed the same
+                        calls self.apply(), names the pd.Series with its list of names, return the list of named pd.Series
+    apply(aggregator) - abstract, needs to be implemented by all children
+    - performs some arithmetic on these pd.Series
+    - returns a list of pd.Series
+    '''
+
+    def __init__(self, column_reductions, names):
+
+        for cr in column_reductions:
+            if not isinstance(cr, ColumnReduction):
+                raise ValueError("ColumnFunction requires a list of ColumnReductions; %s is not one."%repr(cr))
+
+        self.column_reductions = column_reductions
+        self.names = names
+
+    def apply_and_name(self, aggregator):
+        reduced_df = self._apply(aggregator)
+        if len(self.names) != len(reduced_df.columns):
+            raise IndexError("The ColumnFunction creates more dataframe columns than it has names for them!")
+        reduced_df.columns = self.names
+        return reduced_df
+    
+    def _apply(self, aggregator):
+        raise NotImplementedError
 
     def __div__(self, other):
-        f = Fraction(numerator=self, denominator=other)
-        return f
+        return Fraction(numerator=self, denominator=other)
 
-class Fraction(AggregateBase):
-    def __init__(self, numerator, denominator, name='{numerator}_per_{denominator}', 
+class ColumnIdentity(ColumnFunction):
+    def __init__(self, column_reductions, names):
+        ColumnFunction.__init__(self, column_reductions, names)
+    def _apply(self, aggregator):
+        return aggregator.get_reduced(self.column_reductions)
+
+class Aggregate(ColumnIdentity):
+
+    # TODO: add astype
+    def __init__(self, column_def, agg_func, name=None, fname=None):
+
+        # make list of column reductions from arguments  --> each ColumnReduction  needs a Column(definition) and an agg_func
+        column_def = util.make_list(column_def)
+        agg_func = util.make_list(agg_func)
+        column_reductions = [ColumnReduction(Column(defn), func) for defn, func in product(column_def, agg_func)]
+
+        # make list of names from the arguments --> same length as the list of column reductions above!
+        name = [str(c) for c in column_def] if name is None else util.make_list(name)
+        if len(name) != len(column_def):
+            raise ValueError("name and column_def must be same length, or name must be None.")
+        
+        fname = [str(a) for a in agg_func] if fname is None else util.make_list(fname)
+        if len(fname) != len(agg_func):
+            raise ValueError("fname and agg_func must be same length, or fname must be None.")
+
+        # if there's only on agg_func, you can override the function-naming-schema,
+        # by passing fname=False; then we only use the name
+        if len(agg_func) == 1 and fname == [False]:
+            column_names = name
+        else:
+            column_names = ['%s_%s'%(cn, fn) for cn, fn in product(name, fname)]
+
+        ColumnFunction.__init__(self, column_reductions, column_names)
+
+class Aggregator:
+    def __init__(self, df, column_functions):
+        self.df = df
+        self.column_functions = column_functions
+
+        # unique column reductions from all the column functions
+        self.column_reductions = set([cr for cf in column_functions for cr in cf.column_reductions])
+
+        # unique columns across all the column reductions
+        self.columns = set([c.column for c in self.column_reductions])
+
+        # dataframe of the unique, populated columns, with the column  objects as the dataframe's column names
+        self.col_df = pd.DataFrame({col: col.apply(df) for col in self.columns})
+
+    def get_reduced(self, column_reductions):
+        for cr in column_reductions:
+            if not cr in self.column_reductions:
+                raise ValueError("Column reduction %r is not known to this Aggregator!"%cr)
+        return self.reduced_df[column_reductions]
+
+    def aggregate(self, index):
+
+        # create a df that is aggregated by index, 
+        # and that contains as columns all the unique 
+        # column reductions (columns, aggregated by some function)
+        # as requested
+        if isinstance(index, basestring):
+            col_df_grouped = self.col_df.groupby(self.df[index])
+        else:
+            self.col_df.index = pd.MultiIndex.from_arrays([self.df[i] for i in index])
+            col_df_grouped = self.col_df.groupby(level=index)
+            self.col_df.index = self.df.index
+
+        self.reduced_df = pd.DataFrame({
+            colred: col_df_grouped[colred.column].agg(colred.agg_func)
+            for colred in self.column_reductions
+            })
+
+        reduced_dfs = []
+        for cf in self.column_functions:
+            # each apply_and_name() calls get_reduced() with the column reductions it wants
+            reduced_dfs.append(cf.apply_and_name(self))
+
+        return pd.concat(reduced_dfs, axis=1)
+
+#         return pd.DataFrame({s.name: s for s in reduced_series})
+
+class Fraction(ColumnFunction):
+
+    ''' numerator and denominator are ColumnFunctions '''
+
+    def __init__(self, numerator, denominator, name='{numerator}_per_{denominator}',
             include_numerator=False, include_denominator=False, include_fraction=True):
         self.numerator = numerator
         self.denominator = denominator
-
         self.include_numerator=include_numerator
         self.include_denominator=include_denominator
         self.include_fraction=include_fraction
 
-        columns = []
+        names = []
         if include_fraction:
             if hasattr(name, '__iter__') and len(name) == \
-                    len(numerator.columns)*len(denominator.columns):
-                columns.extend(name)
+                    len(numerator.names)*len(denominator.names):
+                names.extend(name)
             elif isinstance(name, basestring):
-                columns.extend([name.format(numerator=n, denominator=d)
-                    for n,d in product(numerator.columns, denominator.columns)])
+                names.extend([name.format(numerator=n, denominator=d)
+                    for n,d in product(numerator.names, denominator.names)])
             else:
                 raise ValueError('Name must either be a list of names of the correct length or a format string')
         if include_numerator:
-            columns.extend(numerator.columns)
+            names.extend(numerator.names)
         if include_denominator:
-            columns.extend(denominator.columns)
+            names.extend(denominator.names)
 
-        aggregate_series = []
+        column_reductions = []
+        # numerator first, then denominator
         if include_fraction:
-            aggregate_series += numerator.aggregate_series + denominator.aggregate_series
+            column_reductions += numerator.column_reductions + denominator.column_reductions
         else:
             if include_numerator:
-                aggregate_series += numerator.aggregate_series
+                column_reductions += numerator.column_reductions
             if include_denominator:
-                aggregate_series += denominator.aggregate_series
+                column_reductions += denominator.column_reductions
 
-        AggregateBase.__init__(self, columns=columns, aggregate_series=aggregate_series)
+        ColumnFunction.__init__(self, column_reductions=column_reductions, names=names)
 
-    def apply(self, series):
-        if self.include_fraction or (self.include_numerator and self.include_denominator):
-            ncolumns = self.numerator.apply(series[:len(self.numerator.aggregate_series)])
-            dcolumns = self.denominator.apply(series[len(self.numerator.aggregate_series):])
-        elif self.include_numerator:
-            ncolumns = self.numerator.apply(series)
-        elif self.include_denominator:
-            dcolumns = self.denominator.apply(series)
+    def _apply(self, aggregator):
+        # the incoming dataframe will have the reduced columns in order as in column_reductions above
 
-        columns = []
+        reduced_dfs = []
         if self.include_fraction:
-            columns = [(n / d) for n,d in product(ncolumns, dcolumns)]
+            n_df = self.numerator.apply_and_name(aggregator)
+            d_df = self.denominator.apply_and_name(aggregator)
+            reduced_dfs.extend( [n_df[cn]/d_df[cd] for cn,cd in product(
+                                            n_df.columns, d_df.columns)] )
+
         if self.include_numerator:
-            columns.extend(ncolumns)
+            reduced_dfs.append(self.numerator.apply_and_name(aggregator))
+
         if self.include_denominator:
-            columns.extend(dcolumns)
+            reduced_dfs.append(self.denominator.apply_and_name(aggregator))
 
-        return columns
-
-class Aggregate(AggregateBase):
-    def __init__(self, series, f, name=None, fname=None, astype=None):
-        """
-        series can be single or iterable
-        functions can be a single function or iterable
-        total aggregates are the products of series and functions
-        default name is str(series), default function name is str(f)
-        column names are {name}_{fname}
-        unless single function and function_names=False, then column name is just name
-        """
-        series = util.make_list(series)
-        f = util.make_list(f)
-
-        name = series if name is None else util.make_list(name)
-        fname = f if fname is None else util.make_list(fname)
-
-        if not (len(series) == len(name)):
-            raise ValueError('series and name must have same length or name must be None')
-        if not (len(series) == len(name)):
-            raise ValueError('f and fname must have same length or fname must be None')
-
-        if fname == [False]:
-            if len(f) > 1:
-                raise ValueError('Must use function names for multiple functions')
-            columns = name
-        else:
-            columns = ['%s_%s' % n for n in product(name, fname)]
-
-        AggregateBase.__init__(self, columns,
-                [AggregateSeries(*sf, astype=astype) for sf in product(series, f)])
+        return pd.concat(reduced_dfs,axis=1)
 
 class Count(Fraction):
-    """
-    Aggregate a given series (as accepted by get_series above) by summing
-    By default that series is 1, resulting in a count (hence the name).
-    Also useful when series is a boolean.
-    If prop=True then also divide that series by a specified parent series, also summed.
-    """
-    def __init__(self, series=None, name=None, parent=None, parent_name=None, prop=False, prop_only=False):
-        fname = 'count'
-        if series is None:
-            series = np.float32(1)
-            if name is None:
-                name = 'count'
-                fname = False # don't use fname when series is 'count'
+    '''
+    Should be callable like:
+    Count('Arrests', prop=1) - then also produces columns with the proportion
+    Count(['Arrests','Stops'], prop=lambda x: x.Arrests.notnull()) - calculates the count and the proportion out of the outof series;
+    Count(['Arrests','Stops'], prop=lambda x: x.Arrests.notnull(), prop_only) - as above, but omits the vanilla count
+    '''
+    def __init__(self, definition=None, name=None, prop=None, prop_only=False, prop_name=None):
 
-        if parent is not None or prop_only:
-            prop=True
+        if prop==None and prop_only==True:
+            raise ValueError("Cannot calculate only the proportion when no proportion requested!")
 
-        numerator = Aggregate(series, 'sum', name, fname=fname)
-        if not prop:
-            Fraction.__init__(self, numerator=numerator, 
-                    denominator=None, include_fraction=False, 
-                    include_numerator=True)
+        definition = 1 if definition is None else definition
+        prop = 1 if prop==True else prop
+
+        # if we do a vanilla count, just call it 'count'
+        if definition==1 and name is None:
+            name = 'count'
+            fname = False
         else:
-            if parent is None:
-                parent = np.float32(1)
-
-            denominator = Aggregate(parent, 'sum', parent_name)
-            Fraction.__init__(self, numerator=numerator, 
-                    denominator=denominator, 
-                    include_numerator=not prop_only, 
-                    # fraction names are numerator names with
-                    # 'count' replaced by 'prop'
-                    name=[n[:-5]+'prop' for n in numerator.columns])
+            fname = 'count'
+        
+        denominator = Aggregate(prop, 'sum', prop_name) if prop else None
+        numerator = Aggregate(definition, 'sum', name, fname)
+        if prop not in [None, 1]:
+            fracnames = [n[:-5]+'prop_'+d[:-4] for n,d in zip(numerator.names, denominator.names)]
+        else:
+            fracnames = [n[:-5]+'prop' for n in numerator.names]
+        Fraction.__init__(self, numerator=numerator, denominator=denominator, include_numerator=not prop_only,
+                          include_denominator=False, include_fraction=prop is not None,
+                          name=fracnames)
 
 class Proportion(Count):
-    def __init__(self, series=None, name=None, parent=None, parent_name=None):
-        Count.__init__(self, series=series, name=name, parent=parent, parent_name=parent_name, prop_only=True)
+    def __init__(self, definition, denom_def, name=None, denom_name=None):
+        Count.__init__(self, definition=definition, name=name, prop=denom_def, prop_only=True, prop_name=denom_name)
 
 def _collect_columns(aggregates):
     columns = set()
@@ -197,61 +311,6 @@ def _collect_columns(aggregates):
         raise ValueError('Aggregator needs at least one output columns')
 
     return columns
-
-class Aggregator(object):
-    def __init__(self, df, aggregates):
-        self.df = df
-        self.aggregates = aggregates
-
-        self.columns = _collect_columns(aggregates)
-        
-        # collect all the series
-        series = {} # unique series
-        aggregate_series = {} # references to those series, one for each (series, function)
-        series_refs = [] # series_refs[i] contains references to aggregate_series for aggregates[i]
-        for a in aggregates:
-            sr = []
-            for aseries in a.aggregate_series:
-                h = hash_obj(aseries.series)
-                i = hash(aseries)
-                if h not in series: # only apply each series once
-                    series[h] = aseries.apply_series(df)
-                    aggregate_series[h] = {i: aseries.function}
-                if i not in aggregate_series[h]: # collect each aseries only once
-                    aggregate_series[h][i] = aseries.function
-
-                sr.append(i)
-            series_refs.append(sr)
-        
-        self.adf = pd.DataFrame(series)
-        self.aggregate_series = aggregate_series
-        self.series_refs = series_refs
-        
-    # all the aggregates for a single series
-    # returns a hash(aseries): series dict
-    def get_series_aggregates(self, groupby, h):
-        a = groupby[h].agg(self.aggregate_series[h])
-        return {i:a[i] for i in a.columns}
-    
-    def aggregate(self, index):
-        if isinstance(index, basestring):
-            groupby = self.adf.groupby(self.df[index])
-        else:
-            # groupby does not accept a dataframe so we have to set the index then put it back
-            self.adf.index = pd.MultiIndex.from_arrays([self.df[i] for i in index])
-            groupby = self.adf.groupby(level=index)
-            self.adf.index = self.df.index
-        
-        aggregated = merge_dicts(*[self.get_series_aggregates(groupby, h) for h in self.aggregate_series])
-
-        all_series = []
-        for a,r in zip(self.aggregates, self.series_refs):
-            series = a.apply([aggregated[i].copy() for i in r])
-            # rename series according to aggregate.columns
-            for s,c in zip(series, a.columns): s.name = c
-            all_series.extend(series)
-
-        return pd.concat(all_series, axis=1)
 
 def aggregate_list(l):
     return list(np.concatenate(l.values))

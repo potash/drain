@@ -12,6 +12,15 @@ def crime_df():
     return pd.read_csv(os.path.join(os.path.dirname(__file__), 'crimes.csv'),
             parse_dates=['Date'])
 
+@pytest.fixture
+def small_df():
+    return pd.DataFrame({
+        'name': ['Anne', 'Ben', 'Anne', 'Charlie'],
+        'arrests': [1, 2, 2, 5],
+        'stop': [True, False, True, True],
+        'score': [0.2, 0.4, 0.1, 1.0]
+        })
+
 class CrimeDataStep(Step):
     def run(self):
         return crime_df()
