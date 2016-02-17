@@ -31,3 +31,15 @@ def calibration():
         steps.append(metrics)
 
     return steps
+
+def product():
+    d = data.ClassificationData(target=True, n_samples=1000, n_features=100)
+    est = step.Construct('sklearn.ensemble.RandomForestClassifier',
+                n_estimators=10, name='estimator')
+
+    m1 = model.FitPredict(inputs=[est, d], target=True, name='m1')
+    m2 = model.FitPredict(inputs=[est, d], target=True, name='m2')
+
+    p = model.PredictProduct(inputs=[m1,m2], target=True, inputs_mapping=['m1', 'm2'], name='p')
+
+    return p

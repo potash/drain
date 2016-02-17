@@ -11,8 +11,7 @@ class AggregationBase(Step):
     AggregationBase uses aggregate.Aggregator to aggregate data. It can include aggregations over multiple indexes and multiple data transformations (e.g. subsets). The combinations can be run in parallel and can be returned disjoint or concatenated. Finally the results may be pivoted and joined to other datasets.
     """
     def __init__(self, insert_args, aggregator_args, concat_args, 
-            parallel=False, target=False, prefix=None,
-            **kwargs):
+            parallel=False, target=False, prefix=None, **kwargs):
         """
         insert_args: collection of argument names to insert into results
         aggregator_args: collection of argument names to pass 
@@ -64,13 +63,16 @@ class AggregationBase(Step):
         index = left.index
         fillna_value = pd.Series()
  
-        for concat_args, df in self.get_concat_result().iteritems():
+        concat_result = self.get_concat_result()
+        # TODO: is it more efficient to first collect indexes from concat
+        # then outer join all of the dfs
+        # then left join that to left?
+        for concat_args, df in concat_result.iteritems():
             # TODO: print warning if df.index.names is not a subset of left.columns and skip this df
             logging.info('Joining %s %s' % (self.prefix, str(concat_args)))
             data.prefix_columns(df, self.args_prefix(concat_args))
-
             left = left.merge(df, left_on=df.index.names, 
-                    right_index=True, how='left')
+                    right_index=True, how='left', copy=False)
             fillna_value = fillna_value.append(self.fillna_value(df=df, 
                     left=left, **{k:v for k,v in 
                         zip(self.concat_args, concat_args)}))
@@ -129,6 +131,7 @@ class AggregationBase(Step):
                 logging.info('Aggregating %s %s' % (self.prefix, argument))
                 aggregator = self._get_aggregator(**argument)
                 df = aggregator.aggregate(self.indexes[argument['index']])
+
                 logging.info('Aggregated %s: %s' % (argument, df.shape))
                 # insert insert_args
                 for k in argument:
@@ -148,7 +151,7 @@ class AggregationBase(Step):
                 to_concat[concat_args] = [df]
             else:
                 to_concat[concat_args].append(df)
-        dfs = {concat_args:pd.concat(dfs) 
+        dfs = {concat_args:pd.concat(dfs, copy=False) 
                 for concat_args,dfs in to_concat.iteritems()}
         return dfs
 

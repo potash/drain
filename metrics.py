@@ -77,13 +77,16 @@ def precision_series(y_true, y_score, k=None):
     return pd.Series(n/d, index=np.arange(1,len(n)+1))
 
 def recall(y_true, y_score, k=None, value=True):
+    # TODO: add prop argument to return recall proportion instead of count
     y_true, y_score = to_float(y_true, y_score)
     top = _argtop(y_score, k)
 
     if not value:
         y_true = 1-y_true
 
-    return np.nan_to_num(y_true[top]).sum()
+    r = np.nan_to_num(y_true[top]).sum()
+
+    return r
 
 def recall_series(y_true, y_score, k=None, value=True):
     y_true, y_score = to_float(y_true, y_score)

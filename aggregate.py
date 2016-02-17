@@ -31,6 +31,12 @@ class AggregateSeries(object):
     def __init__(self, series, function, astype=None):
         self.series = series
         self.function = function
+
+        # default for pandas keywords is float32
+        # e.g. 'mean', 'min', 'sum', etc.
+        # much faster!
+        if astype is None and isinstance(function, basestring):
+            astype = np.float32
         self.astype = astype
     
     def apply_series(self, df):
@@ -102,7 +108,7 @@ class Fraction(AggregateBase):
 
         columns = []
         if self.include_fraction:
-            columns = [n/d for n,d in product(ncolumns, dcolumns)]
+            columns = [n / d for n,d in product(ncolumns, dcolumns)]
         if self.include_numerator:
             columns.extend(ncolumns)
         if self.include_denominator:
@@ -160,8 +166,6 @@ class Count(Fraction):
             prop=True
 
         numerator = Aggregate(series, 'sum', name, fname=fname)
-        for aseries in numerator.aggregate_series:
-            aseries.astype = np.float32
         if not prop:
             Fraction.__init__(self, numerator=numerator, 
                     denominator=None, include_fraction=False, 
@@ -256,7 +260,35 @@ def aggregate_set(l):
     return set(np.concatenate(l.values))
 
 def aggregate_counts(l):
-    return np.unique(l.values, return_counts=True)
+    lists = [list(i) for i in l.values if len(i) > 0]
+    if len(lists) == 0:
+        return None
+    else:
+        l = np.concatenate(lists)
+        return np.unique(l, return_counts=True)
 
-def concatenate_aggregate_counts(l):
-    return np.unique(np.concatenate(l.values), return_counts=True)
+def days(date1, date2):
+    """
+    returns a lambda that determines the number of days between the two dates
+    the dates can be strings (column names) or actual dates
+    e.g. Aggregate(days('date', today), ['min','max'], 'days_since')
+    TODO: should there be a Days(AggregateBase) for this? handle naming
+    """
+    if isinstance(date1, basestring) and isinstance(date2, basestring):
+        return lambda d: (d[date2] - d[date1])/util.day
+    elif isinstance(date1, basestring):
+        return lambda d: (date2 - d[date1])/util.day
+    elif isinstance(date2, basestring):
+        return lambda d: (d[date2] - date1)/util.day
+    else:
+        return (date2 - date1)/util.day
+
+def date_min(d):
+    """
+    groupby()['date_colum'].aggregate('min') returns a float?
+    convert it back to a timestamp
+    """
+    return pd.to_datetime(d.min())
+
+def date_max(d):
+    return pd.to_datetime(d.max())

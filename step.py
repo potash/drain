@@ -555,7 +555,7 @@ def get_drake_data(steps):
 def to_drake_step(inputs, output):
     i = [output.get_yaml_filename()]
     i.extend(map(lambda i: i.get_target_filename(), list(inputs)))
-    i.extend(map(lambda i: inspect.getsourcefile(i.__class__), list(inputs) + [output]))
+#    i.extend(map(lambda i: inspect.getsourcefile(i.__class__), list(inputs) + [output]))
     i.extend(output.dependencies)
 
     output_str = '%' + output.__class__.__name__

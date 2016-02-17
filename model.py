@@ -13,7 +13,7 @@ from statsmodels.discrete.discrete_model import Logit
 from sklearn.base import _pprint
 
 import util, metrics
-from step import Step
+from drain.step import Step, Construct
 
 class FitPredict(Step):
     def __init__(self, return_estimator=False, return_feature_importances=True, return_predictions=True, prefit=False, **kwargs):
@@ -88,6 +88,17 @@ class FitPredict(Step):
 class Fit(FitPredict):
     def __init__(self, **kwargs):
         FitPredict.__init__(self, return_predictions=False, prefit=False, **kwargs)
+
+class PredictProduct(Step):
+    def run(self, **kwargs):
+        keys = kwargs.keys()
+        ys = [kwargs[k]['y'] for k in keys]
+        y = ys[0].copy()
+        y.rename(columns={'score':'score_%s' % keys[0]}, inplace=True)
+        y['score_%s' % keys[1]] = ys[1].score
+        y['score'] = ys[0].score * ys[1].score
+
+        return {'y':y}
 
 class Predict(FitPredict):
     def __init__(self, **kwargs):
@@ -262,3 +273,35 @@ def plot_perturbation(estimator, X, row, feature, **perturb_args):
     perturbed = preturb(estimator, X.iloc[row], feature_index(X, feature), **perturb_args)
     ax = perturbed.plot()
     ax.vlines(x=X.iloc[row][feature], ymin=perturbed.min(), ymax=perturbed.max())
+
+def forests(**kwargs):
+    steps = []
+    d = dict(criterion=['entropy', 'gini'], max_features=['sqrt', 'log2'], n_jobs=[-1], **kwargs)
+    for estimator_args in util.dict_product(d):
+        steps.append(Construct(name='estimator', 
+                 __class_name__='sklearn.ensemble.RandomForestClassifier',
+                **estimator_args))
+
+    return steps
+
+def logits(**kwargs):
+    steps = []
+    for estimator_args in util.dict_product(dict(
+            penalty=['l1','l2'], C=[.001,.01,.1,1], **kwargs)):
+        steps.append(Construct(name='estimator', 
+                __class_name__='sklearn.linear_model.LogisticRegression',
+                **estimator_args))
+
+    return steps
+    
+def svms(**kwargs):
+    steps = []
+    for estimator_args in util.dict_product(dict(penalty=['l2'], 
+            dual=[True, False], C=[.001,.01,.1,1])) + \
+            util.dict_product(dict(
+                    penalty=['l1'], dual=[False], C=[.001,.01,.1,1])):
+        steps.append(Construct(name='estimator',
+                __class_name__='sklearn.svm.LinearSVC', 
+                **estimator_args))
+
+    return steps

@@ -18,6 +18,7 @@ class SpacetimeCrimeAggregation(SpacetimeAggregation):
     def __init__(self, inputs, spacedeltas, dates, **kwargs):
         SpacetimeAggregation.__init__(self,
                 inputs=inputs, spacedeltas=spacedeltas, dates=dates,
+                astype=np.float32,
                 date_column='Date', prefix='crimes', **kwargs)
 
     def get_aggregates(self, date, delta):

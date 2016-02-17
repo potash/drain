@@ -170,25 +170,6 @@ def binarize_set(df, column, values=None):
         df[column + '_'+ name.replace(' ', '_')] = d.apply(lambda c: value in c)
     df.drop(column, axis=1, inplace=True)
 
-# given a column whose entries are lists, create columns counting each element
-def count_list(df, column, values=None):
-    if values is None:
-        values = set(np.concatenate(df[column].values))
-    for value in values:
-        name = values[value] if type(values) is dict else str(value)
-        df[column + '_'+ name.replace(' ', '_')] = df[column].apply(lambda d: d.count(value))
-    df.drop(column, axis=1, inplace=True)
-
-# given values, counts (as returned by np.unique(return_counts=True), find the count of a given value
-def countsorted(values, counts, value):
-    if len(values) == 0: # when values is empty is has float dtype and searchsorted will fail
-        return 0
-    i = np.searchsorted(values, value)
-    if i != len(values) and values[i] == value:
-        return counts[i]
-    else:
-        return 0
-
 # convert (values, counts) as returned by aggregate.aggregate_counts() to dicts
 # makes expand_counts much faster
 def counts_to_dicts(df, column):
@@ -352,11 +333,11 @@ def date_select(df, date_column, date, delta):
     if delta is None then there is no starting date
     """
     delta = parse_delta(delta)
-    df = df[ df[date_column] < date ]
+    df = df.query("%s < '%s'" % (date_column, date))
 
     if delta is not None:
         start_date = date - delta
-        df = df[ df[date_column] >= start_date ]
+        df = df.query("%s >= '%s'" % (date_column, start_date))
 
     return df
 
