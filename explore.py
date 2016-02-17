@@ -10,6 +10,7 @@ from sklearn.externals import joblib
 from sklearn import tree
 import pandas as pd
 import numpy as np
+from collections import Counter
 
 import matplotlib.colors
 from matplotlib import cm
@@ -22,7 +23,15 @@ def to_dataframe(steps):
     diffs = util.diff_dicts(args, multilevel=True)
 
     df = pd.DataFrame(diffs)
-    df.columns = [str.join('_', c) for c in df.columns]
+
+    # find unique arguments
+    arg_count = Counter((c[1] for c in df.columns))
+    unique_args = [a for a in arg_count if arg_count[a] == 1]
+
+    # prefix non-unique arguments with step name
+    # otherwise use argument alone
+    df.columns = [c[1] if c[1] in unique_args else
+            str.join('_', c) for c in df.columns]
 
     df['step'] = steps
 
