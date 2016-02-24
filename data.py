@@ -333,20 +333,21 @@ def revise_helper(query):
     match = re.search(extract_sql_regex, query, re.DOTALL | re.I)
     return match.group(1), match.group(2)
 
-def revise_sql(query, id_column, output_table, max_date_column, min_date_column, date):
+def revise_sql(query, id_column, output_table, max_date_column, min_date_column, date_column, date):
     """
     Given an expensive query that aggregates temporal data,
     Revise the results to censor before a particular date
     """
     sql_vars = dict(query=query, id_column=id_column, output_table=output_table, 
-            max_date_column=max_date_column, min_date_column=min_date_column, date=date)
+            max_date_column=max_date_column, min_date_column=min_date_column, 
+            date_column=date_column, date=date)
 
     sql_vars['ids_query'] = """
     SELECT {id_column} FROM {output_table} 
     WHERE {max_date_column} >= '{date}' AND {min_date_column} < '{date}'""" .format(**sql_vars)
 
-    sql_vars['revised_query'] = query.replace('1=1', '{id_column} in (select * from ids_query)'\
-            .format(**sql_vars))
+    sql_vars['revised_query'] = query.replace('1=1', 
+            "({id_column} in (select * from ids_query) and {date_column} < '{date}')".format(**sql_vars))
 
     new_query = """
     with ids_query as ({ids_query})
@@ -356,19 +357,20 @@ def revise_sql(query, id_column, output_table, max_date_column, min_date_column,
     return new_query
 
 class Revise(Step):
-    def __init__(self, sql_filename, id_column, max_date_column, min_date_column, date, 
-                from_sql_args=None, **kwargs):
+    def __init__(self, sql_filename, id_column, max_date_column, min_date_column, 
+                date_column, date, from_sql_args=None, **kwargs):
 
         Step.__init__(self, sql_filename=sql_filename, id_column=id_column, 
                 max_date_column=max_date_column, min_date_column=min_date_column, 
-                date=date, from_sql_args=from_sql_args, **kwargs)
+                date_column=date_column, date=date, from_sql_args=from_sql_args, **kwargs)
 
         with open(sql_filename) as f:
             sql = f.read() 
 
         table, query = revise_helper(sql)
         revised_sql = revise_sql(query=query, id_column=id_column, output_table=table,
-                max_date_column=max_date_column, min_date_column=min_date_column, date=date)
+                max_date_column=max_date_column, min_date_column=min_date_column, 
+                date_column=date_column, date=date)
 
         if from_sql_args is None: from_sql_args = {}
         self.inputs = [FromSQL(table=table, **from_sql_args), 
