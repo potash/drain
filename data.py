@@ -2,7 +2,7 @@ import random
 import datetime
 import re
 import os
-import util
+from drain import util
 import warnings
 import logging
 
@@ -20,7 +20,7 @@ from itertools import product
 from sklearn import preprocessing, datasets
 from sklearn.utils.validation import _assert_all_finite
 
-from step import Step
+from drain.step import Step
 
 class ClassificationData(Step):
     def run(self):
@@ -326,6 +326,59 @@ def date_censor_sql(date_column, today, column = None):
         column = date_column
     return "(CASE WHEN {date_column} < '{today}' THEN {column} ELSE null END)".format(
             date_column=date_column, today=today, column=column)
+
+# group 1 is the table name, group 2 is the query whose result is the table
+extract_sql_regex = r'CREATE\s+TABLE\s+([^(\s]*)\s+AS\s*\(([^;]*)\);'
+def revise_helper(query):
+    match = re.search(extract_sql_regex, query, re.DOTALL | re.I)
+    return match.group(1), match.group(2)
+
+def revise_sql(query, id_column, output_table, max_date_column, min_date_column, date):
+    """
+    Given an expensive query that aggregates temporal data,
+    Revise the results to censor before a particular date
+    """
+    sql_vars = dict(query=query, id_column=id_column, output_table=output_table, 
+            max_date_column=max_date_column, min_date_column=min_date_column, date=date)
+
+    sql_vars['ids_query'] = """
+    SELECT {id_column} FROM {output_table} 
+    WHERE {max_date_column} >= '{date}' AND {min_date_column} < '{date}'""" .format(**sql_vars)
+
+    sql_vars['revised_query'] = query.replace('1=1', '{id_column} in (select * from ids_query)'\
+            .format(**sql_vars))
+
+    new_query = """
+    with ids_query as ({ids_query})
+    select * from ({revised_query}) t
+    """.format(**sql_vars)
+
+    return new_query
+
+class Revise(Step):
+    def __init__(self, sql_filename, id_column, max_date_column, min_date_column, date, 
+                from_sql_args=None, **kwargs):
+
+        Step.__init__(self, sql_filename=sql_filename, id_column=id_column, 
+                max_date_column=max_date_column, min_date_column=min_date_column, 
+                date=date, from_sql_args=from_sql_args, **kwargs)
+
+        with open(sql_filename) as f:
+            sql = f.read() 
+
+        table, query = revise_helper(sql)
+        revised_sql = revise_sql(query=query, id_column=id_column, output_table=table,
+                max_date_column=max_date_column, min_date_column=min_date_column, date=date)
+
+        if from_sql_args is None: from_sql_args = {}
+        self.inputs = [FromSQL(table=table, **from_sql_args), 
+                       FromSQL(revised_sql, **from_sql_args)]
+        self.inputs_mapping = ['source', 'revised']
+
+    def run(self, source, revised):
+        source = source[(source[self.min_date_column] < self.date) & (source[self.max_date_column] < self.date)]
+
+        return pd.concat((source,revised), copy=False)
 
 def date_select(df, date_column, date, delta):
     """
