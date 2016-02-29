@@ -5,6 +5,8 @@ setup(name='drain',
       url='https://github.com/dssg/drain',
       packages=['drain'],        
       install_requires=('pandas',
+                        'scipy',
                         'scikit-learn',
-                        'joblib')
+                        'joblib',
+                        'pytest')
      )

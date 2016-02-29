@@ -79,7 +79,7 @@ class Column:
         
 class ColumnReduction:
     '''
-        __init__(column, and a reduction (i.e., a row-aggregating function); maybe also takes an astype
+        __init__(column, and a reduction (i.e., a row-aggregating function)
         __hash__: gets hashed by aggregate row reduction (or lambda bytecode) and Column
     '''
     # TODO: add astype
@@ -134,13 +134,21 @@ class ColumnIdentity(ColumnFunction):
 
 class Aggregate(ColumnIdentity):
 
-    # TODO: add astype
-    def __init__(self, column_def, agg_func, name=None, fname=None):
+    def __init__(self, column_def, agg_func, name=None, fname=None, astype=None):
 
         # make list of column reductions from arguments  --> each ColumnReduction  needs a Column(definition) and an agg_func
         column_def = util.make_list(column_def)
         agg_func = util.make_list(agg_func)
-        column_reductions = [ColumnReduction(Column(defn), func) for defn, func in product(column_def, agg_func)]
+        astype = util.make_list(astype)
+
+        if len(astype) == 1:
+            astype = astype*len(column_def)
+
+        if len(astype) != len(column_def):
+            raise ValueError("astype must be a datatype, or a list of datatypes of same length as column_def")
+
+        column_reductions = [ColumnReduction(Column(defn,at), func) 
+                             for (defn, at), func in product(zip(column_def, astype), agg_func)]
 
         # make list of names from the arguments --> same length as the list of column reductions above!
         name = [str(c) for c in column_def] if name is None else util.make_list(name)
@@ -271,7 +279,7 @@ class Count(Fraction):
     Count(['Arrests','Stops'], prop=lambda x: x.Arrests.notnull()) - calculates the count and the proportion out of the outof series;
     Count(['Arrests','Stops'], prop=lambda x: x.Arrests.notnull(), prop_only) - as above, but omits the vanilla count
     '''
-    def __init__(self, definition=None, name=None, prop=None, prop_only=False, prop_name=None):
+    def __init__(self, definition=None, name=None, prop=None, prop_only=False, prop_name=None, astype=None, prop_astype=None):
 
         if prop==None and prop_only==True:
             raise ValueError("Cannot calculate only the proportion when no proportion requested!")
@@ -285,9 +293,9 @@ class Count(Fraction):
             fname = False
         else:
             fname = 'count'
-        
-        denominator = Aggregate(prop, 'sum', prop_name) if prop else None
-        numerator = Aggregate(definition, 'sum', name, fname)
+
+        denominator = Aggregate(prop, 'sum', prop_name, astype=prop_astype) if prop else None
+        numerator = Aggregate(definition, 'sum', name, fname, astype=astype)
         if prop not in [None, 1]:
             fracnames = [n[:-5]+'prop_'+d[:-4] for n,d in zip(numerator.names, denominator.names)]
         else:
@@ -297,8 +305,9 @@ class Count(Fraction):
                           name=fracnames)
 
 class Proportion(Count):
-    def __init__(self, definition, denom_def, name=None, denom_name=None):
-        Count.__init__(self, definition=definition, name=name, prop=denom_def, prop_only=True, prop_name=denom_name)
+    def __init__(self, definition, denom_def, name=None, denom_name=None, astype=None, denom_astype=None):
+        Count.__init__(self, definition=definition, name=name, prop=denom_def, 
+                        prop_only=True, prop_name=denom_name, astype=astype, prop_astype=denom_astype)
 
 def _collect_columns(aggregates):
     columns = set()

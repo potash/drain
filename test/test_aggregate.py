@@ -3,27 +3,19 @@ from drain.aggregate import *
 from itertools import product
 from pandas.util.testing import assert_frame_equal
 
-
-def test_aggregator(crime_df, small_df):
-    aggregates = [
-         Count(), 
-         Count('Arrest'), 
-         Count([lambda c: c['Primary Type'] == 'THEFT',
-                lambda c: c['Primary Type'] == 'ASSAULT'], 
-                ['theft', 'assault'], prop=True),
-        Aggregate(['Latitude', 'Longitude'], ['min','max','mean'])
-    ]
-
+def test_aggregator(small_df):
 
     aggregates = [
         Count(),
-        Aggregate(['score', lambda x: x.score**2],'sum', ['score', 'lambda'])
+        Aggregate(['score', lambda x: x.score**2],'sum', ['score', 'lambda']),
+        Aggregate(lambda x: x.arrests%2,'sum', name='typetest', astype=bool)
         ]
 
     ag = Aggregator(small_df, aggregates).aggregate('name')
     df = pd.DataFrame({'count':[2,1,1],
                        'score_sum': [0.3,0.4,1.0],
-                       'lambda_sum': [0.05, 0.16, 1.0]},
+                       'lambda_sum': [0.05, 0.16, 1.0],
+                       'typetest_sum': [True, False, True]},
                         index=['Anne','Ben','Charlie'])
     df = df.reindex_axis(sorted(df.columns), axis=1)
     ag = ag.reindex_axis(sorted(ag.columns), axis=1)
@@ -53,8 +45,7 @@ def test_count(small_df):
     df.index.name = 'name'
     assert_frame_equal(ag, df)
 
-
-def test_fraction(crime_df):
+def test_fraction(small_df):
     n = Aggregate('Arrest', 'sum')
     d = Aggregate('ID', 'count')
 
@@ -67,3 +58,32 @@ def test_fraction(crime_df):
         df = a.aggregate('District')
         print df
 
+def test_fraction(small_df):
+    n = Aggregate('arrests', 'sum')
+    d = Aggregate('score', 'sum')
+
+    f = Fraction(n,d, include_numerator=True, include_denominator=True, include_fraction=True)
+
+    ag = Aggregator(small_df, [f]).aggregate('name')
+    df = pd.DataFrame({'arrests_sum':[3,2,5],
+                       'score_sum': [0.3,0.4,1.0],
+                       'arrests_sum_per_score_sum': [3/0.3, 2/0.4, 5/1.0]},
+                        index=['Anne','Ben','Charlie'])
+
+    df = df.reindex_axis(sorted(df.columns), axis=1)
+    ag = ag.reindex_axis(sorted(ag.columns), axis=1)
+    df.index.name = 'name'
+    assert_frame_equal(ag, df)
+
+def test_proportion(small_df):
+
+    p = Proportion(lambda x: x.score+1, 'arrests', name='mylambda', denom_name='mydenom')
+
+    ag = Aggregator(small_df, [p]).aggregate('name')
+    df = pd.DataFrame({'mylambda_prop_mydenom':[2.3/3,1.4/2,2.0/5]},
+                    index=['Anne','Ben','Charlie'])
+
+    df = df.reindex_axis(sorted(df.columns), axis=1)
+    ag = ag.reindex_axis(sorted(ag.columns), axis=1)
+    df.index.name = 'name'
+    assert_frame_equal(ag, df)
