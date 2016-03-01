@@ -31,6 +31,8 @@ BASEDIR=None
 def run(step, inputs=None, output=None):
     if step == output:
         shutil.rmtree(step.get_dump_dirname())
+        if os.path.exists(step.get_target_filename()):
+            os.remove(step.get_target_filename())
         os.makedirs(step.get_dump_dirname())
 
     if inputs is None:
@@ -117,10 +119,12 @@ class Step(object):
             template = self.__template__
 
             if 'inputs' in template.kwargs:
+                #template.kwargs['inputs'] = [i._template_construct() for i in template.kwargs['inputs']]
                 for i in template.kwargs['inputs']:
                     i._template_construct()
 
             self.__init__(target=template.target, name=template.name, **template.kwargs)
+            #return self.__class__(target=template.target, name=template.name, **template.kwargs)
             del self.__template__
             return self
 

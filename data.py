@@ -338,6 +338,9 @@ def revise_sql(query, id_column, output_table, max_date_column, min_date_column,
     Given an expensive query that aggregates temporal data,
     Revise the results to censor before a particular date
     """
+    if hasattr(id_column, '__iter__'):
+        id_column = str.join(', ', id_column)
+    
     sql_vars = dict(query=query, id_column=id_column, output_table=output_table, 
             max_date_column=max_date_column, min_date_column=min_date_column, 
             date_column=date_column, date=date)
@@ -347,7 +350,7 @@ def revise_sql(query, id_column, output_table, max_date_column, min_date_column,
     WHERE {max_date_column} >= '{date}' AND {min_date_column} < '{date}'""" .format(**sql_vars)
 
     sql_vars['revised_query'] = query.replace('1=1', 
-            "({id_column} in (select * from ids_query) and {date_column} < '{date}')".format(**sql_vars))
+            "(({id_column}) in (select * from ids_query) and {date_column} < '{date}')".format(**sql_vars))
 
     new_query = """
     with ids_query as ({ids_query})
@@ -359,15 +362,25 @@ def revise_sql(query, id_column, output_table, max_date_column, min_date_column,
 class Revise(Step):
     def __init__(self, sql_filename, id_column, max_date_column, min_date_column, 
                 date_column, date, from_sql_args=None, **kwargs):
+        """
+        revise the query contained in sql_filename to the specified date
+        id_column: the entity id column(s) linking the result of the query with its source tables
+        max_date_column: the maximum date column name for an entry in the result
+        min_date_column: the minimum date column name for an entry in the result
+        date_column: name of the date column in the source
+        date: the date to revise at
+        from_sql_args: dictionary of keyword arguments to pass input FromSQL steps, 
+                e.g. target=True, parse_dates
+        """
 
         Step.__init__(self, sql_filename=sql_filename, id_column=id_column, 
                 max_date_column=max_date_column, min_date_column=min_date_column, 
-                date_column=date_column, date=date, from_sql_args=from_sql_args, **kwargs)
-
-        with open(sql_filename) as f:
-            sql = f.read() 
-
+                date_column=date_column, date=date, 
+                from_sql_args=from_sql_args, **kwargs)
+        
+        sql = util.read_file(sql_filename)
         table, query = revise_helper(sql)
+
         revised_sql = revise_sql(query=query, id_column=id_column, output_table=table,
                 max_date_column=max_date_column, min_date_column=min_date_column, 
                 date_column=date_column, date=date)
@@ -378,9 +391,9 @@ class Revise(Step):
         self.inputs_mapping = ['source', 'revised']
 
     def run(self, source, revised):
-        source = source[(source[self.min_date_column] < self.date) & (source[self.max_date_column] < self.date)]
+        subset = (source[self.min_date_column] < self.date) & (source[self.max_date_column] < self.date)
 
-        return pd.concat((source,revised), copy=False)
+        return pd.concat((source[subset],revised), copy=False)
 
 def date_select(df, date_column, date, delta):
     """

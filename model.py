@@ -227,7 +227,9 @@ def make_metric(function):
 metrics = [o for o in inspect.getmembers(metrics) if inspect.isfunction(o[1]) and not o[0].startswith('_')]
 
 for name,function in metrics:
-    setattr(sys.modules[__name__], name, make_metric(function))
+    function = make_metric(function)
+    function.__name__ = name
+    setattr(sys.modules[__name__], name, function)
 
 class PrintMetrics(Step):
     def __init__(self, metrics, **kwargs):
