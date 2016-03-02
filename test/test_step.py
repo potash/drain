@@ -145,12 +145,12 @@ def test_drakefile():
 def test_get_named_inputs():
     step1 = Step(a=1, name='Step1')
     step2 = Step(b=1, inputs=[Step(c=1, inputs=[step1, Step(d=1)])])
-    assert step2.get_named_steps() == {'Step1': step1}
+    assert step2.named_steps == {'Step1': step1}
 
 def test_get_named_inputs2():
     step1 = Step(a=1, name='Step1')
     step2 = Step(b=1, name='Step2', inputs=[Step(c=1, inputs=[step1, Step(d=1)])])
-    assert step2.get_named_steps() == {'Step2': step2, 'Step1': step1}
+    assert step2.named_steps == {'Step2': step2, 'Step1': step1}
 
 def test_get_named_arguments():
     step1 = Step(a=1, name='Step1')
