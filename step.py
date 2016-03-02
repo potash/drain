@@ -136,24 +136,25 @@ class Step(object):
         kwargs = util.merge_dicts(template.kwargs, kwargs)
         return Step._template(__cls__=self.__class__, name=template.name, target=template.target, **kwargs)
 
-    # search over self and inputs to return a dictionary of name: step pairs
-    def get_named_steps(self, named=None, visited=None):
-        if visited is None:
-            visited = set()
-        if named is None:
-            named = dict()
+    @property
+    def named_steps(self):
+    """
+    search over self and inputs to return a dictionary of name: step pairs
+    doesn't use a visited set so that it can be a property, also seems faster this way (needs testing)
+    """
+        named = {}
 
         for i in self.inputs:
-            if i not in visited:
-                i.get_named_steps(named=named, visited=visited)
+            for name,step in i.named_steps.iteritems():
+                if name in named and step != named[name]:
+                    raise NameError('Multiple steps with the same name: %s' % name)
+                named[name] = step
         
         if self.has_name():
             name = self.get_name()
-            if name in named:
+            if name in named and named[name] != self:
                 raise NameError('Multiple steps with the same name: %s' % name)
             named[name] = self
-
-        visited.add(self)
 
         return named
 
@@ -175,7 +176,7 @@ class Step(object):
     @property
     def named_arguments(self):
         d = dict()
-        named = self.get_named_steps()
+        named = self.named_steps
 
         for name, step in named.iteritems():
             for k,v in step.get_arguments().iteritems():
