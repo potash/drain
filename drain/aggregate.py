@@ -57,7 +57,7 @@ def capture_print(f, *args):
     sys.stdout = stdout_ 
     return stream.getvalue()
 
-class FuncHash:
+class FuncHash(object):
     """Helper class to wrap functions and lambdas, so that
     they can be cashed.
     Lambda functions are hashed based on their bytecode, while 
@@ -77,7 +77,7 @@ class FuncHash:
     def __repr__(self):
         return self.func.__repr__()
 
-class Column:
+class Column(object):
     """Defines a new or existing column that can be calculated from a dataframe.
 
     Column accepts as ``definition`` a string that refers to an 
@@ -121,7 +121,7 @@ class Column:
     def __eq__(self, other):
         return hash(self) == hash(other)
         
-class ColumnReduction:
+class ColumnReduction(object):
     """Wraps and hashes a `Column` together with a function that aggregates across rows.
     """
 
@@ -140,7 +140,7 @@ class ColumnReduction:
     def __eq__(self, other):
         return hash(self) == hash(other)
         
-class ColumnFunction:
+class ColumnFunction(object):
     """Abstract base class for functions on reduced Columns; names the outcomes.
 
     Having obtained Columns that have been created and aggregated along rows, with
@@ -276,7 +276,7 @@ class Aggregate(ColumnIdentity):
 
         ColumnFunction.__init__(self, column_reductions, column_names)
 
-class Aggregator:
+class Aggregator(object):
     """Binds column functions to a dataframe and allows for aggregation by a given index.
     """
 
