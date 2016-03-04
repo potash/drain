@@ -138,10 +138,12 @@ class Step(object):
 
     @property
     def named_steps(self):
-    """
-    search over self and inputs to return a dictionary of name: step pairs
-    doesn't use a visited set so that it can be a property, also seems faster this way (needs testing)
-    """
+        """
+        returns a dictionary of name: step pairs
+        recursively searches self and inputs
+        doesn't use a visited set so that it can be a property, 
+            also seems faster this way (needs testing)
+        """
         named = {}
 
         for i in self.inputs:
@@ -560,8 +562,12 @@ def get_drake_data(steps):
 def to_drake_step(inputs, output):
     i = [output.get_yaml_filename()]
     i.extend(map(lambda i: i.get_target_filename(), list(inputs)))
-#    i.extend(map(lambda i: inspect.getsourcefile(i.__class__), list(inputs) + [output]))
     i.extend(output.dependencies)
+    # add source file if it's not in the drain library
+    # TODO: do this for all non-target inputs, too
+    source = inspect.getsourcefile(output.__class__)
+    if not source.startswith(os.path.dirname(__file__)):
+        i.append(source)
 
     output_str = '%' + output.__class__.__name__
     if output.is_target():

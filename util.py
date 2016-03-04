@@ -249,6 +249,9 @@ def dict_product(d, product_keys=None):
 def dict_filter_none(d):
     return {k:v for k,v in d.iteritems() if v is not None}
 
+def list_filter_none(l):
+    return [v for v in l if v is not None]
+
 # update a set-valued dictionary
 # when key exists, union sets
 def dict_update_union(d1, d2):

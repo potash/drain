@@ -164,7 +164,7 @@ def binarize(df, category_classes, all_classes=True, drop=True):
 def binarize_set(df, column, values=None):
     d = df[column].dropna() # avoid nulls
     if values is None:
-        values = reduce(lambda a,b: a | b, d)
+        values = util.union(d)
     for value in values:
         name = values[value] if type(values) is dict else str(value)
         df[column + '_'+ name.replace(' ', '_')] = d.apply(lambda c: value in c)
