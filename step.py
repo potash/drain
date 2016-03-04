@@ -565,7 +565,7 @@ def to_drake_step(inputs, output):
     i.extend(output.dependencies)
     # add source file if it's not in the drain library
     # TODO: do this for all non-target inputs, too
-    source = inspect.getsourcefile(output.__class__)
+    source = os.path.abspath(inspect.getsourcefile(output.__class__))
     if not source.startswith(os.path.dirname(__file__)):
         i.append(source)
 

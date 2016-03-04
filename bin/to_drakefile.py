@@ -5,7 +5,7 @@ import json
 import itertools
 import sys
 import argparse
-import imp
+import importlib
 
 from drain import step, util
 
@@ -34,8 +34,8 @@ if __name__ == "__main__":
     if args.steps.endswith('.yaml'):
         steps = step.from_yaml(args.steps)
     else:
-        filename, fname = args.steps.split('::')
-        mod = imp.load_source('steps', filename)
+        modulename, fname = args.steps.split('::')
+        mod = importlib.import_module(modulename)
         steps = getattr(mod, fname)
         steps = util.make_list(steps() if hasattr(steps, '__call__') else steps)
 
