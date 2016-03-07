@@ -108,9 +108,7 @@ class Fraction(AggregateBase):
 
         columns = []
         if self.include_fraction:
-            # sometimes n / d will upcast to float64 so downcast it back to float32
-            # this should really be handled by Aggregate(dtype=np.float32) in the future
-            columns = [(n / d).astype(np.float32) for n,d in product(ncolumns, dcolumns)]
+            columns = [(n / d) for n,d in product(ncolumns, dcolumns)]
         if self.include_numerator:
             columns.extend(ncolumns)
         if self.include_denominator:
@@ -159,7 +157,7 @@ class Count(Fraction):
     def __init__(self, series=None, name=None, parent=None, parent_name=None, prop=False, prop_only=False):
         fname = 'count'
         if series is None:
-            series = 1
+            series = np.float32(1)
             if name is None:
                 name = 'count'
                 fname = False # don't use fname when series is 'count'
