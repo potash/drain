@@ -173,6 +173,18 @@ class AggregationBase(Step):
         """
         raise NotImplementedError
 
+class AggregationJoin(Step):
+    """
+    left should come from first input (if multiple results call it left)
+    """
+    def run(self, left, *args):
+        aggregations = iter(self.inputs)
+        next(aggregations) # first input is left, not aggregation
+        for aggregation in aggregations:
+            left = aggregation.join(left)
+
+        return left
+
 class SimpleAggregation(AggregationBase):
     """
     A simple AggreationBase subclass with a single aggregrator
