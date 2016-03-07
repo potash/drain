@@ -108,7 +108,9 @@ class Fraction(AggregateBase):
 
         columns = []
         if self.include_fraction:
-            columns = [n / d for n,d in product(ncolumns, dcolumns)]
+            # sometimes n / d will upcast to float64 so downcast it back to float32
+            # this should really be handled by Aggregate(dtype=np.float32) in the future
+            columns = [(n / d).astype(np.float32) for n,d in product(ncolumns, dcolumns)]
         if self.include_numerator:
             columns.extend(ncolumns)
         if self.include_denominator:
