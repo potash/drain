@@ -214,25 +214,44 @@ class Step(object):
 
         if hasattr(self, 'inputs_mapping'):
             inputs_mapping = util.make_list(self.inputs_mapping)
-        
+            
+            diff = len(self.inputs) - len(inputs_mapping)
+            if diff < 0:
+                raise ValueError('Too many inputs_mappings')
+
             for input, mapping in zip(self.inputs, inputs_mapping):
+                result = input.get_result()
                 if isinstance(mapping, dict):
+                    # pass through any missing keys, so {} is the identity
+                    # do it first so that inputs_mapping overrides keys
+                    for k in set(result.keys()).difference(set(mapping.keys())):
+                        kwargs[k] = result[k]
+
                     for k in mapping:
-                        kwargs[k] = input.get_result()[mapping[k]]
+                        if mapping[k] is not None:
+                            kwargs[mapping[k]] = result[k]
+
                 elif isinstance(mapping, basestring):
                     kwargs[mapping] = input.get_result()
+                elif mapping is None: # drop Nones
+                    pass
                 else:
                     raise ValueError('Input mapping is neither dict nor str: %s' % mapping)
 
+            mapped_inputs = len(inputs_mapping)
         else:
+            mapped_inputs = 0
+
+        for i in range(mapped_inputs, len(self.inputs)):
+            result = self.inputs[i].get_result()
             # without a mapping we handle two cases
-            for result in [i.get_result() for i in self.inputs]:
-                # when the result is a dict merge it with a global dict
-                if isinstance(result, dict):
-                    kwargs.update(result)
-                # otherwise use it as a positional argument
-                else:
-                    args.append(result)
+            # when the result is a dict merge it with a global dict
+            if isinstance(result, dict):
+                # but do not override
+                kwargs.update({k:v for k,v in result.iteritems() if k not in kwargs})
+            # otherwise use it as a positional argument
+            else:
+                args.append(result)
 
         return args, kwargs
 
