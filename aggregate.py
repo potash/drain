@@ -117,7 +117,7 @@ class Fraction(AggregateBase):
         return columns
 
 class Aggregate(AggregateBase):
-    def __init__(self, series, f, name=None, fname=None):
+    def __init__(self, series, f, name=None, fname=None, astype=None):
         """
         series can be single or iterable
         functions can be a single function or iterable
@@ -145,7 +145,7 @@ class Aggregate(AggregateBase):
             columns = ['%s_%s' % n for n in product(name, fname)]
 
         AggregateBase.__init__(self, columns,
-                [AggregateSeries(*sf) for sf in product(series, f)])
+                [AggregateSeries(*sf, astype=astype) for sf in product(series, f)])
 
 class Count(Fraction):
     """
@@ -172,7 +172,7 @@ class Count(Fraction):
                     include_numerator=True)
         else:
             if parent is None:
-                parent = 1
+                parent = np.float32(1)
 
             denominator = Aggregate(parent, 'sum', parent_name)
             Fraction.__init__(self, numerator=numerator, 

@@ -457,3 +457,4 @@ def cached_class(klass):
             pass
     
     return _decorated
+

@@ -168,6 +168,7 @@ def binarize_set(df, column, values=None):
     for value in values:
         name = values[value] if type(values) is dict else str(value)
         df[column + '_'+ name.replace(' ', '_')] = d.apply(lambda c: value in c)
+        df[column + '_'+ name.replace(' ', '_')].fillna(0, inplace=True)
     df.drop(column, axis=1, inplace=True)
 
 # convert (values, counts) as returned by aggregate.aggregate_counts() to dicts
@@ -206,8 +207,11 @@ def binarize_clusters(df, column, n_clusters, train=None):
 
 # narrows df to train | test
 # then narrows train and test to that
-def train_test_subset(df, train, test):
-    df.drop(df.index[~(train | test)], inplace=True)
+def train_test_subset(df, train, test, drop=False):
+    if drop:
+        df.drop(df.index[~(train | test)], inplace=True)
+    else:
+        df = df[(train | test)]
     train = train.loc[df.index]
     test = test.loc[df.index]
 
@@ -387,7 +391,7 @@ class Revise(Step):
 
         if from_sql_args is None: from_sql_args = {}
         self.inputs = [FromSQL(table=table, **from_sql_args), 
-                       FromSQL(revised_sql, **from_sql_args)]
+                       FromSQL(revised_sql, tables=[table], **from_sql_args)]
         self.inputs_mapping = ['source', 'revised']
 
     def run(self, source, revised):

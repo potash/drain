@@ -27,10 +27,12 @@ BASEDIR=None
 # run the given step
 # inputs should be loaded from disk
 # output should be written to disk
+# also loads targets from disk-- could make this optional
 # recreate the dump directory before dumping
 def run(step, inputs=None, output=None):
     if step == output:
-        shutil.rmtree(step.get_dump_dirname())
+        if os.path.exists(step.get_dump_dirname()):
+            shutil.rmtree(step.get_dump_dirname())
         if os.path.exists(step.get_target_filename()):
             os.remove(step.get_target_filename())
         os.makedirs(step.get_dump_dirname())
@@ -39,7 +41,7 @@ def run(step, inputs=None, output=None):
         inputs = []
 
     if not step.has_result():
-        if step in inputs and not step.has_result():
+        if (step in inputs or step.is_target()) and not step.has_result():
             logging.info('Loading\n\t%s' % str(step).replace('\n','\n\t'))
             step.load()
         else:

@@ -245,9 +245,10 @@ class SpacetimeAggregation(AggregationBase):
         return {name:value[0] for name,value in self.spacedeltas.iteritems()}
 
     def fillna_value(self, df, left, **kwargs):
-        non_count_columns = [c for c in df.columns if not c.endswith('_count')]
-        value = left[non_count_columns].mean()
-        value = value.reindex(df.columns, fill_value=0)
+        """
+        fills counts with zero
+        """
+        value = pd.Series(0, index=[c for c in df.columns if c.endswith('_count') and not c.find('_per_') == -1])
         return value
 
     @property
@@ -263,6 +264,12 @@ class SpacetimeAggregation(AggregationBase):
     @property
     def parallel_kwargs(self):
         return [{'spacedeltas':self.spacedeltas, 'dates':[date]} for date in self.dates]
+
+    def join(self, left):
+        difference = set(pd.to_datetime(left.date.unique())).difference(pd.to_datetime(self.dates))
+        if len(difference) > 0:
+            raise ValueError('Left contains unaggregated dates: %s' % difference)
+        return AggregationBase.join(self, left)
 
     def get_aggregator(self, date, delta):
         df = self.get_data(date, delta)
