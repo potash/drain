@@ -102,8 +102,8 @@ class Step(object):
         if not hasattr(self, 'dependencies'):
             self.dependencies = []
 
-        hasher = hashlib.md5(yaml.dump(self)) # this won't work right if we haven't called configure_yaml()
-        self.__digest__ = base64.urlsafe_b64encode(hasher.digest())
+        self._hasher = hashlib.md5(yaml.dump(self)) # this won't work right if we haven't called configure_yaml()
+        self._digest = base64.urlsafe_b64encode(self._hasher.digest())
 
     @staticmethod
     def _template(__cls__=None, **kwargs):
@@ -270,7 +270,7 @@ class Step(object):
         if BASEDIR is None:
             raise ValueError('BASEDIR not initialized')
 
-        return os.path.join(BASEDIR, self.__class__.__name__, self.__digest__[0:8])
+        return os.path.join(BASEDIR, self.__class__.__name__, self._digest[0:8])
 
     def get_yaml_filename(self):
         return os.path.join(self.get_dirname(), 'step.yaml')
@@ -353,9 +353,9 @@ class Step(object):
 
         return '%s(%s)' % (class_name, 
                 _pprint(kwargs, offset=len(class_name)),)
-    
+
     def __hash__(self):
-        return hash(yaml.dump(self)) # pyyaml dumps dicts in sorted order so this works
+        return int(self._hasher.hexdigest(), 16)
     
     def __eq__(self, other):
         if not isinstance(other, Step):

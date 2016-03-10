@@ -11,7 +11,7 @@ if [ -f 'default_profile' ]; then
     source default_profile
 fi
 
-python $DRAIN_DIR/to_drakefile.py --drakeargsfile $DRAKE_ARGS_FILE --drakeoutput $DRAKE_FILE $args || exit
+python -m cProfile -o profile.txt $DRAIN_DIR/to_drakefile.py --drakeargsfile $DRAKE_ARGS_FILE --drakeoutput $DRAKE_FILE $args || exit
 echo $DRAKE_FILE
 drake_args=$(cat $DRAKE_ARGS_FILE)
 if [ -z "$drake_args" ]; then

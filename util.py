@@ -224,10 +224,9 @@ def make_list(a):
 
 # cartesian product of dict whose values are lists
 # if product_keys is not None then take product on those keys only
-def dict_product(d, product_keys=None):
-    if product_keys is not None:
-        holdout = {k:d[k] for k in d if k not in product_keys}
-        d = {k:d[k] for k in d if k in product_keys}
+def dict_product(d):
+    holdout = {k:d[k] for k in d if not isinstance(d[k], list)}
+    d = {k:d[k] for k in d if k not in holdout}
         
     if not isinstance(d, dict):
         raise ValueError('Expected dictionary got %s' % type(d).__name__)
@@ -239,9 +238,8 @@ def dict_product(d, product_keys=None):
         keys, values = zip(*items)
         dicts = [dict_filter_none(dict(zip(keys, v))) for v in product(*values)]
     
-    if product_keys is not None:
-        for d in dicts:
-            d.update(holdout)
+    for d in dicts:
+        d.update(holdout)
             
     return dicts
 
