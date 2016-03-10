@@ -189,7 +189,7 @@ def nunique(iterable):
         for i in iterable:
             if i not in unique:
                 unique.append(i)
-        return len(i)
+        return len(unique)
 
 # When multilevel is true, only look for diffs within subkeys
 # TODO add tests to clarify this
