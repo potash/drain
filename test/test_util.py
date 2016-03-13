@@ -13,3 +13,9 @@ def test_list_expand_single():
 
 def test_list_expand_multiple():
     assert list(list_expand({1:[2,3,4], 5:{7:[0]}})) == [(1, 2), (1,3), (1,4), (5, 7, 0)]
+
+def test_dict_expand():
+    assert dict_expand({1:2, 3:4}) == {1:2, 3:4}
+
+def test_dict_expand_deep():
+    assert dict_expand({1:2, 3:{4:{5:6}}}) == {1:2, (3,4,5):6}

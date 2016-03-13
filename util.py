@@ -179,6 +179,23 @@ def list_expand(d, prefix=None):
         else:
             yield tuple(chain(prefix, make_list(k)))
 
+def dict_expand(d, prefix=None):
+    """
+    Recursively expand subdictionaries returning dictionary
+    dict_expand({1:{2:3}, 4:5}) = {(1,2):3, 4:5}
+    """
+    result = {}
+    for k,v in d.iteritems():
+        if isinstance(v, dict):
+            result.update(dict_expand(v, prefix=k))
+        else:
+            result[k] = v
+
+    if prefix is not None:
+        result = {make_tuple(prefix) + make_tuple(k): v 
+                for k,v in result.iteritems()}
+    return result
+
 
 def nunique(iterable):
     try:
@@ -220,7 +237,10 @@ def diff_dicts(dicts, multilevel=True):
     return diffs
 
 def make_list(a):
-    return [a] if not type(a) in (list, tuple) else a
+    return [a] if not type(a) in (list, tuple) else list(a)
+
+def make_tuple(a):
+    return (a,) if not type(a) in (list, tuple) else tuple(a)
 
 # cartesian product of dict whose values are lists
 # if product_keys is not None then take product on those keys only

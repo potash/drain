@@ -20,18 +20,18 @@ import model, util, metrics
 
 def to_dataframe(steps):
     args = [s.named_arguments for s in steps]
-    diffs = util.diff_dicts(args, multilevel=True)
+    diffs = map(util.dict_expand, util.diff_dicts(args, multilevel=True))
 
     df = pd.DataFrame(diffs)
 
     # find unique arguments
-    arg_count = Counter((c[1] for c in df.columns))
-    unique_args = [a for a in arg_count if arg_count[a] == 1]
+    arg_count = Counter((c[1:] for c in df.columns))
+    unique_args = {a for a in arg_count if arg_count[a] == 1}
 
     # prefix non-unique arguments with step name
     # otherwise use argument alone
-    df.columns = [c[1] if c[1] in unique_args else
-            str.join('_', c) for c in df.columns]
+    df.columns = [str.join('_', c[1:] if c[1:] in unique_args else c) 
+            for c in df.columns]
 
     df['step'] = steps
 
