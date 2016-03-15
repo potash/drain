@@ -39,7 +39,7 @@ def to_dataframe(steps):
 
 # pairwise returns a dataframe with intersections
 def intersection(df, pairwise=False, **subset_args):
-    indexes = map(lambda row: set(model.y_subset(row[1].y, **subset_args).index), df.iterrows())
+    indexes = map(lambda row: set(model.y_subset(row[1].step.get_result()['y'], **subset_args).index), df.iterrows())
 
     if not pairwise:
         return len(util.intersect(indexes))

@@ -112,10 +112,6 @@ def y_score(estimator, X):
         y = estimator.predict_proba(X)
         return y[:,1]
 
-def sk_tree(X,y, params={'max_depth':3}):
-    clf = tree.DecisionTreeClassifier(**params)
-    return clf.fit(X, y)
-
 def feature_importance(estimator, X):
     if hasattr(estimator, 'coef_'):
         i = estimator.coef_[0]

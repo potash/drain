@@ -248,7 +248,7 @@ class SpacetimeAggregation(AggregationBase):
         """
         fills counts with zero
         """
-        value = pd.Series(0, index=[c for c in df.columns if c.endswith('_count') and not c.find('_per_') == -1])
+        value = pd.Series(0, index=[c for c in df.columns if c.endswith('_count') and c.find('_per_') == -1])
         return value
 
     @property
