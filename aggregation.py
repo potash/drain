@@ -92,7 +92,7 @@ class AggregationBase(Step):
         """
         return {}
 
-    def select(self, df, args):
+    def select(self, df, args, inplace=False):
         """
         After joining, selects a subset of arguments
         df: the result of a call to self.join(left)
@@ -116,7 +116,7 @@ class AggregationBase(Step):
                 raise ValueError('Invalid argument for selection: %s' % str(a))
                     
         df = data.select_features(df, exclude=[self.prefix + '_.*'], 
-                include= map(lambda a: self.args_prefix(a) + '.*', args))
+                include= map(lambda a: self.args_prefix(a) + '.*', args), inplace=inplace)
 
         return df
 
