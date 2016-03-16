@@ -278,10 +278,11 @@ def exclude_regexes(strings, exclude, include=None):
     i = select_regexes(strings, include) if include is not None else set()
     return set(strings).difference(e).union(i)
 
-def select_features(df, exclude, include=None):
-    columns = exclude_regexes(strings=df.columns, exclude=exclude, include=include)
-    df = df.reindex(columns = columns, copy=False)
-    return df
+def select_features(df, exclude, include=None, inplace=False):
+    include = exclude_regexes(strings=df.columns, exclude=exclude, include=include)
+    exclude = df.columns.difference(include)
+    df2 = df.drop(exclude, axis=1, inplace=inplace)
+    return df if inplace else df2
 
 def null_columns(df, train=None):
     if train is not None:
@@ -326,10 +327,19 @@ def undersample_to(y, train, p):
     return undersample_by(y, train, q)
 
 def date_censor_sql(date_column, today, column = None):
+    """
+    if today is None, then no censoring
+    otherwise replace each column with:
+        CASE WHEN {date_column} < '{today}' THEN {column} ELSE null END
+    """
     if column is None:
         column = date_column
-    return "(CASE WHEN {date_column} < '{today}' THEN {column} ELSE null END)".format(
-            date_column=date_column, today=today, column=column)
+
+    if today is None:
+        return column
+    else:
+        return "(CASE WHEN {date_column} < '{today}' THEN {column} ELSE null END)".format(
+                date_column=date_column, today=today, column=column)
 
 # group 1 is the table name, group 2 is the query whose result is the table
 extract_sql_regex = r'CREATE\s+TABLE\s+([^(\s]*)\s+AS\s*\(([^;]*)\);'
