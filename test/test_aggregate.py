@@ -6,7 +6,7 @@ from pandas.util.testing import assert_frame_equal
 def test_aggregator(small_df):
 
     aggregates = [
-        Count(),
+        Count(astype=int),
         Aggregate(['score', lambda x: x.score**2],'sum', ['score', 'lambda']),
         Aggregate(lambda x: x.arrests%2,'sum', name='typetest', astype=bool)
         ]
@@ -59,7 +59,7 @@ def test_fraction(small_df):
         print df
 
 def test_fraction(small_df):
-    n = Aggregate('arrests', 'sum')
+    n = Aggregate('arrests', 'sum', astype=int)
     d = Aggregate('score', 'sum')
 
     f = Fraction(n,d, include_numerator=True, include_denominator=True, include_fraction=True)
