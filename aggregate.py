@@ -29,9 +29,9 @@ Aggregator also caches individual transformations of columns, as to
 reduce redundant calculations.
 
 Classes that endusers interface with are Aggregate, Fraction, 
-Count, andProportion (which specify outcome columns and row-wise aggregation
-functions), and Aggregator (which takes an input dataframe and an index
-by which rows are being grouped).
+Count, and Proportion (all of which specify outcome columns and row-wise 
+aggregation functions), and Aggregator (which takes an input dataframe and an
+index by which rows are being grouped).
 
 """
 

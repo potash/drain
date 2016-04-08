@@ -473,6 +473,8 @@ def step_multi_representer(dumper, data):
             inputs=True, inputs_mapping=True, dependencies=True))
 
 def step_multi_representer_all_args(dumper, data):
+    # TODO: the !step representation breaks down when the data's class
+    #       was imported in a __main__, as then the module is '__main__'
     tag = '!step:%s.%s' % (data.__class__.__module__, data.__class__.__name__)
     return dumper.represent_mapping(tag, data.get_arguments(inputs=True, 
             inputs_mapping=True, dependencies=True, 
