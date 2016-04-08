@@ -41,7 +41,7 @@ def run(step, inputs=None, output=None):
         inputs = []
 
     if not step.has_result():
-        if (step in inputs or step.is_target()) and not step.has_result():
+        if step in inputs and not step.has_result():
             logging.info('Loading\n\t%s' % str(step).replace('\n','\n\t'))
             step.load()
         else:
@@ -81,6 +81,19 @@ def read(name, step_name=None):
     for s in steps:
         s.load()
     return steps
+
+def load(steps):
+    """
+    safely load steps, excluding those that fail
+    """
+    loaded = []
+    for s in steps:
+        try:
+            s.load()
+            loaded.append(s)
+        except:
+            pass
+    return loaded
 
 class Step(object):
     def __init__(self, name=None, target=False, **kwargs):
