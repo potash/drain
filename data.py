@@ -145,9 +145,10 @@ def expand_dates(df, columns=[]):
 # or a list of columns, in which case possible values are found using df[column].unique()
 # all_classes = False means the last class is skipped
 # drop means drop the original column
-def binarize(df, category_classes, all_classes=True, drop=True):
+# astype allows setting the type of the resulting binary columns, e.g. np.float32
+def binarize(df, category_classes, all_classes=True, drop=True, astype=None):
     if type(category_classes) is not dict:
-        columns = set(category_classes).intersection(df.columns)
+        columns = set(category_classes)
         category_classes = {column : df[column].unique() for column in columns}
     else:
         columns = set(category_classes.keys()).intersection(df.columns)
@@ -155,7 +156,10 @@ def binarize(df, category_classes, all_classes=True, drop=True):
     for category in columns:
         classes = category_classes[category]
         for i in range(len(classes)-1 if not all_classes else len(classes)):
-            df[category + '_' + str(classes[i]).replace( ' ', '_')] = (df[category] == classes[i])
+            c = df[category] == classes[i]
+            if astype is not None:
+                c = c.astype(astype)
+            df[category + '_' + str(classes[i]).replace( ' ', '_')] = c
     
     if drop:
         df.drop(columns, axis=1, inplace=True)                                  
@@ -167,8 +171,9 @@ def binarize_set(df, column, values=None):
         values = util.union(d)
     for value in values:
         name = values[value] if type(values) is dict else str(value)
-        df[column + '_'+ name.replace(' ', '_')] = d.apply(lambda c: value in c)
-        df[column + '_'+ name.replace(' ', '_')].fillna(0, inplace=True)
+        column_name = column + '_'+ name.replace(' ', '_')
+        df[column_name] = d.apply(lambda c: value in c)
+        df[column_name].fillna(0, inplace=True)
     df.drop(column, axis=1, inplace=True)
 
 # convert (values, counts) as returned by aggregate.aggregate_counts() to dicts
@@ -254,9 +259,22 @@ def normalize(X, train=None):
         
     return X
 
-def impute(X, train=None):
+def impute(X, train=None, dropna=True):
+    """
+    impute using mean
+    if train is specified, mean is calculated on X[train]
+    if dropna, drop all-nan columns
+    """
     Xfit = X[train] if train is not None else X
-    X.fillna(Xfit.mean(), inplace=True)
+    mean = Xfit.mean()
+   
+    if dropna:
+        null_columns = X.columns[mean.isnull()]
+        if len(null_columns) > 0:
+            logging.info('Dropping null columns: \n\t%s' % null_columns)
+            X.drop(null_columns, axis=1, inplace=True)
+
+    X.fillna(Xfit.mean().dropna(), inplace=True)
     return X
 
 # select subset of strings matching a regex
@@ -344,27 +362,34 @@ def date_censor_sql(date_column, today, column = None):
 # group 1 is the table name, group 2 is the query whose result is the table
 extract_sql_regex = r'CREATE\s+TABLE\s+([^(\s]*)\s+AS\s*\(([^;]*)\);'
 def revise_helper(query):
+    """
+    given sql containing a "CREATE TABLE {table_name} AS ({query})"
+    returns table_name, query
+    """
     match = re.search(extract_sql_regex, query, re.DOTALL | re.I)
     return match.group(1), match.group(2)
 
-def revise_sql(query, id_column, output_table, max_date_column, min_date_column, date_column, date):
+def revise_sql(query, id_column, output_table, max_date_column, min_date_column, date_column, date, source_id_column=None):
     """
     Given an expensive query that aggregates temporal data,
     Revise the results to censor before a particular date
     """
-    if hasattr(id_column, '__iter__'):
-        id_column = str.join(', ', id_column)
+    if source_id_column is None:
+        source_id_column = id_column
+
+    if hasattr(id_column, '__iter__'): id_column = str.join(', ', id_column)
+    if hasattr(source_id_column, '__iter__'): source_id_column = str.join(', ', source_id_column)
     
     sql_vars = dict(query=query, id_column=id_column, output_table=output_table, 
             max_date_column=max_date_column, min_date_column=min_date_column, 
-            date_column=date_column, date=date)
+            date_column=date_column, date=date, source_id_column=source_id_column)
 
     sql_vars['ids_query'] = """
     SELECT {id_column} FROM {output_table} 
     WHERE {max_date_column} >= '{date}' AND {min_date_column} < '{date}'""" .format(**sql_vars)
 
     sql_vars['revised_query'] = query.replace('1=1', 
-            "(({id_column}) in (select * from ids_query) and {date_column} < '{date}')".format(**sql_vars))
+            "(({source_id_column}) in (select * from ids_query) and {date_column} < '{date}')".format(**sql_vars))
 
     new_query = """
     with ids_query as ({ids_query})
@@ -374,10 +399,11 @@ def revise_sql(query, id_column, output_table, max_date_column, min_date_column,
     return new_query
 
 class Revise(Step):
-    def __init__(self, sql_filename, id_column, max_date_column, min_date_column, 
-                date_column, date, from_sql_args=None, **kwargs):
+    def __init__(self, sql, id_column, max_date_column, min_date_column, 
+                date_column, date, from_sql_args=None, source_id_column=None, **kwargs):
         """
-        revise the query contained in sql_filename to the specified date
+        revise a query to the specified date
+        sql: a path to a file or a string containing sql
         id_column: the entity id column(s) linking the result of the query with its source tables
         max_date_column: the maximum date column name for an entry in the result
         min_date_column: the minimum date column name for an entry in the result
@@ -387,20 +413,24 @@ class Revise(Step):
                 e.g. target=True, parse_dates
         """
 
-        Step.__init__(self, sql_filename=sql_filename, id_column=id_column, 
+        Step.__init__(self, sql=sql, id_column=id_column, 
                 max_date_column=max_date_column, min_date_column=min_date_column, 
-                date_column=date_column, date=date, 
+                date_column=date_column, date=date, source_id_column=source_id_column,
                 from_sql_args=from_sql_args, **kwargs)
         
-        sql = util.read_file(sql_filename)
+        if os.path.exists(sql):
+            self.dependencies = [os.path.abspath(sql)]
+            sql = util.read_file(sql)
+
         table, query = revise_helper(sql)
 
         revised_sql = revise_sql(query=query, id_column=id_column, output_table=table,
                 max_date_column=max_date_column, min_date_column=min_date_column, 
-                date_column=date_column, date=date)
+                date_column=date_column, date=date, source_id_column=source_id_column)
 
         if from_sql_args is None: from_sql_args = {}
         self.inputs = [FromSQL(table=table, **from_sql_args), 
+                       # by depending on table, the revised query is given the right dependencies
                        FromSQL(revised_sql, tables=[table], **from_sql_args)]
         self.inputs_mapping = ['source', 'revised']
 
