@@ -255,7 +255,7 @@ def perturb(estimator, x, i, x_min=-1, x_max=1, N=100):
     values = np.linspace(x_min, x_max, N)
     X[:,i] = values
     
-    y = r.estimator.predict_proba(X)[:,1]
+    y = estimator.predict_proba(X)[:,1]
     return pd.Series(y, index=values)
 
 def feature_index(X, name):
