@@ -29,7 +29,8 @@ BASEDIR=None
 # output should be written to disk
 # also loads targets from disk-- could make this optional
 # recreate the dump directory before dumping
-def run(step, inputs=None, output=None):
+# if load_targets, assume all targets have been run and dumped
+def run(step, inputs=None, output=None, load_targets=False):
     if step == output:
         if os.path.exists(step.get_dump_dirname()):
             shutil.rmtree(step.get_dump_dirname())
@@ -41,12 +42,12 @@ def run(step, inputs=None, output=None):
         inputs = []
 
     if not step.has_result():
-        if step in inputs and not step.has_result():
+        if (step in inputs or (load_targets and step.is_target())) and not step.has_result():
             logging.info('Loading\n\t%s' % str(step).replace('\n','\n\t'))
             step.load()
         else:
             for i in step.inputs:
-                run(step=i, inputs=inputs, output=output)
+                run(step=i, inputs=inputs, output=output, load_targets=load_targets)
 
             args, kwargs = step.map_inputs()
             logging.info('Running\n\t%s' % str(step).replace('\n','\n\t'))

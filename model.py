@@ -240,7 +240,7 @@ class PrintMetrics(Step):
             r = metric_fn(self.inputs[0], **kwargs)
             print '%s(%s): %s' % (metric_name, _pprint(kwargs, offset=len(metric_name)), r)
 
-def perturb(estimator, x, i, x_min=-1, x_max=1, N=100):
+def perturb(estimator, X, index, X_min=None, X_max=None, N=100):
     """
     Predict on peturbations of a feature vector
     estimator: a fitted sklearn estimator
@@ -248,13 +248,18 @@ def perturb(estimator, x, i, x_min=-1, x_max=1, N=100):
     i: feature index
     x_min, x_max: range of values to sample
     N: number of samples
-    """
-    X = np.empty((N, len(x)))
-    X[:] = x
 
-    values = np.linspace(x_min, x_max, N)
-    X[:,i] = values
-    
+    TODO: one big call to predict() for all features instead of calling in loop
+    """
+    import pdb; pdb.set_trace()
+    X_test = pd.concat([X.ix[index]]*N*X.shape[1])
+    if X_min == None: X_min = X.min()
+    if X_max == None: X_max = X.max()
+
+    for i,c in enumerate(X.columns):
+        values = np.linspace(X_min[i], X_max[i], N)
+        X_test.values[:,N*i:N*(i+1)] = values
+        
     y = estimator.predict_proba(X)[:,1]
     return pd.Series(y, index=values)
 
