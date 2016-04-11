@@ -240,28 +240,30 @@ class PrintMetrics(Step):
             r = metric_fn(self.inputs[0], **kwargs)
             print '%s(%s): %s' % (metric_name, _pprint(kwargs, offset=len(metric_name)), r)
 
-def perturb(estimator, X, index, X_min=None, X_max=None, N=100):
+def perturb(estimator, X, index, X_min=None, X_max=None, N=100, columns=None):
     """
     Predict on peturbations of a feature vector
     estimator: a fitted sklearn estimator
-    x: an example vector
-    i: feature index
-    x_min, x_max: range of values to sample
+    index: the index of the example to perturb
+    X_min, X_max: optionally precomputed min and max Series
     N: number of samples
-
-    TODO: one big call to predict() for all features instead of calling in loop
+    columns: collection of column names
     """
-    import pdb; pdb.set_trace()
-    X_test = pd.concat([X.ix[index]]*N*X.shape[1])
-    if X_min == None: X_min = X.min()
-    if X_max == None: X_max = X.max()
+    X_test = np.tile(X.ix[index].values, (N*len(columns), 1))
+    if X_min is None: X_min = X.min()
+    if X_max is None: X_max = X.max()
+    if columns is None: columns = X.columns
 
-    for i,c in enumerate(X.columns):
-        values = np.linspace(X_min[i], X_max[i], N)
-        X_test.values[:,N*i:N*(i+1)] = values
+    import pdb; pdb.set_trace()
+    for i,c in enumerate(columns):
+        values = np.linspace(X_min.ix[c], X_max.ix[c], N)
+        # TODO make this work when index is multiple rows
+        X_test[N*i:N*(i+1), (X.columns==c).argmax()] = values
         
-    y = estimator.predict_proba(X)[:,1]
-    return pd.Series(y, index=values)
+    y = estimator.predict_proba(X_test)[:,1]
+    # TODO make this work for multiple rows
+    y = y.reshape((len(columns), N)).T
+    return pd.DataFrame(y, columns=columns)
 
 def feature_index(X, name):
     """
