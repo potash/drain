@@ -254,7 +254,6 @@ def perturb(estimator, X, index, X_min=None, X_max=None, N=100, columns=None):
     if X_max is None: X_max = X.max()
     if columns is None: columns = X.columns
 
-    import pdb; pdb.set_trace()
     for i,c in enumerate(columns):
         values = np.linspace(X_min.ix[c], X_max.ix[c], N)
         # TODO make this work when index is multiple rows
