@@ -487,7 +487,7 @@ class Count(Fraction):
         denominator = Aggregate(prop, 'sum', prop_name, astype=prop_astype) if prop else None
         numerator = Aggregate(definition, 'sum', name, fname, astype=astype)
         if prop not in [None, 1]:
-            fracnames = [n[:-5]+'prop_'+d[:-4] for n,d in zip(numerator.names, denominator.names)]
+            fracnames = [n[:-5]+'per_'+d[:-4] for n,d in zip(numerator.names, denominator.names)]
         else:
             fracnames = [n[:-5]+'prop' for n in numerator.names]
         Fraction.__init__(self, numerator=numerator, denominator=denominator, include_numerator=not prop_only,

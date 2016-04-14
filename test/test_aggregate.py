@@ -37,8 +37,8 @@ def test_count(small_df):
                        'foo_count': [0.3,0.4,1.0],
                        'foo_prop': [0.15,0.4,1.0],
                        'score_count': [0.3,0.4,1.0],
-                       'score_prop_arrests': [0.1,0.2,0.2],
-                       'score_prop_propname': [0.3/5,0.4/3,1.0/6]},
+                       'score_per_arrests': [0.1,0.2,0.2],
+                       'score_per_propname': [0.3/5,0.4/3,1.0/6]},
                         index=['Anne','Ben','Charlie'])
     df = df.reindex_axis(sorted(df.columns), axis=1)
     ag = ag.reindex_axis(sorted(ag.columns), axis=1)
@@ -80,7 +80,7 @@ def test_proportion(small_df):
     p = Proportion(lambda x: x.score+1, 'arrests', name='mylambda', denom_name='mydenom')
 
     ag = Aggregator(small_df, [p]).aggregate('name')
-    df = pd.DataFrame({'mylambda_prop_mydenom':[2.3/3,1.4/2,2.0/5]},
+    df = pd.DataFrame({'mylambda_per_mydenom':[2.3/3,1.4/2,2.0/5]},
                     index=['Anne','Ben','Charlie'])
 
     df = df.reindex_axis(sorted(df.columns), axis=1)
