@@ -259,7 +259,7 @@ def normalize(X, train=None):
         
     return X
 
-def impute(X, train=None, dropna=True):
+def impute(X, train=None, dropna=True, inplace=True):
     """
     impute using mean
     if train is specified, mean is calculated on X[train]
@@ -269,12 +269,19 @@ def impute(X, train=None, dropna=True):
     mean = Xfit.mean()
    
     if dropna:
-        null_columns = X.columns[mean.isnull()]
+        null_columns = mean.index[mean.isnull()]
         if len(null_columns) > 0:
             logging.info('Dropping null columns: \n\t%s' % null_columns)
-            X.drop(null_columns, axis=1, inplace=True)
+            if inplace:
+                X.drop(null_columns, axis=1, inplace=True)
+            else:
+                X = X.drop(null_columns, axis=1, inplace=False)
 
-    X.fillna(Xfit.mean().dropna(), inplace=True)
+    if inplace:
+        X.fillna(Xfit.mean().dropna(), inplace=True)
+    else:
+        X = X.fillna(Xfit.mean().dropna(), inplace=False)
+
     return X
 
 # select subset of strings matching a regex
