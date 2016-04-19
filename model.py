@@ -240,43 +240,37 @@ class PrintMetrics(Step):
             r = metric_fn(self.inputs[0], **kwargs)
             print '%s(%s): %s' % (metric_name, _pprint(kwargs, offset=len(metric_name)), r)
 
-def perturb(estimator, X, index, X_min=None, X_max=None, N=100, columns=None):
+def perturb(estimator, X, bins, columns=None):
     """
     Predict on peturbations of a feature vector
     estimator: a fitted sklearn estimator
     index: the index of the example to perturb
-    X_min, X_max: optionally precomputed min and max Series
-    N: number of samples
-    columns: collection of column names
+    bins: a dictionary of column:bins arrays
+    columns: list of columns if bins doesn't cover all columns
+    TODO make this work when index is multiple rows
     """
-    X_test = np.tile(X.ix[index].values, (N*len(columns), 1))
-    if X_min is None: X_min = X.min()
-    if X_max is None: X_max = X.max()
-    if columns is None: columns = X.columns
+    if columns is None:
+        if len(bins) != X.shape[1]:
+            raise ValueError("Must specify columns when not perturbing all columns")
+        else:
+            columns = X.columns
 
-    for i,c in enumerate(columns):
-        values = np.linspace(X_min.ix[c], X_max.ix[c], N)
-        # TODO make this work when index is multiple rows
-        X_test[N*i:N*(i+1), (X.columns==c).argmax()] = values
-        
+    n = np.concatenate(([0],np.cumsum([len(b) for b in bins])))
+    
+    X_test = np.empty((n[-1]*X.shape[0], X.shape[1]))
+    r = pd.DataFrame(columns=['value', 'feature', 'index'], index=np.arange(n[-1]*X.shape[0]))
+    for j,index in enumerate(X.index):
+        X_test[j*n[-1]:(j+1)*n[-1], :] = X.values[j,:]
+        for i,c in enumerate(columns):
+            s = slice(j*n[-1] + n[i], j*n[-1] + n[i+1])
+            r['value'].values[s] = bins[i]
+            r['feature'].values[s] = c
+            r['index'].values[s] = [index]*(n[i+1]-n[i])
+            X_test[s, (X.columns==c).argmax()] = bins[i]
+            
     y = estimator.predict_proba(X_test)[:,1]
-    # TODO make this work for multiple rows
-    y = y.reshape((len(columns), N)).T
-    return pd.DataFrame(y, columns=columns)
-
-def feature_index(X, name):
-    """
-    Get the column position in a DataFrame given its name
-    """
-    return np.where(X.columns == feature)[0][0]
-
-def plot_perturbation(estimator, X, row, feature, **perturb_args):
-    """
-    Given a DataFrame, a row number, and feature name, plot results of perturb
-    """
-    perturbed = preturb(estimator, X.iloc[row], feature_index(X, feature), **perturb_args)
-    ax = perturbed.plot()
-    ax.vlines(x=X.iloc[row][feature], ymin=perturbed.min(), ymax=perturbed.max())
+    r['y'] = y
+    return r
 
 def forests(**kwargs):
     steps = []
