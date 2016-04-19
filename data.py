@@ -3,7 +3,6 @@ import datetime
 import re
 import os
 from drain import util
-import warnings
 import logging
 
 from copy import deepcopy
