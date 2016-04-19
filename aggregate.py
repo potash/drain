@@ -506,18 +506,6 @@ class Proportion(Count):
         Count.__init__(self, definition=definition, name=name, prop=denom_def, 
                         prop_only=True, prop_name=denom_name, astype=astype, prop_astype=denom_astype)
 
-def _collect_columns(aggregates):
-    columns = set()
-    for a in aggregates:
-        intersection = columns.intersection(a.columns)
-        if len(intersection) > 0: raise ValueError('Repeated columns: %s' % intersection)
-        columns.update(a.columns)
-
-    if len(columns) == 0:
-        raise ValueError('Aggregator needs at least one output columns')
-
-    return columns
-
 def aggregate_list(l):
     return list(np.concatenate(l.values))
 
