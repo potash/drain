@@ -6,9 +6,9 @@ from pandas.util.testing import assert_frame_equal
 def test_aggregator(small_df):
 
     aggregates = [
-        Count(astype=int),
+        Count(),
         Aggregate(['score', lambda x: x.score**2],'sum', ['score', 'lambda']),
-        Aggregate(lambda x: x.arrests%2,'sum', name='typetest', astype=bool)
+        Aggregate(lambda x: x.arrests%2,'sum', name='typetest')
         ]
 
     ag = Aggregator(small_df, aggregates).aggregate('name')
@@ -16,7 +16,7 @@ def test_aggregator(small_df):
                        'score_sum': [0.3,0.4,1.0],
                        'lambda_sum': [0.05, 0.16, 1.0],
                        'typetest_sum': [True, False, True]},
-                        index=['Anne','Ben','Charlie'])
+                        index=['Anne','Ben','Charlie'], dtype=np.float32)
     df = df.reindex_axis(sorted(df.columns), axis=1)
     ag = ag.reindex_axis(sorted(ag.columns), axis=1)
     df.index.name = 'name'
@@ -39,7 +39,7 @@ def test_count(small_df):
                        'score_count': [0.3,0.4,1.0],
                        'score_per_arrests': [0.1,0.2,0.2],
                        'score_per_propname': [0.3/5,0.4/3,1.0/6]},
-                        index=['Anne','Ben','Charlie'])
+                        index=['Anne','Ben','Charlie'], dtype=np.float32)
     df = df.reindex_axis(sorted(df.columns), axis=1)
     ag = ag.reindex_axis(sorted(ag.columns), axis=1)
     df.index.name = 'name'
@@ -59,7 +59,7 @@ def test_fraction(small_df):
         print df
 
 def test_fraction(small_df):
-    n = Aggregate('arrests', 'sum', astype=int)
+    n = Aggregate('arrests', 'sum')
     d = Aggregate('score', 'sum')
 
     f = Fraction(n,d, include_numerator=True, include_denominator=True, include_fraction=True)
@@ -68,7 +68,7 @@ def test_fraction(small_df):
     df = pd.DataFrame({'arrests_sum':[3,2,5],
                        'score_sum': [0.3,0.4,1.0],
                        'arrests_sum_per_score_sum': [3/0.3, 2/0.4, 5/1.0]},
-                        index=['Anne','Ben','Charlie'])
+                        index=['Anne','Ben','Charlie'], dtype=np.float32)
 
     df = df.reindex_axis(sorted(df.columns), axis=1)
     ag = ag.reindex_axis(sorted(ag.columns), axis=1)
@@ -81,7 +81,7 @@ def test_proportion(small_df):
 
     ag = Aggregator(small_df, [p]).aggregate('name')
     df = pd.DataFrame({'mylambda_per_mydenom':[2.3/3,1.4/2,2.0/5]},
-                    index=['Anne','Ben','Charlie'])
+                    index=['Anne','Ben','Charlie'], dtype=np.float32)
 
     df = df.reindex_axis(sorted(df.columns), axis=1)
     ag = ag.reindex_axis(sorted(ag.columns), axis=1)

@@ -100,8 +100,6 @@ class Column(object):
             self.definition = FuncHash(definition)
         else:
             self.definition = definition
-        if astype is None and isinstance(definition, basestring):
-            astype = np.float32
         self.astype = astype
 
     def apply(self, df):
@@ -136,7 +134,10 @@ class ColumnReduction(object):
         if not isinstance(column, Column):
             raise ValueError("ColumnReduction needs a Column")
         self.column = column
-        self.agg_func = FuncHash(agg_func) if hasattr(agg_func, '__call__') else agg_func # necessary because we sometimes pass strings for Pandas' agg()
+        # wrap callables in call FuncHash
+        self.agg_func = FuncHash(agg_func) if hasattr(agg_func, '__call__') else agg_func 
+        if isinstance(agg_func, basestring) and self.column.astype is None:
+            self.column.astype = np.float32
     def __hash__(self):
         return hash((self.column, self.agg_func))
     def __eq__(self, other):
