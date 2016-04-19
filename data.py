@@ -71,6 +71,19 @@ class FromSQL(Step):
 
         return df
 
+class FromCSV(Step):
+    """
+    wrapper for pd.read_csv
+    """
+    def __init__(self, filepath_or_buffer, **kwargs):
+        Step.__init__(self, filepath_or_buffer=filepath_or_buffer, **kwargs)
+        #TODO: if filepath_or_buffer is a file, add a dependency for it
+        # need a good way to check if string is a valid (not necessarily existant) filepath
+
+    def run(self):
+        kwargs = self.get_arguments()
+        return pd.read_csv(**kwargs)
+
 class Merge(Step):
     def run(self, *dfs):
         df = dfs[0] 
@@ -514,3 +527,15 @@ def nearest_neighbors_impute(df, coordinate_columns, data_columns, knr_params={}
         knr.fit(df.loc[not_null,coordinate_columns], df.loc[not_null,[column]])
         predicted = knr.predict(df.loc[~not_null,coordinate_columns])
         df.loc[ (~not_null),[column]] = predicted
+
+def bins(df, N, how='linear'):
+    if how == 'linear':
+        df_min = df.min()
+        df_max = df.max()
+        return [np.linspace(df_min.ix[c], df_max.ix[c], N)
+                for c in df.columns]
+    if how == 'percentile':
+        return [np.unique(np.percentile(df[c], np.arange(0,1,1.0/N)*100)) 
+                for c in df.columns]
+    else:
+        raise ValueError('Invalid how: %s' % how)
