@@ -13,6 +13,8 @@ import hashlib
 import itertools
 import logging
 import shutil
+import warnings
+from tables import NaturalNameWarning
 
 from drain import util
 
@@ -352,8 +354,11 @@ class Step(object):
                 values = result.values()
 
             store = pd.HDFStore(os.path.join(self.get_dump_dirname(), 'result.h5'))
-            for key, df in zip(keys, values):
-                store.put(key, df, mode='w')
+            # ignore NaturalNameWarning
+            with warnings.catch_warnings():
+                warnings.simplefilter('ignore', category=NaturalNameWarning)
+                for key, df in zip(keys, values):
+                    store.put(key, df, mode='w')
         else:
             joblib.dump(self.get_result(), os.path.join(self.get_dump_dirname(), 'result.pkl'))
 
