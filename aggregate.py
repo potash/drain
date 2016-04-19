@@ -502,7 +502,7 @@ class Proportion(Count):
     Creates a column 'Arrests_prop_Inspections', which divides the sum of 'Arrests' per group by the 
     sum of 'Inspections' per group.
     """
-    def __init__(self, definition, denom_def, name=None, denom_name=None, astype=None, denom_astype=None):
+    def __init__(self, definition, denom_def=True, name=None, denom_name=None, astype=None, denom_astype=None):
         Count.__init__(self, definition=definition, name=name, prop=denom_def, 
                         prop_only=True, prop_name=denom_name, astype=astype, prop_astype=denom_astype)
 
