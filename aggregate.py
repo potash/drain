@@ -101,7 +101,7 @@ class Column(object):
         else:
             self.definition = definition
         if astype is None and isinstance(definition, basestring):
-            astype = np.float64
+            astype = np.float32
         self.astype = astype
 
     def apply(self, df):
@@ -474,8 +474,8 @@ class Count(Fraction):
         if prop==None and prop_only==True:
             raise ValueError("Cannot calculate only the proportion when no proportion requested!")
 
-        definition = np.float64(1) if definition is None else definition
-        prop = np.float64(1) if prop==True else prop
+        definition = np.float32(1) if definition is None else definition
+        prop = np.float32(1) if prop==True else prop
 
         # if we do a vanilla count, just call it 'count'
         if definition==1 and name is None:
