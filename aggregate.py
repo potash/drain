@@ -37,45 +37,12 @@ index by which rows are being grouped).
 
 from itertools import product, chain
 from collections import defaultdict
+
 import pandas as pd
 import numpy as np
-import sys
-import dis
-import StringIO
-import inspect
-import types
-import util, data
 
-def capture_print(f, *args):
-    """Helper function; calls function f(*args), 
-    captures whatever f prints to
-    STDOUT, and returns it as a string."""
-    stdout_ = sys.stdout
-    stream = StringIO.StringIO()
-    sys.stdout = stream
-    f(*args)
-    sys.stdout = stdout_ 
-    return stream.getvalue()
-
-class FuncHash(object):
-    """Helper class to wrap functions and lambdas, so that
-    they can be cashed.
-    Lambda functions are hashed based on their bytecode, while 
-    standard functions use their regular hash value.
-    """
-    def __init__(self, func):
-        self.func = func
-    def __hash__(self):
-        # anonymous functions can only be hashed based on their bytecode
-        if isinstance(self.func, types.LambdaType):
-            return hash(capture_print(dis.dis, self.func))
-        return hash(self.func)
-    def __eq__(self, other):
-        return hash(self) == hash(other)
-    def __call__(self, *args, **kwargs):
-        return self.func(*args, **kwargs)
-    def __repr__(self):
-        return self.func.__repr__()
+from drain import util, data
+from drain.util import Callable
 
 class Column(object):
     """Defines a new or existing column that can be calculated from a dataframe.
@@ -97,7 +64,7 @@ class Column(object):
                 resulting pd.Series will be converted to.
         """
         if hasattr(definition, '__call__'):
-            self.definition = FuncHash(definition)
+            self.definition = Callable(definition)
         else:
             self.definition = definition
         self.astype = astype
@@ -134,8 +101,8 @@ class ColumnReduction(object):
         if not isinstance(column, Column):
             raise ValueError("ColumnReduction needs a Column")
         self.column = column
-        # wrap callables in call FuncHash
-        self.agg_func = FuncHash(agg_func) if hasattr(agg_func, '__call__') else agg_func 
+        # wrap callables in Callable
+        self.agg_func = Callable(agg_func) if hasattr(agg_func, '__call__') else agg_func 
         if isinstance(agg_func, basestring) and self.column.astype is None:
             self.column.astype = np.float32
     def __hash__(self):

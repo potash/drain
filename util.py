@@ -3,6 +3,9 @@ import logging
 import os
 import sys
 import yaml
+import types
+import StringIO
+import dis
 
 import numpy as np
 import pandas as pd
@@ -48,14 +51,6 @@ def union(sets):
 def to_float(*args):
     floats = [np.array(a, dtype=np.float32) for a in args]
     return floats[0] if len(floats) == 1 else floats
-
-# a fake hash that detects references to the same object
-# used by Aggregator for minimzing computations
-def hash_obj(obj):
-    try:
-        return hash((True, obj))
-    except: 
-        return hash((False, id(obj)))
 
 def timestamp(year,month,day):
     """
@@ -423,8 +418,40 @@ class PgSQLDatabase(pandas.io.sql.SQLDatabase):
  
         return df
 
-from functools import wraps
+def capture_print(f, *args):
+    """Helper function; calls function f(*args), 
+    captures whatever f prints to
+    STDOUT, and returns it as a string."""
+    stdout_ = sys.stdout
+    stream = StringIO.StringIO()
+    sys.stdout = stream
+    f(*args)
+    sys.stdout = stdout_
+    return stream.getvalue()
 
+class Callable(object):
+    """Helper class to wrap functions and lambdas, so that
+    they can be cashed.
+    Lambda functions are hashed based on their bytecode, while 
+    standard functions use their regular hash value.
+    """
+    def __init__(self, func):
+        self.func = func
+    def __hash__(self):
+        # anonymous functions can only be hashed based on their bytecode
+        if isinstance(self.func, types.LambdaType):
+            return hash(capture_print(dis.dis, self.func))
+        return hash(self.func)
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+    def __call__(self, *args, **kwargs):
+        return self.func(*args, **kwargs)
+    def __repr__(self):
+        return self.func.__repr__()
+
+
+# TODO: use this for a global step cache
+from functools import wraps
 
 def cached_class(klass):
     """Decorator to cache class instances by constructor arguments.
