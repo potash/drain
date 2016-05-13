@@ -1,5 +1,5 @@
 # run this using the following command:
-# drain --basedir drain/test/output/ drain/test/test_drain.py::cal
+# drain --basedir drain/test/output/ drain.test.test_drain::calibration
 # TODO: add this as an executable test?
 
 from drain import step, model, data
@@ -32,7 +32,7 @@ def calibration():
 
     return steps
 
-def product():
+def product_model():
     d = data.ClassificationData(target=True, n_samples=1000, n_features=100)
     est = step.Construct('sklearn.ensemble.RandomForestClassifier',
                 n_estimators=10, name='estimator')
