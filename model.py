@@ -67,7 +67,7 @@ class FitPredict(Step):
         if self.return_feature_importances:
             filename = os.path.join(self.get_dump_dirname(), 'feature_importances.hdf')
             result['feature_importances'].to_hdf(filename, 'df')
-        if self.return_feature_importances:
+        if self.return_predictions:
             filename = os.path.join(self.get_dump_dirname(), 'y.hdf')
             result['y'].to_hdf(filename, 'df')
 
@@ -79,7 +79,7 @@ class FitPredict(Step):
         if self.return_feature_importances:
             filename = os.path.join(self.get_dump_dirname(), 'feature_importances.hdf')
             result['feature_importances'] = pd.read_hdf(filename, 'df')
-        if self.return_feature_importances:
+        if self.return_predictions:
             filename = os.path.join(self.get_dump_dirname(), 'y.hdf')
             result['y'] = pd.read_hdf(filename, 'df')
 
@@ -87,7 +87,9 @@ class FitPredict(Step):
 
 class Fit(FitPredict):
     def __init__(self, **kwargs):
-        FitPredict.__init__(self, return_predictions=False, prefit=False, **kwargs)
+        kwargs['prefit'] = False
+        kwargs['return_predictions'] = False
+        FitPredict.__init__(self, **kwargs)
 
 class PredictProduct(Step):
     def run(self, **kwargs):
@@ -102,8 +104,10 @@ class PredictProduct(Step):
 
 class Predict(FitPredict):
     def __init__(self, **kwargs):
-        FitPredict.__init__(self, return_feature_importances=False,
-                return_predictions=True, prefit=True, **kwargs)
+        kwargs['return_feature_importances']=False
+        kwargs['return_predictions'] = True
+        kwargs['prefit'] = True
+        FitPredict.__init__(self, **kwargs)
        
 def y_score(estimator, X):
     if hasattr(estimator, 'decision_function'):

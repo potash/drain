@@ -13,10 +13,11 @@ def calibration():
         est = step.Construct('sklearn.ensemble.RandomForestClassifier',
                 n_estimators=n_estimators, name='estimator') 
 
-        fit_est = model.FitPredict(inputs=[est, d], target=True, name='uncalibrated')
+        fit = model.Fit(inputs=[est, d], return_estimator=True, target=True, name='uncalibrated')
+        predict = model.Predict(inputs=[fit,d], target=True, name='y')
 
         cal = step.Construct('sklearn.calibration.CalibratedClassifierCV', cv=k_folds,
-                inputs=[est], inputs_mapping=['base_estimator'], name='calibrator')
+                inputs=[predict], inputs_mapping={'y':None}, name='calibrator')
 
         cal_est = model.FitPredict(inputs=[cal, d], target=True, name='calibrated')
 
@@ -27,7 +28,6 @@ def calibration():
                 {'metric':'precision', 'k':300},
         ], inputs=[cal_est], target=True)
 
-        steps.append(fit_est)
         steps.append(metrics)
 
     return steps
