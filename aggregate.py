@@ -495,14 +495,17 @@ def days(date1, date2):
     e.g. Aggregate(days('date', today), ['min','max'], 'days_since')
     TODO: should there be a Days(AggregateBase) for this? handle naming
     """
-    if isinstance(date1, basestring) and isinstance(date2, basestring):
-        return lambda d: (d[date2] - d[date1])/util.day
-    elif isinstance(date1, basestring):
-        return lambda d: (date2 - d[date1])/util.day
-    elif isinstance(date2, basestring):
-        return lambda d: (d[date2] - date1)/util.day
+    return lambda df, date1=date1, date2=date2: _days(df, date1, date2)
+
+def _days(df, date1, date2):
+    # when df is empty the subtraction below is broken 
+    if len(df) == 0:
+        return pd.Series(dtype=np.float64, index=df.index)
     else:
-        return (date2 - date1)/util.day
+        d1 = df[date1] if isinstance(date1, basestring) else date1
+        d2 = df[date2] if isinstance(date2, basestring) else date2
+        
+        return (d2 - d1) / util.day
 
 def date_min(d):
     """
