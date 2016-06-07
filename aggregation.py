@@ -59,11 +59,12 @@ class AggregationBase(Step):
         prefix += str.join('_', map(str, args)) + '_'
         return prefix
 
+    # left join to the specified DataFrame
+    # left should contain the index of the concatenated agg in its columns
     def join(self, left):
-        index = left.index
         fillna_value = pd.Series()
- 
         concat_result = self.get_concat_result()
+
         # TODO: is it more efficient to first collect indexes from concat
         # then outer join all of the dfs
         # then left join that to left?
