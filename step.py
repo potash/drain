@@ -4,7 +4,12 @@ import sys
 import itertools
 import pandas as pd
 from pprint import pformat
-from StringIO import StringIO
+
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
+
 from sklearn.base import _pprint
 import joblib
 import os
@@ -118,7 +123,7 @@ class Step(object):
         if not hasattr(self, 'dependencies'):
             self.dependencies = []
 
-        self._hasher = hashlib.md5(yaml.dump(self)) # this won't work right if we haven't called configure_yaml()
+        self._hasher = hashlib.md5(yaml.dump(self).encode('utf-8')) # this won't work right if we haven't called configure_yaml()
         self._digest = base64.urlsafe_b64encode(self._hasher.digest())
 
     @staticmethod

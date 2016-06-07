@@ -1,8 +1,9 @@
 import numpy as np
 import pandas as pd
 import sklearn.metrics
-import util
-from util import to_float
+
+from . import util
+from .util import to_float
 
 def _argsort(y_score, k=None):
     ranks = y_score.argsort()

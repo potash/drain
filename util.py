@@ -4,7 +4,12 @@ import os
 import sys
 import yaml
 import types
-import StringIO
+
+try:
+    from StringIO import StringIO
+except ImportError:
+    from io import StringIO
+
 import dis
 
 import numpy as np
@@ -14,7 +19,11 @@ from itertools import chain, product
 from datetime import datetime, timedelta, date
 from sklearn import preprocessing
 from scipy import stats
-from repoze.lru import lru_cache
+
+try:
+    from repoze.lru import lru_cache
+except ImportError:
+    from functools import lru_cache
 
 # useful for finding number of days in an interval: (date1 - date2) /day
 day = np.timedelta64(1, 'D')

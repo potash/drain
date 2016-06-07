@@ -14,9 +14,8 @@ from collections import Counter
 
 import matplotlib.colors
 from matplotlib import cm
-import matplotlib.pyplot as plt
 
-import model, util, metrics
+from . import model, util, metrics
 
 def to_dataframe(steps):
     args = [s.named_arguments for s in steps]
@@ -93,6 +92,8 @@ def colorbar_index(ncolors, cmap, labels=None, **kwargs):
     mappable = cm.ScalarMappable(cmap=cmap)
     mappable.set_array([])
     mappable.set_clim(-0.5, ncolors+0.5)
+
+    import matplotlib.pyplot as plt
     colorbar = plt.colorbar(mappable, **kwargs)
     colorbar.set_ticks(np.linspace(0, ncolors, ncolors))
     colorbar.set_ticklabels(range(ncolors))

@@ -9,10 +9,9 @@ import pandas as pd
 import numpy as np
 
 from sklearn.externals import joblib
-from statsmodels.discrete.discrete_model import Logit
 from sklearn.base import _pprint
 
-import util, metrics
+from . import util, metrics
 from drain.step import Step, Construct
 
 class FitPredict(Step):
@@ -133,6 +132,7 @@ class LogisticRegression(object):
         pass
 
     def fit(self, X, y, **kwargs):
+        from statsmodels.discrete.discrete_model import Logit
         self.model = Logit(y, X)
         self.result = self.model.fit()
     
@@ -242,7 +242,7 @@ class PrintMetrics(Step):
             metric_fn = getattr(sys.modules[__name__], metric_name) # TODO allow external metrics
 
             r = metric_fn(self.inputs[0], **kwargs)
-            print '%s(%s): %s' % (metric_name, _pprint(kwargs, offset=len(metric_name)), r)
+            print('%s(%s): %s' % (metric_name, _pprint(kwargs, offset=len(metric_name)), r))
 
 def perturb(estimator, X, bins, columns=None):
     """
