@@ -12,6 +12,7 @@ from sklearn.externals import joblib
 from sklearn.base import _pprint
 
 from . import util, metrics
+from drain.util import merge_dicts
 from drain.step import Step, Construct
 
 class FitPredict(Step):
@@ -86,8 +87,9 @@ class FitPredict(Step):
 
 class Fit(FitPredict):
     def __init__(self, **kwargs):
-        kwargs['prefit'] = False
-        kwargs['return_predictions'] = False
+        kwargs = merge_dicts(
+                dict(prefit=False, return_predictions=False),
+                kwargs)
         FitPredict.__init__(self, **kwargs)
 
 class PredictProduct(Step):
@@ -103,9 +105,8 @@ class PredictProduct(Step):
 
 class Predict(FitPredict):
     def __init__(self, **kwargs):
-        kwargs['return_feature_importances']=False
-        kwargs['return_predictions'] = True
-        kwargs['prefit'] = True
+        kwargs = merge_dicts(dict(return_feature_importances=False, 
+                return_predictions=True, prefit=True), kwargs)
         FitPredict.__init__(self, **kwargs)
        
 def y_score(estimator, X):

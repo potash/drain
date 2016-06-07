@@ -6,7 +6,7 @@ import pandas as pd
 from pprint import pformat
 
 try:
-    from StringIO import StringIO
+    import StringIO
 except ImportError:
     from io import StringIO
 
@@ -624,7 +624,7 @@ def to_drake_step(inputs, output):
 # if preview then don't create the dump directories and step yaml files
 def to_drakefile(steps, preview=True, debug=False, bindir=None):
     data = get_drake_data(steps)
-    drakefile = StringIO()
+    drakefile = StringIO.StringIO()
 
     bindir = os.path.join(os.path.dirname(__file__), 'bin')
     drakefile.write("drain()\n\tpython %s %s/run_step.py $OUTPUT $INPUTS 2>&1\n\n" % ('-m pdb' if debug else '', bindir))
