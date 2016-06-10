@@ -438,7 +438,7 @@ class Scalar(Step):
     def __init__(self, value, **kwargs):
         Step.__init__(self, value=value, **kwargs)
 
-    def run(self, *values):
+    def run(self):
         return self.value
 
 class Add(Step):
