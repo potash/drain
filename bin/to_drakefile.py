@@ -20,7 +20,7 @@ if __name__ == "__main__":
     parser.add_argument('-n', '--name', help='Name to store this workflow under')
     parser.add_argument('--basedir', type=str, help='output base directory')
     
-    parser.add_argument('steps', type=str, help='yaml params filename')
+    parser.add_argument('steps', type=str, help='yaml file or reference to python collection of drain.Step objects or reference to python function returning same. can specify multiple using semi-colon separator.')
 
     #parser.add_argument('drakeargs', nargs='?', type=str, default=None, help='parameters to pass to drake via --drakeargsfile')
     args, drake_args = parser.parse_known_args()
@@ -31,13 +31,19 @@ if __name__ == "__main__":
     step.BASEDIR = os.path.abspath(args.basedir)
     step.configure_yaml()
 
-    if args.steps.endswith('.yaml'):
-        steps = step.from_yaml(args.steps)
-    else:
-        modulename, fname = args.steps.split('::')
-        mod = importlib.import_module(modulename)
-        steps = getattr(mod, fname)
-        steps = util.make_list(steps() if hasattr(steps, '__call__') else steps)
+    steps = []
+    for s in args.steps.split(';'):
+        if s.endswith('.yaml'):
+            steps +=  step.from_yaml(s)
+        else:
+            print s
+            modulename, fname = s.split('::')
+            mod = importlib.import_module(modulename)
+            s = getattr(mod, fname)
+            # if s is callable, it should return a collection of Steps
+            # otherwise assume it is a collection of Steps
+            s = util.make_list(s() if hasattr(s, '__call__') else s)
+            steps += s
 
     if args.Drakeinput is None and os.path.exists('Drakefile'):
         args.Drakeinput = 'Drakefile'
