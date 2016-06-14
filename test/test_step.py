@@ -2,41 +2,11 @@ from drain.step import *
 from drain import step
 import tempfile
 
-def setup_module(module):
-    tmpdir = tempfile.mkdtemp()
-    step.BASEDIR = tmpdir
-    configure_yaml()
+#def setup_module(module):
+#    tmpdir = tempfile.mkdtemp()
+#    step.BASEDIR = tmpdir
+#    configure_yaml()
 
-def test_argument_product():
-    assert argument_product({'a' : ArgumentCollection([1,2])}) == [{'a': 1}, {'a': 2}]
-
-def test_argument_product_deep():
-    assert argument_product({'a' : {'b': ArgumentCollection([1,2])} }) == [{'a': {'b': 1}}, {'a': {'b': 2}}]
-
-def test_step_product():
-    assert step_product(Step._template(a={'b': ArgumentCollection([1,2])})) == [Step._template(a={'b': 1}), Step._template(a={'b': 2})]
-
-def test_parallel():
-    assert parallel(Step._template(a=1), Step._template(b=1)) == [[Step._template(a=1)], [Step._template(b=1)]]
-
-def test_parallel_multiple():
-    assert parallel([Step._template(a=1), Step._template(b=1)], [Step._template(c=1)]) == [[Step._template(a=1)], [Step._template(b=1)], [Step._template(c=1)]]
-
-def test_search():
-    assert search(Step._template(a=ArgumentCollection([1,2]))) == [Step._template(a=1), Step._template(a=2)]
-
-def test_search_multiple():
-    assert search(Step._template(a=ArgumentCollection([1,2])), Step._template(b=ArgumentCollection([1,2]))) == [Step._template(a=1), Step._template(a=2), Step._template(b=1), Step._template(b=2)]
-
-def test_product():
-    assert product([Step._template(a=1), Step._template(a=2)], Step._template(b=1)) == [(Step._template(a=1), Step._template(b=1)), (Step._template(a=2), Step._template(b=1))]
-    
-def test_serial():
-    assert serial([Step._template(a=1), Step._template(a=2)], [Step._template(b=1), Step._template(b=2)]) == [Step._template(inputs=[Step._template(a=1), Step._template(a=2)],b=1), Step._template(inputs=[Step._template(a=1), Step._template(a=2)],b=2)]
-
-def test_serial2():
-    assert serial([[Step._template(a=1), Step._template(a=2)], [Step._template(b=1), Step._template(b=2)]], [Step._template(c=1), Step._template(c=2)]) == [Step._template(c=1, inputs=[Step._template(a=1), Step._template(a=2)]), Step._template(c=2, inputs=[Step._template(a=1), Step._template(a=2)]), Step._template(c=1, inputs=[Step._template(b=1), Step._template(b=2)]), Step._template(c=2, inputs=[Step._template(b=1), Step._template(b=2)])]
-    
 def test_run():
     step = yaml.load("""
     !serial 

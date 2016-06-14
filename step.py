@@ -449,48 +449,6 @@ class Divide(Step):
     def run(self, numerator, denominator):
         return numerator / denominator
         
-class ArgumentCollection(object):
-    def __init__(self, collection):
-        if not hasattr(collection, '__iter__'):
-            raise ValueError('Not a collection: %s' % collection)
-        self.collection = collection    
-
-def argument_product(args):
-    for k in args:
-        if isinstance(args[k], dict):
-            args[k] = ArgumentCollection(argument_product(args[k]))
-    
-    product_vars = [k for k in args if isinstance(args[k], ArgumentCollection)]
-    for k in product_vars:
-        args[k] = args[k].collection
-    dicts = util.dict_product(args, product_vars)
-    return dicts
-
-def step_product(step):
-    return [step._template_copy(**d) for d in argument_product(step.__template__.kwargs)]
-
-def parallel(*inputs):
-    return map(util.make_list, itertools.chain(*map(util.make_list, inputs)))
-
-def search(*inputs):
-    return list(itertools.chain(*map(util.make_list, map(step_product, inputs))))
-
-# compose the list of steps by setting s(n).inputs = s(n-1)
-def serial(*inputs):
-    psteps = None
-    for steps in map(util.make_list, inputs):
-        if psteps is not None:
-            if not hasattr(psteps[0], '__iter__'):
-                psteps = (psteps,)
-            steps = list(itertools.chain(*(map(lambda s: s._template_copy(inputs=util.make_list(ps)), steps) for ps in psteps)))
-            
-        psteps = steps
-    return psteps
-    
-# take the product of steps from each step
-def product(*inputs):
-    return list(itertools.product(*map(util.make_list, inputs)))
-    
 def step_multi_representer(dumper, data):
     tag = '!step:%s.%s' % (data.__class__.__module__, data.__class__.__name__)
     return dumper.represent_mapping(tag, data.get_arguments(
@@ -510,44 +468,10 @@ def step_multi_constructor(loader, tag_suffix, node):
 
     return Step._template(__cls__=cls, **kwargs)
 
-def constructor_multi_constructor(loader, tag_suffix, node):
-    class_name = tag_suffix[1:]
-    kwargs = loader.construct_mapping(node)
-
-    return Step._template(__cls__=Construct, __class_name__=str(class_name), **kwargs)
-
-def get_sequence_constructor(method):
-    def constructor(loader, node):
-        seq = loader.construct_sequence(node)
-        return method(*seq)
-    return constructor
-
-def range_constructor(loader, node):
-    args = loader.construct_sequence(node)
-    return ArgumentCollection(xrange(*args))
-
-def list_constructor(loader, node):
-    args = loader.construct_sequence(node)
-    return ArgumentCollection(args)
-
-def powerset_constructor(loader, node):
-    args = loader.construct_sequence(node)
-    return ArgumentCollection(itertools.chain.from_iterable(itertools.combinations(args, r) for r in range(len(args)+1)))
-
 def configure_yaml(dump_all_args=False):
     yaml.add_multi_representer(Step, step_multi_representer if not dump_all_args else step_multi_representer_all_args)
     yaml.add_multi_constructor('!step', step_multi_constructor)
-    yaml.add_multi_constructor('!construct', constructor_multi_constructor)
     
-    yaml.add_constructor('!parallel', get_sequence_constructor(parallel))
-    yaml.add_constructor('!search', get_sequence_constructor(search))
-    yaml.add_constructor('!serial', get_sequence_constructor(serial))
-    yaml.add_constructor('!product', get_sequence_constructor(product))
-
-    yaml.add_constructor('!range', range_constructor)
-    yaml.add_constructor('!powerset', powerset_constructor)
-    yaml.add_constructor('!list', list_constructor)
-
 def get_targets(step, ignore):
     outputs = set()
     if not ignore and step.is_target():
