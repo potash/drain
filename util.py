@@ -67,7 +67,7 @@ def timestamp(year,month,day):
     """
     return pd.Timestamp('%04d-%02d-%02d' % (year, month, day))
 
-epoch = pd.Timestamp(0)
+epoch = np.datetime64(0, 'D')
 def date_to_days(date):
     """
     Number of days since epoch
