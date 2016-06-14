@@ -7,6 +7,15 @@ from drain.aggregation import SpacetimeAggregation
 from drain.aggregate import Count
 from datetime import date
 
+@pytest.fixture(scope="session")
+def drain_setup(request):
+    tmpdir = tempfile.mkdtemp()
+    step.BASEDIR = tmpdir
+    step.configure_yaml()
+    def fin():
+	print ("\nDoing teardown")
+    request.addfinalizer(fin)
+
 @pytest.fixture
 def crime_df():
     return pd.read_csv(os.path.join(os.path.dirname(__file__), 'crimes.csv'),
