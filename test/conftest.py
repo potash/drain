@@ -57,3 +57,12 @@ def spacetime_crime_agg(crime_step):
         spacedeltas={'district': ('District', ['12h', '24h']),
                      'community':('Community Area', ['1d', '2d'])}, parallel=True,
         dates=[date(2015,12,30), date(2015,12,31)])
+
+class SpacetimeCrimeLeft(Step):
+    def run(self):
+        return pd.DataFrame({'District':[1,2], 'Community Area':[1,2],
+        'date':[np.datetime64(date(2015,12,30)), np.datetime64(date(2015,12,31))]})
+
+@pytest.fixture
+def spacetime_crime_left():
+    return SpacetimeCrimeLeft()
