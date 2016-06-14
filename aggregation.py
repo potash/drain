@@ -176,15 +176,38 @@ class AggregationBase(Step):
 
 class AggregationJoin(Step):
     """
-    left should come from first input (if multiple results call it left)
+    first input is left and second input is aggregation
+    if left step returned a dict, use inputs_mapping to clarify e.g.:
+        inputs_mapping=[{'aux':None}]
     """
-    def run(self, left, *args):
-        aggregations = iter(self.inputs)
-        next(aggregations) # first input is left, not aggregation
-        for aggregation in aggregations:
-            left = aggregation.join(left)
+    def __init__(self, inputs, **kwargs):
+        Step.__init__(self, inputs=inputs, **kwargs)
 
+    def run(self, left, aggregation):
+        #aggregations = iter(self.inputs)
+        #next(aggregations) # first input is left, not aggregation
+        #for aggregation in aggregations:
+        left = self.inputs[1].join(left)
         return left
+
+class SpacetimeAggregationJoin(AggregationJoin):
+    """
+    Specify a temporal lag between the aggregations and left
+    Useful for simulating a delay in receipt of aggregation data sources
+    """
+    def __init__(self, inputs, lag=None, **kwargs):
+        AggregationJoin.__init__(self, lag=lag, inputs=inputs, **kwargs)
+
+    def run(self, left, aggregation):
+        #import pdb; pdb.set_trace()
+        if self.lag is not None:
+            delta = data.parse_delta(self.lag)
+            for a in aggregation:
+                a.reset_index(level='date', inplace=True)
+                a.date = a.date.apply(lambda d: d + delta)
+                a.set_index('date', append=True, inplace=True)
+            
+        return AggregationJoin.run(self, left, aggregation)
 
 class SimpleAggregation(AggregationBase):
     """
@@ -224,7 +247,7 @@ class SpacetimeAggregation(AggregationBase):
     However since pandas automatically turns a datetime column in the index into datetime64 DatetimeIndex, the left dataframe passed to join() should use datetime64!
     See test_aggregation.SpacetimeCrimeAggregation for an example.
     """
-    def __init__(self, spacedeltas, dates, date_column,
+    def __init__(self, spacedeltas, dates, date_column, 
             censor_columns=None, aggregator_args=None, concat_args=None, **kwargs):
         if aggregator_args is None: aggregator_args = ['date', 'delta']
         if concat_args is None: concat_args = ['index', 'delta']
@@ -267,9 +290,11 @@ class SpacetimeAggregation(AggregationBase):
         return [{'spacedeltas':self.spacedeltas, 'dates':[date]} for date in self.dates]
 
     def join(self, left):
-        difference = set(pd.to_datetime(left.date.unique())).difference(pd.to_datetime(self.dates))
-        if len(difference) > 0:
-            raise ValueError('Left contains unaggregated dates: %s' % difference)
+        # this check doesn't work with lag!
+        # TODO: fix by moving Aggregation.join() code to AggregationJoin.sun()
+        #difference = set(pd.to_datetime(left.date.unique())).difference(pd.to_datetime(self.dates))
+        #if len(difference) > 0:
+        #    raise ValueError('Left contains unaggregated dates: %s' % difference)
         return AggregationBase.join(self, left)
 
     def get_aggregator(self, date, delta):
