@@ -1,4 +1,4 @@
-from drain.aggregation import SimpleAggregation, SpacetimeAggregation
+from drain.aggregation import SimpleAggregation, SpacetimeAggregation, AggregationJoin, SpacetimeAggregationJoin
 from drain.aggregate import Count
 from drain import step
 from datetime import date
@@ -14,20 +14,6 @@ class SimpleCrimeAggregation(SimpleAggregation):
       	    Count(lambda c: c['Primary Type'] == 'THEFT', 
                     'theft', prop=True),
 	]
-class SpacetimeCrimeAggregation(SpacetimeAggregation):
-    def __init__(self, inputs, spacedeltas, dates, **kwargs):
-        SpacetimeAggregation.__init__(self,
-                inputs=inputs, spacedeltas=spacedeltas, dates=dates,
-                astype=np.float32,
-                date_column='Date', prefix='crimes', **kwargs)
-
-    def get_aggregates(self, date, delta):
-        return [
-            Count(),
-            Count('Arrest'),
-            Count(lambda c: c['Primary Type'] == 'THEFT', 
-                    'theft', prop=True)
-        ]
 
 def test_simple_aggregation_parallel(crime_step):
     s = SimpleCrimeAggregation(inputs=[crime_step], 
@@ -69,6 +55,17 @@ def test_spacetime_join(spacetime_crime_agg):
     left = pd.DataFrame({'District':[1,2], 'Community Area':[1,2], 
         'date':[np.datetime64(date(2015,12,30)), np.datetime64(date(2015,12,31))]})
     print spacetime_crime_agg.join(left)
+
+def test_spacetime_join_step(spacetime_crime_agg, spacetime_crime_left):
+    join = AggregationJoin(inputs=[spacetime_crime_left, spacetime_crime_agg])
+    result = step.run(join)
+    print result
+
+def test_spacetime_join_lag(spacetime_crime_agg, spacetime_crime_left):
+    join = SpacetimeAggregationJoin(lag='1d', 
+            inputs=[spacetime_crime_left, spacetime_crime_agg])
+    result = step.run(join)
+    print result
 
 def test_spacetime_join_select(spacetime_crime_agg):
     step.run(spacetime_crime_agg)

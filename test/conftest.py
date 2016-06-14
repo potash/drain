@@ -1,5 +1,6 @@
 import pytest
 import pandas as pd
+import numpy as np
 import os
 
 from drain.step import Step
@@ -42,9 +43,19 @@ class SpacetimeCrimeAggregation(SpacetimeAggregation):
             Count(lambda c: c['Primary Type'] == 'THEFT',
                     'theft', prop=True)
         ]
+
+class SpacetimeCrimeLeft(Step):
+    def run(self):
+        return pd.DataFrame({'District':[1,2], 'Community Area':[1,2],
+        'date':[np.datetime64(date(2015,12,30)), np.datetime64(date(2015,12,31))]})
+
 @pytest.fixture
 def spacetime_crime_agg(crime_step):
     return SpacetimeCrimeAggregation(inputs=[crime_step],
         spacedeltas={'district': ('District', ['12h', '24h']),
                      'community':('Community Area', ['1d', '2d'])}, parallel=True,
         dates=[date(2015,12,30), date(2015,12,31)])
+
+@pytest.fixture
+def spacetime_crime_left():
+    return SpacetimeCrimeLeft()
