@@ -123,8 +123,14 @@ class Step(object):
         if not hasattr(self, 'dependencies'):
             self.dependencies = []
 
-        self._hasher = hashlib.md5(yaml.dump(self).encode('utf-8')) # this won't work right if we haven't called configure_yaml()
-        self._digest = base64.urlsafe_b64encode(self._hasher.digest())
+    @property
+    def _hasher(self):
+        # TODO: check to make sure configure_yaml has been called!
+        return hashlib.md5(yaml.dump(self).encode('utf-8'))
+
+    @property
+    def _digest(self):
+        return base64.urlsafe_b64encode(self._hasher.digest())
 
     @staticmethod
     def _template(__cls__=None, **kwargs):
