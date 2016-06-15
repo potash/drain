@@ -24,10 +24,7 @@ from tables import NaturalNameWarning
 from drain import util
 
 # TODO:
-#    - random grid search
-#    - get steps by name
 #    - optional args like njobs that don't affect output? allow them to be excluded from yaml, hash, eq
-#    - don't initialize yaml twice
 
 BASEDIR=None
 
@@ -37,6 +34,7 @@ BASEDIR=None
 # also loads targets from disk-- could make this optional
 # recreate the dump directory before dumping
 # if load_targets, assume all targets have been run and dumped
+# TODO: move this to Step.execute()
 def run(step, inputs=None, output=None, load_targets=False):
     if step == output:
         if os.path.exists(step.get_dump_dirname()):
@@ -75,20 +73,6 @@ def from_yaml(filename):
             return [t._template_construct() for t in templates]
         else:
             return templates
-
-def read(name, step_name=None):
-    steps = from_yaml(os.path.join(BASEDIR, '.steps', '%s.yaml' % name))
-    if step_name is not None:
-        temp = []
-        for s in steps:
-            s = s.get_input(name=step_name)
-            if s is not None:
-                temp.append(s)
-        steps = temp
-
-    for s in steps:
-        s.load()
-    return steps
 
 def load(steps):
     """
@@ -154,14 +138,6 @@ class Step(object):
             self.__init__(target=template.target, name=template.name, **template.kwargs)
             del self.__template__
             return self
-
-    def _template_copy(self, **kwargs):
-        if not self._is_template():
-            raise ValueError('Cannot copy, this is not a template')
-
-        template = self.__template__
-        kwargs = util.merge_dicts(template.kwargs, kwargs)
-        return Step._template(__cls__=self.__class__, name=template.name, target=template.target, **kwargs)
 
     @property
     def named_steps(self):
@@ -418,8 +394,7 @@ class Construct(Step):
         return cls(**kwargs)
 
 # temporary holder of step arguments
-# used to expand ArgumentCollections by search()
-# and to set inputs by serial()
+# useful to get around pyyaml bug: https://bitbucket.org/xi/pyyaml/issues/56/sub-dictionary-unavailable-in-constructor
 class StepTemplate(object):
     def __init__(self, name=None, target=False, **kwargs):
         self.name = name
