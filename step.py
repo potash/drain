@@ -109,9 +109,9 @@ class Step(object):
         name and target are special because a Step's result 
         is independent of their values.
         """
-        self.__kwargs__ = kwargs
-        self.__name__ = name
-        self.__target__ = target
+        self._kwargs = kwargs
+        self._name = name
+        self._target = target
 
         for k in kwargs:
             setattr(self, k, kwargs[k])
@@ -148,12 +148,10 @@ class Step(object):
             template = self.__template__
 
             if 'inputs' in template.kwargs:
-                #template.kwargs['inputs'] = [i._template_construct() for i in template.kwargs['inputs']]
                 for i in template.kwargs['inputs']:
                     i._template_construct()
 
             self.__init__(target=template.target, name=template.name, **template.kwargs)
-            #return self.__class__(target=template.target, name=template.name, **template.kwargs)
             del self.__template__
             return self
 
@@ -199,10 +197,10 @@ class Step(object):
             return self
 
     def get_name(self):
-        return self.__name__
+        return self._name
 
     def has_name(self):
-        return self.__name__ is not None
+        return self._name is not None
 
     @property
     def named_arguments(self):
@@ -218,7 +216,7 @@ class Step(object):
     # returns a shallow copy
     # any argument specified is excluded if False
     def get_arguments(self, **include):
-        d = dict(self.__kwargs__)
+        d = dict(self._kwargs)
 
         # exclude these by default
         for k in ['inputs', 'inputs_mapping', 'dependencies']:
@@ -231,9 +229,9 @@ class Step(object):
 
         # these are stored specially
         if include.get('name', False):
-            d['name'] = self.__name__
+            d['name'] = self._name
         if include.get('target', False):
-            d['target'] = self.__target__
+            d['target'] = self._target
 
         return d
 
@@ -285,13 +283,13 @@ class Step(object):
         return args, kwargs
 
     def get_result(self):
-        return self.__result__
+        return self._result
 
     def set_result(self, result):
-        self.__result__ = result
+        self._result = result
 
     def has_result(self):
-        return hasattr(self, '__result__')
+        return hasattr(self, '_result')
 
     def get_dirname(self):
         if BASEDIR is None:
@@ -312,7 +310,7 @@ class Step(object):
         pass
     
     def is_target(self):
-        return self.__target__
+        return self._target
     
     def load(self, **kwargs):
         hdf_filename = os.path.join(self.get_dirname(), 'dump', 'result.h5')
@@ -393,7 +391,7 @@ class Step(object):
         elif self._is_template() and other._is_template():
             return util.eqattr(self, other, '__class__') and util.eqattr(self, other, '__template__')
         elif not self._is_template() and not other._is_template():
-            return util.eqattr(self, other, '__class__') and util.eqattr(self, other, '__kwargs__')
+            return util.eqattr(self, other, '__class__') and util.eqattr(self, other, '_kwargs')
         else:
             return False
 
