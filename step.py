@@ -3,6 +3,7 @@ import inspect
 import sys
 import itertools
 import pandas as pd
+from cached_property import cached_property
 from pprint import pformat
 
 try:
@@ -107,12 +108,12 @@ class Step(object):
         if not hasattr(self, 'dependencies'):
             self.dependencies = []
 
-    @property
+    @cached_property
     def _hasher(self):
         # TODO: check to make sure configure_yaml has been called!
         return hashlib.md5(yaml.dump(self).encode('utf-8'))
 
-    @property
+    @cached_property
     def _digest(self):
         return base64.urlsafe_b64encode(self._hasher.digest())
 
@@ -139,7 +140,7 @@ class Step(object):
             del self.__template__
             return self
 
-    @property
+    @cached_property
     def named_steps(self):
         """
         returns a dictionary of name: step pairs
@@ -178,7 +179,7 @@ class Step(object):
     def has_name(self):
         return self._name is not None
 
-    @property
+    @cached_property
     def named_arguments(self):
         d = dict()
         named = self.named_steps
