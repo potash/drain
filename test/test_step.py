@@ -2,34 +2,14 @@ from drain.step import *
 from drain import step
 import tempfile
 
-#def setup_module(module):
-#    tmpdir = tempfile.mkdtemp()
-#    step.BASEDIR = tmpdir
-#    configure_yaml()
+def test_run(drain_setup):
+    s = Add(inputs = [Scalar(value=value) for value in range(1,10)])
+    assert run(s) == 45
 
-def test_run():
-    step = yaml.load("""
-    !serial 
-      - !search
-        - !step:drain.step.Scalar 
-            value : !range [1,10]
-      - !step:drain.step.Add {target : True}
-    """)[0]
-    print step
-    step._template_construct()
-    print step
-    assert run(step) == 45
-
-def test_run2():
-    step = yaml.load("""
-    !serial 
-      - !product
-        - !step:drain.step.Scalar {value : 1.}
-        - !step:drain.step.Scalar {value : 2.}
-      - !step:drain.step.Divide { inputs_mapping : [denominator, numerator] }
-    """)[0]
-    step._template_construct()
-    assert run(step) == 2
+def test_run_inputs_mapping():
+    s = Divide(inputs = [Scalar(value=1), Scalar(value=2)], 
+            inputs_mapping=['denominator', 'numerator'])
+    assert run(s) == 2
 
 
 def test_input_targets():

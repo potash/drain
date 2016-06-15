@@ -15,21 +15,21 @@ class SimpleCrimeAggregation(SimpleAggregation):
                     'theft', prop=True),
 	]
 
-def test_simple_aggregation_parallel(crime_step):
+def test_simple_aggregation_parallel(drain_setup, crime_step):
     s = SimpleCrimeAggregation(inputs=[crime_step], 
 	indexes=['District', 'Community Area'], parallel=True)
     s.inputs=[crime_step]
     step.run(s)
     print s.get_result()
 
-def test_simple_aggregation(crime_step):
+def test_simple_aggregation(drain_setup, crime_step):
     s = SimpleCrimeAggregation(inputs=[crime_step], 
 	indexes=['District', 'Community Area'], parallel=False)
     s.inputs=[crime_step]
     step.run(s)
     print s.get_result()
 
-def test_simple_join(crime_step):
+def test_simple_join(drain_setup, crime_step):
     s = SimpleCrimeAggregation(inputs=[crime_step],
         indexes=['District', 'Community Area'], parallel=True)
     step.run(s)
@@ -37,7 +37,7 @@ def test_simple_join(crime_step):
     left = pd.DataFrame({'District':[1,2], 'Community Area':[1,2]})
     print s.join(left)
 
-def test_simple_join_fillna(crime_step):
+def test_simple_join_fillna(drain_setup, crime_step):
     s = SimpleCrimeAggregation(inputs=[crime_step],
         indexes=['District', 'Community Area'], parallel=True)
     step.run(s)
@@ -45,18 +45,18 @@ def test_simple_join_fillna(crime_step):
     left = pd.DataFrame({'District':[1,2], 'Community Area':[1,100]})
     print s.join(left)
 
-def test_spacetime_aggregation(spacetime_crime_agg):
+def test_spacetime_aggregation(drain_setup, spacetime_crime_agg):
     step.run(spacetime_crime_agg)
     print spacetime_crime_agg.get_result()
 
-def test_spacetime_join(spacetime_crime_agg):
+def test_spacetime_join(drain_setup, spacetime_crime_agg):
     step.run(spacetime_crime_agg)
 
     left = pd.DataFrame({'District':[1,2], 'Community Area':[1,2], 
         'date':[np.datetime64(date(2015,12,30)), np.datetime64(date(2015,12,31))]})
     print spacetime_crime_agg.join(left)
 
-def test_spacetime_join_select(spacetime_crime_agg):
+def test_spacetime_join_select(drain_setup, spacetime_crime_agg):
     step.run(spacetime_crime_agg)
 
     left = pd.DataFrame({'District':[1,2], 'Community Area':[1,2], 
@@ -64,7 +64,7 @@ def test_spacetime_join_select(spacetime_crime_agg):
     df = spacetime_crime_agg.join(left)
     print spacetime_crime_agg.select(df, {'district': ['12h']})
 
-def test_spacetime_join_fillna(spacetime_crime_agg):
+def test_spacetime_join_fillna(drain_setup, spacetime_crime_agg):
     step.run(spacetime_crime_agg)
 
     left = pd.DataFrame({'District':[1,2], 'Community Area':[1,100], 
