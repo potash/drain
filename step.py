@@ -364,6 +364,8 @@ class Divide(Step):
     def run(self, numerator, denominator):
         return numerator / denominator
    
+# returns set of target steps
+# used below by get_input_targets and get_output_targets
 def get_targets(step, ignore):
     outputs = set()
     if not ignore and step.is_target():
@@ -374,18 +376,20 @@ def get_targets(step, ignore):
 
     return outputs
 
+# traverse input tree for closest parent targets
 def get_input_targets(step):
     return get_targets(step, ignore=True)
 
+# if step is a target returns set containing step
+# else returns empty set
 def get_output_targets(step):
     return get_targets(step, ignore=False)
 
-# returns three Step:set<Step> dicts
+# returns two Step:set<Step> dicts
 # output_inputs: maps output to inputs
 # no_output_inputs: maps no_output step with *multiple* target inputs to them
 def get_drake_data_helper(steps):
     output_inputs = {}
-    output_no_outputs = {}
     no_output_inputs = {}
 
     for step in steps:
@@ -409,19 +413,16 @@ def get_drake_data_helper(steps):
 
     return output_inputs, no_output_inputs
 
-# returns data for the drakefile
-# i.e. a list of tuples (inputs, output, no-outputs)
+# returns a dictionary mapping outputs to their inputs
+# an output is any target in the step tree
+# a no-output is a leaf node of the step tree which is not a target
 def get_drake_data(steps):
     drake_data = {}
     output_inputs, no_output_inputs = get_drake_data_helper(steps)
-    for output, inputs in output_inputs.iteritems():
-        drake_data[output] = inputs
 
-    for no_output, inputs in no_output_inputs.iteritems():
-        drake_data[no_output] = inputs
+    return util.merge_dicts(output_inputs, no_output_inputs)
 
-    return drake_data
-
+# returns a drake step string for the given inputs and outputs
 def to_drake_step(inputs, output):
     i = [output._target_yaml_filename]
     i.extend(map(lambda i: i._target_filename, list(inputs)))
