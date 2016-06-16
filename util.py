@@ -2,7 +2,6 @@ import sqlalchemy
 import logging
 import os
 import sys
-import yaml
 import types
 
 try:

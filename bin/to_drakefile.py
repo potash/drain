@@ -8,6 +8,7 @@ import argparse
 import importlib
 
 from drain import step, util
+import drain.yaml
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Use this script to generate a Drakefile for grid search')
@@ -29,12 +30,12 @@ if __name__ == "__main__":
         args.preview = True
 
     step.BASEDIR = os.path.abspath(args.basedir)
-    step.configure_yaml()
+    drain.yaml.configure()
 
     steps = []
     for s in args.steps.split(';'):
         if s.endswith('.yaml'):
-            steps +=  step.from_yaml(s)
+            steps +=  drain.yaml.load(s)
         else:
             print s
             modulename, fname = s.split('::')

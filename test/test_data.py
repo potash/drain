@@ -5,11 +5,6 @@ from datetime import date
 import pandas as pd
 import numpy as np
 
-def setup_module(module):
-    tmpdir = tempfile.mkdtemp()
-    step.BASEDIR=tmpdir
-    step.configure_yaml()
-
 def test_to_hdf():
     d = data.ClassificationData()
     h = data.ToHDF(inputs=[d], target=True)
