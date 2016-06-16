@@ -2,8 +2,8 @@ from __future__ import absolute_import
 import yaml
 
 from cached_property import cached_property
-from . import util
-from .step import Step
+from drain import util
+from drain.step import Step
 
 # load step(s) via templates
 def load(filename):
