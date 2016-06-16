@@ -34,8 +34,8 @@ class StepTemplate(object):
 
 def step_multi_representer(dumper, data):
     tag = '!step:%s.%s' % (data.__class__.__module__, data.__class__.__name__)
-    return dumper.represent_mapping(tag, data.get_arguments(
-            inputs=True, inputs_mapping=True, dependencies=True))
+
+    return dumper.represent_mapping(tag, data.get_arguments())
 
 def step_multi_constructor(loader, tag_suffix, node):
     cls = util.get_attr(tag_suffix[1:])

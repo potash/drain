@@ -159,26 +159,14 @@ class Step(object):
 
         return d
 
-    # returns a shallow copy
+    # returns a shallow copy of _kwargs
     # any argument specified is excluded if False
     def get_arguments(self, **include):
         d = dict(self._kwargs)
 
-        # exclude these by default
-        for k in ['inputs', 'inputs_mapping', 'dependencies']:
-            if k not in include:
-                include[k] = False
-
         for k in include:
             if not include[k] and k in d:
                 d.pop(k)
-
-        # these are stored specially
-        if include.get('name', False):
-            d['name'] = self._name
-        if include.get('target', False):
-            d['target'] = self._target
-
         return d
 
     def map_inputs(self):
@@ -349,7 +337,7 @@ class Construct(Step):
         Step.__init__(self, __class_name__=__class_name__, name=name, target=target, **kwargs)
 
     def run(self, **update_kwargs):
-        kwargs = self.get_arguments()
+        kwargs = self.get_arguments(inputs=False, inputs_mapping=False)
         kwargs.update(update_kwargs)
         cls = util.get_attr(kwargs.pop('__class_name__'))
         return cls(**kwargs)

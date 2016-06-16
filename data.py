@@ -61,7 +61,7 @@ class FromSQL(Step):
             self.inputs = [CreateEngine()]
  
     def run(self, engine):
-        kwargs = self.get_arguments(query=False, to_str=False)
+        kwargs = self.get_arguments(query=False, to_str=False, table=False, tables=False, inputs=False)
 
         df = pd.read_sql(self.query, engine, **kwargs)
         for column in self.to_str:
