@@ -68,12 +68,10 @@ def run(step, inputs=None, output=None, load_targets=False):
 def from_yaml(filename):
     with open(filename) as f:
         templates = yaml.load(f)
-        if isinstance(templates, Step):
-            return templates._template_construct()
+        if isinstance(templates, StepTemplate):
+            return templates.step
         elif hasattr(templates, '__iter__'):
-            return [t._template_construct() for t in templates]
-        else:
-            return templates
+            return [t.step for t in templates]
 
 def load(steps):
     """
@@ -116,29 +114,6 @@ class Step(object):
     @cached_property
     def _digest(self):
         return base64.urlsafe_b64encode(self._hasher.digest())
-
-    @staticmethod
-    def _template(__cls__=None, **kwargs):
-        if __cls__ is None:
-            __cls__ = Step
-        self = Step.__new__(__cls__)
-        self.__template__ = StepTemplate(**kwargs)
-        return self
-
-    def _is_template(self):
-        return hasattr(self, '__template__')
-
-    def _template_construct(self):
-        if self._is_template():
-            template = self.__template__
-
-            if 'inputs' in template.kwargs:
-                for i in template.kwargs['inputs']:
-                    i._template_construct()
-
-            self.__init__(target=template.target, name=template.name, **template.kwargs)
-            del self.__template__
-            return self
 
     @cached_property
     def named_steps(self):
@@ -350,14 +325,9 @@ class Step(object):
 
     def __repr__(self):
         class_name = self.__class__.__name__
-        if self._is_template():
-            class_name += 'Template'
-            kwargs = self.__template__.kwargs
-        else:
-            kwargs = self.get_arguments()
 
         return '%s(%s)' % (class_name, 
-                _pprint(kwargs, offset=len(class_name)),)
+                _pprint(self._kwargs, offset=len(class_name)),)
 
     def __hash__(self):
         return int(self._hasher.hexdigest(), 16)
@@ -365,12 +335,8 @@ class Step(object):
     def __eq__(self, other):
         if not isinstance(other, Step):
             return False
-        elif self._is_template() and other._is_template():
-            return util.eqattr(self, other, '__class__') and util.eqattr(self, other, '__template__')
-        elif not self._is_template() and not other._is_template():
-            return util.eqattr(self, other, '__class__') and util.eqattr(self, other, '_kwargs')
         else:
-            return False
+            return util.eqattr(self, other, '__class__') and util.eqattr(self, other, '_kwargs')
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -397,16 +363,20 @@ class Construct(Step):
 # temporary holder of step arguments
 # useful to get around pyyaml bug: https://bitbucket.org/xi/pyyaml/issues/56/sub-dictionary-unavailable-in-constructor
 class StepTemplate(object):
-    def __init__(self, name=None, target=False, **kwargs):
+    def __init__(self, _cls, name=None, target=False, **kwargs):
+        self._cls = _cls
         self.name = name
         self.target = target
         self.kwargs = kwargs
 
-    def __eq__(self, other):
-        return util.eqattr(self, other, 'name') and util.eqattr(self, other, 'target') and util.eqattr(self, other, 'kwargs')
+    # it's important that this is cached so that multiple calls to step return the same Step object
+    @cached_property
+    def step(self):
+        if 'inputs' in self.kwargs:
+            self.kwargs['inputs'] = [t.step for t in self.kwargs['inputs']]
 
-    def __ne__(self, other):
-        return not self.__eq__(other)
+        return self._cls(target=self.target, name=self.name, 
+                **self.kwargs)
 
 class Echo(Step):
     def run(self, *args, **kwargs):
@@ -446,7 +416,7 @@ def step_multi_constructor(loader, tag_suffix, node):
     cls = util.get_attr(tag_suffix[1:])
     kwargs = loader.construct_mapping(node)
 
-    return Step._template(__cls__=cls, **kwargs)
+    return StepTemplate(_cls=cls, **kwargs)
 
 def configure_yaml(dump_all_args=False):
     yaml.add_multi_representer(Step, step_multi_representer if not dump_all_args else step_multi_representer_all_args)
