@@ -26,9 +26,6 @@ from tables import NaturalNameWarning
 
 from drain import util
 
-# TODO:
-#    - optional args like njobs that don't affect output? allow them to be excluded from yaml, hash, eq
-
 BASEDIR=None
 
 # run the given step
@@ -40,11 +37,11 @@ BASEDIR=None
 # TODO: move this to Step.execute()
 def run(step, inputs=None, output=None, load_targets=False):
     if step == output:
-        if os.path.exists(step.get_dump_dirname()):
-            shutil.rmtree(step.get_dump_dirname())
-        if os.path.exists(step.get_target_filename()):
-            os.remove(step.get_target_filename())
-        os.makedirs(step.get_dump_dirname())
+        if os.path.exists(step._target_dump_dirname):
+            shutil.rmtree(step._target_dump_dirname)
+        if os.path.exists(step._target_filename):
+            os.remove(step._target_filename)
+        os.makedirs(step._target_dump_dirname)
 
     if inputs is None:
         inputs = []
@@ -63,7 +60,7 @@ def run(step, inputs=None, output=None, load_targets=False):
 
     if step == output:
         step.dump()
-        util.touch(step.get_target_filename())
+        util.touch(step._target_filename)
 
     return step.get_result()
 
@@ -224,21 +221,25 @@ class Step(object):
 
     def has_result(self):
         return hasattr(self, '_result')
-
-    def get_dirname(self):
+    
+    @cached_property
+    def _target_dirname(self):
         if BASEDIR is None:
             raise ValueError('BASEDIR not initialized')
 
         return os.path.join(BASEDIR, self.__class__.__name__, self._digest[0:8])
 
-    def get_yaml_filename(self):
-        return os.path.join(self.get_dirname(), 'step.yaml')
+    @cached_property
+    def _target_yaml_filename(self):
+        return os.path.join(self._target_dirname, 'step.yaml')
 
-    def get_dump_dirname(self):
-        return os.path.join(self.get_dirname(), 'dump')
+    @cached_property
+    def _target_dump_dirname(self):
+        return os.path.join(self._target_dirname, 'dump')
 
-    def get_target_filename(self):
-        return os.path.join(self.get_dirname(), 'target')
+    @cached_property
+    def _target_filename(self):
+        return os.path.join(self._target_dirname, 'target')
         
     def run(self, *args, **kwargs):
         pass
@@ -247,7 +248,7 @@ class Step(object):
         return self._target
     
     def load(self, **kwargs):
-        hdf_filename = os.path.join(self.get_dirname(), 'dump', 'result.h5')
+        hdf_filename = os.path.join(self._target_dirname, 'dump', 'result.h5')
         if os.path.isfile(hdf_filename):
             store = pd.HDFStore(hdf_filename)
             keys = store.keys()
@@ -261,15 +262,15 @@ class Step(object):
                     self.set_result({k[1:]:store[k] for k in keys})
                 
         else:
-            self.set_result(joblib.load(os.path.join(self.get_dirname(), 'dump', 'result.pkl')))
+            self.set_result(joblib.load(os.path.join(self._target_dirname, 'dump', 'result.pkl')))
 
     def setup_dump(self):
-        dumpdir = self.get_dump_dirname()
+        dumpdir = self._target_dump_dirname
         if not os.path.isdir(dumpdir):
             os.makedirs(dumpdir)
             
         dump = False
-        yaml_filename = self.get_yaml_filename()
+        yaml_filename = self._target_yaml_filename
         
         if not os.path.isfile(yaml_filename):
             dump = True
@@ -287,7 +288,7 @@ class Step(object):
         self.setup_dump()
         result = self.get_result()
         if isinstance(result, pd.DataFrame):
-            result.to_hdf(os.path.join(self.get_dump_dirname(), 'result.h5'), 'df')
+            result.to_hdf(os.path.join(self._target_dump_dirname, 'result.h5'), 'df')
         elif hasattr(result, '__iter__') and is_dataframe_collection(result):
             if not isinstance(result, dict):
                 keys = map(str, range(len(result)))
@@ -296,14 +297,14 @@ class Step(object):
                 keys = result.keys()
                 values = result.values()
 
-            store = pd.HDFStore(os.path.join(self.get_dump_dirname(), 'result.h5'))
+            store = pd.HDFStore(os.path.join(self._target_dump_dirname, 'result.h5'))
             # ignore NaturalNameWarning
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore', category=NaturalNameWarning)
                 for key, df in zip(keys, values):
                     store.put(key, df, mode='w')
         else:
-            joblib.dump(self.get_result(), os.path.join(self.get_dump_dirname(), 'result.pkl'))
+            joblib.dump(self.get_result(), os.path.join(self._target_dump_dirname, 'result.pkl'))
 
     def __repr__(self):
         class_name = self.__class__.__name__
@@ -422,8 +423,8 @@ def get_drake_data(steps):
     return drake_data
 
 def to_drake_step(inputs, output):
-    i = [output.get_yaml_filename()]
-    i.extend(map(lambda i: i.get_target_filename(), list(inputs)))
+    i = [output._target_yaml_filename]
+    i.extend(map(lambda i: i._target_filename, list(inputs)))
     i.extend(output.dependencies)
     # add source file if it's not in the drain library
     # TODO: do this for all non-target inputs, too
@@ -433,7 +434,7 @@ def to_drake_step(inputs, output):
 
     output_str = '%' + output.__class__.__name__
     if output.is_target():
-        output_str += ', ' + os.path.join(output.get_target_filename())
+        output_str += ', ' + os.path.join(output._target_filename)
     return '{output} <- {inputs} [method:drain]\n\n'.format(output=output_str, inputs=str.join(', ', i))
 
 # if preview then don't create the dump directories and step yaml files
