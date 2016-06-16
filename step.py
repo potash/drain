@@ -380,47 +380,24 @@ def get_targets(step, ignore):
 def get_input_targets(step):
     return get_targets(step, ignore=True)
 
-# if step is a target returns set containing step
-# else returns empty set
-def get_output_targets(step):
-    return get_targets(step, ignore=False)
-
-# returns two Step:set<Step> dicts
-# output_inputs: maps output to inputs
-# no_output_inputs: maps no_output step with *multiple* target inputs to them
-def get_drake_data_helper(steps):
+# returns a dictionary of outputs mapped to inputs
+# note that an output is either a target
+# or a leaf node in the step tree
+def get_drake_data(steps):
     output_inputs = {}
-    no_output_inputs = {}
+    if len(steps) == 0:
+        return output_inputs
 
     for step in steps:
-        if step.is_target():
-            if step not in output_inputs:
-                output_inputs[step] = get_input_targets(step)
-        else:
-            outputs = get_output_targets(step)
-            no_output_inputs[step] = outputs
+        output_inputs[step] = get_input_targets(step)
 
     # recursively do the same for all the inputs
-    inputs = set()
-    for i in itertools.chain(output_inputs.values(), no_output_inputs.values()):
-        inputs |= i
+    #    inputs |= i
+    inputs = set(itertools.chain(*output_inputs.values()))
+    o = get_drake_data(inputs)
+    output_inputs.update(o)
 
-    if len(inputs) > 0:
-        o1, o2 = get_drake_data_helper(inputs)
-        util.dict_update_union(output_inputs, o1)
-        util.dict_update_union(no_output_inputs, o2)
-
-
-    return output_inputs, no_output_inputs
-
-# returns a dictionary mapping outputs to their inputs
-# an output is any target in the step tree
-# a no-output is a leaf node of the step tree which is not a target
-def get_drake_data(steps):
-    drake_data = {}
-    output_inputs, no_output_inputs = get_drake_data_helper(steps)
-
-    return util.merge_dicts(output_inputs, no_output_inputs)
+    return output_inputs
 
 # returns a drake step string for the given inputs and outputs
 def to_drake_step(inputs, output):

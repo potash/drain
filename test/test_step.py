@@ -18,50 +18,6 @@ def test_input_targets():
 def test_input_targets2():
     assert get_input_targets(Step(value=1, target=True, inputs=[Step(value=2, target=True), Step(value=3)])) == set([Step(value=2)])
 
-def test_target_output():
-    step = Step(value=1, target=True, inputs=[Step(value=2), Step(value=3,target=True)])
-    assert get_output_targets(step) == set([step])
-
-def test_target_output_no_output():
-    step = Step(value=1, inputs=[Step(value=2, target=True)])
-    assert get_output_targets(step) == set([Step(value=2)])
-
-def test_target_output_output_multi():
-    step = Step(value=1, inputs=[Step(value=2, target=True), Step(value=3, target=True)])
-    assert get_output_targets(step) == set([Step(value=2), Step(value=3)])
-
-def test_drake_data_helper():
-    steps = [Step(value=1)]
-    assert get_drake_data_helper(steps) == ({},{Step(value=1): set()})
-
-def test_drake_data_helper2():
-    steps = [Step(value=1, inputs=[Step(value=2, target=True)])]
-    assert get_drake_data_helper(steps) == ({Step(value=2): set()}, {steps[0] : {Step(value=2)}})
-
-def test_drake_data_helper3():
-    steps = [Step(value=1, target=True)]
-    assert get_drake_data_helper(steps) == ({Step(value=1): set()}, {})
-
-def test_drake_data_helper4():
-    steps = [Step(value=1, inputs=[Step(value=2, target=True), Step(value=3, target=True)])]
-    assert get_drake_data_helper(steps) == (
-            {Step(value=2):set(), Step(value=3):set()},
-            {steps[0]: set([Step(value=2), Step(value=3)])}
-    )
-
-# when "same" step with and without target, runs both...
-# should it?
-def test_drake_data_helper5():
-    steps = [Step(value=1), Step(value=1, target=True)]
-    assert get_drake_data_helper(steps) == ({Step(value=1): set()}, {Step(value=1):set()})
-
-def test_drake_data_helper6():
-    steps = [Step(value=1, inputs=[Step(value=3, target=True)]), Step(value=2,  inputs=[Step(value=3, target=True)])]
-    assert get_drake_data_helper(steps) == (
-            {Step(value=3) : set()},
-            {steps[0] : {Step(value=3)}, steps[1] : {Step(value=3)}},
-    )
-
 # no output step
 def test_drake_data():
     step = Step(a=1)
