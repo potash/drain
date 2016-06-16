@@ -7,7 +7,7 @@ import sys
 import argparse
 import importlib
 
-from drain import step, util
+from drain import step, util, drake
 import drain.yaml
 
 if __name__ == "__main__":
@@ -49,7 +49,7 @@ if __name__ == "__main__":
     if args.Drakeinput is None and os.path.exists('Drakefile'):
         args.Drakeinput = 'Drakefile'
 
-    workflow = step.to_drakefile(steps, preview=args.preview, debug=args.debug)
+    workflow = drake.to_drakefile(steps, preview=args.preview, debug=args.debug)
 
     if not args.preview:
         with open(args.drakeoutput, 'w') as drakefile:
