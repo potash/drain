@@ -26,7 +26,7 @@ def calibration():
                 {'metric':'precision', 'k':100},
                 {'metric':'precision', 'k':200},
                 {'metric':'precision', 'k':300},
-        ], inputs=[cal_est], target=True)
+        ], inputs=[cal_est])
 
         steps.append(metrics)
 
