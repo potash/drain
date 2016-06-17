@@ -7,7 +7,8 @@ import sys
 import argparse
 import importlib
 
-from drain import step, util
+from drain import step, util, drake
+import drain.yaml
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Use this script to generate a Drakefile for grid search')
@@ -29,12 +30,12 @@ if __name__ == "__main__":
         args.preview = True
 
     step.BASEDIR = os.path.abspath(args.basedir)
-    step.configure_yaml()
+    drain.yaml.configure()
 
     steps = []
     for s in args.steps.split(';'):
         if s.endswith('.yaml'):
-            steps +=  step.from_yaml(s)
+            steps +=  drain.yaml.load(s)
         else:
             print s
             modulename, fname = s.split('::')
@@ -48,7 +49,7 @@ if __name__ == "__main__":
     if args.Drakeinput is None and os.path.exists('Drakefile'):
         args.Drakeinput = 'Drakefile'
 
-    workflow = step.to_drakefile(steps, preview=args.preview, debug=args.debug)
+    workflow = drake.to_drakefile(steps, preview=args.preview, debug=args.debug)
 
     if not args.preview:
         with open(args.drakeoutput, 'w') as drakefile:

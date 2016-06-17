@@ -1,8 +1,11 @@
+from __future__ import absolute_import
 import yaml
+
 import inspect
 import sys
 import itertools
 import pandas as pd
+from cached_property import cached_property
 from pprint import pformat
 
 try:
@@ -23,12 +26,6 @@ from tables import NaturalNameWarning
 
 from drain import util
 
-# TODO:
-#    - random grid search
-#    - get steps by name
-#    - optional args like njobs that don't affect output? allow them to be excluded from yaml, hash, eq
-#    - don't initialize yaml twice
-
 BASEDIR=None
 
 # run the given step
@@ -37,13 +34,14 @@ BASEDIR=None
 # also loads targets from disk-- could make this optional
 # recreate the dump directory before dumping
 # if load_targets, assume all targets have been run and dumped
+# TODO: move this to Step.execute()
 def run(step, inputs=None, output=None, load_targets=False):
     if step == output:
-        if os.path.exists(step.get_dump_dirname()):
-            shutil.rmtree(step.get_dump_dirname())
-        if os.path.exists(step.get_target_filename()):
-            os.remove(step.get_target_filename())
-        os.makedirs(step.get_dump_dirname())
+        if os.path.exists(step._target_dump_dirname):
+            shutil.rmtree(step._target_dump_dirname)
+        if os.path.exists(step._target_filename):
+            os.remove(step._target_filename)
+        os.makedirs(step._target_dump_dirname)
 
     if inputs is None:
         inputs = []
@@ -62,33 +60,9 @@ def run(step, inputs=None, output=None, load_targets=False):
 
     if step == output:
         step.dump()
-        util.touch(step.get_target_filename())
+        util.touch(step._target_filename)
 
     return step.get_result()
-
-def from_yaml(filename):
-    with open(filename) as f:
-        templates = yaml.load(f)
-        if isinstance(templates, Step):
-            return templates._template_construct()
-        elif hasattr(templates, '__iter__'):
-            return [t._template_construct() for t in templates]
-        else:
-            return templates
-
-def read(name, step_name=None):
-    steps = from_yaml(os.path.join(BASEDIR, '.steps', '%s.yaml' % name))
-    if step_name is not None:
-        temp = []
-        for s in steps:
-            s = s.get_input(name=step_name)
-            if s is not None:
-                temp.append(s)
-        steps = temp
-
-    for s in steps:
-        s.load()
-    return steps
 
 def load(steps):
     """
@@ -109,9 +83,9 @@ class Step(object):
         name and target are special because a Step's result 
         is independent of their values.
         """
-        self.__kwargs__ = kwargs
-        self.__name__ = name
-        self.__target__ = target
+        self._kwargs = kwargs
+        self._name = name
+        self._target = target
 
         for k in kwargs:
             setattr(self, k, kwargs[k])
@@ -123,43 +97,16 @@ class Step(object):
         if not hasattr(self, 'dependencies'):
             self.dependencies = []
 
-        self._hasher = hashlib.md5(yaml.dump(self).encode('utf-8')) # this won't work right if we haven't called configure_yaml()
-        self._digest = base64.urlsafe_b64encode(self._hasher.digest())
+    @cached_property
+    def _hasher(self):
+        # TODO: check to make sure configure_yaml has been called!
+        return hashlib.md5(yaml.dump(self).encode('utf-8'))
 
-    @staticmethod
-    def _template(__cls__=None, **kwargs):
-        if __cls__ is None:
-            __cls__ = Step
-        self = Step.__new__(__cls__)
-        self.__template__ = StepTemplate(**kwargs)
-        return self
+    @cached_property
+    def _digest(self):
+        return base64.urlsafe_b64encode(self._hasher.digest())
 
-    def _is_template(self):
-        return hasattr(self, '__template__')
-
-    def _template_construct(self):
-        if self._is_template():
-            template = self.__template__
-
-            if 'inputs' in template.kwargs:
-                #template.kwargs['inputs'] = [i._template_construct() for i in template.kwargs['inputs']]
-                for i in template.kwargs['inputs']:
-                    i._template_construct()
-
-            self.__init__(target=template.target, name=template.name, **template.kwargs)
-            #return self.__class__(target=template.target, name=template.name, **template.kwargs)
-            del self.__template__
-            return self
-
-    def _template_copy(self, **kwargs):
-        if not self._is_template():
-            raise ValueError('Cannot copy, this is not a template')
-
-        template = self.__template__
-        kwargs = util.merge_dicts(template.kwargs, kwargs)
-        return Step._template(__cls__=self.__class__, name=template.name, target=template.target, **kwargs)
-
-    @property
+    @cached_property
     def named_steps(self):
         """
         returns a dictionary of name: step pairs
@@ -193,12 +140,12 @@ class Step(object):
             return self
 
     def get_name(self):
-        return self.__name__
+        return self._name
 
     def has_name(self):
-        return self.__name__ is not None
+        return self._name is not None
 
-    @property
+    @cached_property
     def named_arguments(self):
         d = dict()
         named = self.named_steps
@@ -209,26 +156,14 @@ class Step(object):
 
         return d
 
-    # returns a shallow copy
+    # returns a shallow copy of _kwargs
     # any argument specified is excluded if False
     def get_arguments(self, **include):
-        d = dict(self.__kwargs__)
-
-        # exclude these by default
-        for k in ['inputs', 'inputs_mapping', 'dependencies']:
-            if k not in include:
-                include[k] = False
+        d = dict(self._kwargs)
 
         for k in include:
             if not include[k] and k in d:
                 d.pop(k)
-
-        # these are stored specially
-        if include.get('name', False):
-            d['name'] = self.__name__
-        if include.get('target', False):
-            d['target'] = self.__target__
-
         return d
 
     def map_inputs(self):
@@ -279,37 +214,41 @@ class Step(object):
         return args, kwargs
 
     def get_result(self):
-        return self.__result__
+        return self._result
 
     def set_result(self, result):
-        self.__result__ = result
+        self._result = result
 
     def has_result(self):
-        return hasattr(self, '__result__')
-
-    def get_dirname(self):
+        return hasattr(self, '_result')
+    
+    @cached_property
+    def _target_dirname(self):
         if BASEDIR is None:
             raise ValueError('BASEDIR not initialized')
 
         return os.path.join(BASEDIR, self.__class__.__name__, self._digest[0:8])
 
-    def get_yaml_filename(self):
-        return os.path.join(self.get_dirname(), 'step.yaml')
+    @cached_property
+    def _target_yaml_filename(self):
+        return os.path.join(self._target_dirname, 'step.yaml')
 
-    def get_dump_dirname(self):
-        return os.path.join(self.get_dirname(), 'dump')
+    @cached_property
+    def _target_dump_dirname(self):
+        return os.path.join(self._target_dirname, 'dump')
 
-    def get_target_filename(self):
-        return os.path.join(self.get_dirname(), 'target')
+    @cached_property
+    def _target_filename(self):
+        return os.path.join(self._target_dirname, 'target')
         
     def run(self, *args, **kwargs):
         pass
     
     def is_target(self):
-        return self.__target__
+        return self._target
     
     def load(self, **kwargs):
-        hdf_filename = os.path.join(self.get_dirname(), 'dump', 'result.h5')
+        hdf_filename = os.path.join(self._target_dirname, 'dump', 'result.h5')
         if os.path.isfile(hdf_filename):
             store = pd.HDFStore(hdf_filename)
             keys = store.keys()
@@ -323,15 +262,15 @@ class Step(object):
                     self.set_result({k[1:]:store[k] for k in keys})
                 
         else:
-            self.set_result(joblib.load(os.path.join(self.get_dirname(), 'dump', 'result.pkl')))
+            self.set_result(joblib.load(os.path.join(self._target_dirname, 'dump', 'result.pkl')))
 
     def setup_dump(self):
-        dumpdir = self.get_dump_dirname()
+        dumpdir = self._target_dump_dirname
         if not os.path.isdir(dumpdir):
             os.makedirs(dumpdir)
             
         dump = False
-        yaml_filename = self.get_yaml_filename()
+        yaml_filename = self._target_yaml_filename
         
         if not os.path.isfile(yaml_filename):
             dump = True
@@ -349,7 +288,7 @@ class Step(object):
         self.setup_dump()
         result = self.get_result()
         if isinstance(result, pd.DataFrame):
-            result.to_hdf(os.path.join(self.get_dump_dirname(), 'result.h5'), 'df')
+            result.to_hdf(os.path.join(self._target_dump_dirname, 'result.h5'), 'df')
         elif hasattr(result, '__iter__') and is_dataframe_collection(result):
             if not isinstance(result, dict):
                 keys = map(str, range(len(result)))
@@ -358,25 +297,20 @@ class Step(object):
                 keys = result.keys()
                 values = result.values()
 
-            store = pd.HDFStore(os.path.join(self.get_dump_dirname(), 'result.h5'))
+            store = pd.HDFStore(os.path.join(self._target_dump_dirname, 'result.h5'))
             # ignore NaturalNameWarning
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore', category=NaturalNameWarning)
                 for key, df in zip(keys, values):
                     store.put(key, df, mode='w')
         else:
-            joblib.dump(self.get_result(), os.path.join(self.get_dump_dirname(), 'result.pkl'))
+            joblib.dump(self.get_result(), os.path.join(self._target_dump_dirname, 'result.pkl'))
 
     def __repr__(self):
         class_name = self.__class__.__name__
-        if self._is_template():
-            class_name += 'Template'
-            kwargs = self.__template__.kwargs
-        else:
-            kwargs = self.get_arguments()
 
         return '%s(%s)' % (class_name, 
-                _pprint(kwargs, offset=len(class_name)),)
+                _pprint(self._kwargs, offset=len(class_name)),)
 
     def __hash__(self):
         return int(self._hasher.hexdigest(), 16)
@@ -384,12 +318,8 @@ class Step(object):
     def __eq__(self, other):
         if not isinstance(other, Step):
             return False
-        elif self._is_template() and other._is_template():
-            return util.eqattr(self, other, '__class__') and util.eqattr(self, other, '__template__')
-        elif not self._is_template() and not other._is_template():
-            return util.eqattr(self, other, '__class__') and util.eqattr(self, other, '__kwargs__')
         else:
-            return False
+            return util.eqattr(self, other, '__class__') and util.eqattr(self, other, '_kwargs')
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -408,25 +338,10 @@ class Construct(Step):
         Step.__init__(self, __class_name__=__class_name__, name=name, target=target, **kwargs)
 
     def run(self, **update_kwargs):
-        kwargs = self.get_arguments()
+        kwargs = self.get_arguments(inputs=False, inputs_mapping=False)
         kwargs.update(update_kwargs)
         cls = util.get_attr(kwargs.pop('__class_name__'))
         return cls(**kwargs)
-
-# temporary holder of step arguments
-# used to expand ArgumentCollections by search()
-# and to set inputs by serial()
-class StepTemplate(object):
-    def __init__(self, name=None, target=False, **kwargs):
-        self.name = name
-        self.target = target
-        self.kwargs = kwargs
-
-    def __eq__(self, other):
-        return util.eqattr(self, other, 'name') and util.eqattr(self, other, 'target') and util.eqattr(self, other, 'kwargs')
-
-    def __ne__(self, other):
-        return not self.__eq__(other)
 
 class Echo(Step):
     def run(self, *args, **kwargs):
@@ -448,115 +363,4 @@ class Add(Step):
 class Divide(Step):
     def run(self, numerator, denominator):
         return numerator / denominator
-        
-def step_multi_representer(dumper, data):
-    tag = '!step:%s.%s' % (data.__class__.__module__, data.__class__.__name__)
-    return dumper.represent_mapping(tag, data.get_arguments(
-            inputs=True, inputs_mapping=True, dependencies=True))
-
-def step_multi_representer_all_args(dumper, data):
-    # TODO: the !step representation breaks down when the data's class
-    #       was imported in a __main__, as then the module is '__main__'
-    tag = '!step:%s.%s' % (data.__class__.__module__, data.__class__.__name__)
-    return dumper.represent_mapping(tag, data.get_arguments(inputs=True, 
-            inputs_mapping=True, dependencies=True, 
-            name=True, target=True))
-
-def step_multi_constructor(loader, tag_suffix, node):
-    cls = util.get_attr(tag_suffix[1:])
-    kwargs = loader.construct_mapping(node)
-
-    return Step._template(__cls__=cls, **kwargs)
-
-def configure_yaml(dump_all_args=False):
-    yaml.add_multi_representer(Step, step_multi_representer if not dump_all_args else step_multi_representer_all_args)
-    yaml.add_multi_constructor('!step', step_multi_constructor)
-    
-def get_targets(step, ignore):
-    outputs = set()
-    if not ignore and step.is_target():
-        outputs.add(step)
-    else:
-        for i in step.inputs:
-            outputs.update(get_targets(i, False))
-
-    return outputs
-
-def get_input_targets(step):
-    return get_targets(step, ignore=True)
-
-def get_output_targets(step):
-    return get_targets(step, ignore=False)
-
-# returns three Step:set<Step> dicts
-# output_inputs: maps output to inputs
-# no_output_inputs: maps no_output step with *multiple* target inputs to them
-def get_drake_data_helper(steps):
-    output_inputs = {}
-    output_no_outputs = {}
-    no_output_inputs = {}
-
-    for step in steps:
-        if step.is_target():
-            if step not in output_inputs:
-                output_inputs[step] = get_input_targets(step)
-        else:
-            outputs = get_output_targets(step)
-            no_output_inputs[step] = outputs
-
-    # recursively do the same for all the inputs
-    inputs = set()
-    for i in itertools.chain(output_inputs.values(), no_output_inputs.values()):
-        inputs |= i
-
-    if len(inputs) > 0:
-        o1, o2 = get_drake_data_helper(inputs)
-        util.dict_update_union(output_inputs, o1)
-        util.dict_update_union(no_output_inputs, o2)
-
-
-    return output_inputs, no_output_inputs
-
-# returns data for the drakefile
-# i.e. a list of tuples (inputs, output, no-outputs)
-def get_drake_data(steps):
-    drake_data = {}
-    output_inputs, no_output_inputs = get_drake_data_helper(steps)
-    for output, inputs in output_inputs.iteritems():
-        drake_data[output] = inputs
-
-    for no_output, inputs in no_output_inputs.iteritems():
-        drake_data[no_output] = inputs
-
-    return drake_data
-
-def to_drake_step(inputs, output):
-    i = [output.get_yaml_filename()]
-    i.extend(map(lambda i: i.get_target_filename(), list(inputs)))
-    i.extend(output.dependencies)
-    # add source file if it's not in the drain library
-    # TODO: do this for all non-target inputs, too
-    source = os.path.abspath(inspect.getsourcefile(output.__class__))
-    if not source.startswith(os.path.dirname(__file__)):
-        i.append(source)
-
-    output_str = '%' + output.__class__.__name__
-    if output.is_target():
-        output_str += ', ' + os.path.join(output.get_target_filename())
-    return '{output} <- {inputs} [method:drain]\n\n'.format(output=output_str, inputs=str.join(', ', i))
-
-# if preview then don't create the dump directories and step yaml files
-def to_drakefile(steps, preview=True, debug=False, bindir=None):
-    data = get_drake_data(steps)
-    drakefile = StringIO.StringIO()
-
-    bindir = os.path.join(os.path.dirname(__file__), 'bin')
-    drakefile.write("drain()\n\tpython %s %s/run_step.py $OUTPUT $INPUTS 2>&1\n\n" % ('-m pdb' if debug else '', bindir))
-    for output, inputs in data.iteritems():
-        if not preview:
-            output.setup_dump()
-
-        drakefile.write(to_drake_step(inputs, output))
-
-    return drakefile.getvalue()
 

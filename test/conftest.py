@@ -2,17 +2,23 @@ import pytest
 import pandas as pd
 import numpy as np
 import os
+import tempfile
 
+from drain import step
+import drain.yaml
 from drain.step import Step
 from drain.aggregation import SpacetimeAggregation
 from drain.aggregate import Count
 from datetime import date
 
+# this fixture sets up drain for testing
 @pytest.fixture(scope="session")
 def drain_setup(request):
+    # use a temporary dir
     tmpdir = tempfile.mkdtemp()
     step.BASEDIR = tmpdir
-    step.configure_yaml()
+    # configure for yaml dumping/serialization
+    drain.yaml.configure()
     def fin():
 	print ("\nDoing teardown")
     request.addfinalizer(fin)
@@ -64,6 +70,11 @@ def spacetime_crime_agg(crime_step):
         spacedeltas={'district': ('District', ['12h', '24h']),
                      'community':('Community Area', ['1d', '2d'])}, parallel=True,
         dates=[date(2015,12,30), date(2015,12,31)])
+
+class SpacetimeCrimeLeft(Step):
+    def run(self):
+        return pd.DataFrame({'District':[1,2], 'Community Area':[1,2],
+        'date':[np.datetime64(date(2015,12,30)), np.datetime64(date(2015,12,31))]})
 
 @pytest.fixture
 def spacetime_crime_left():
