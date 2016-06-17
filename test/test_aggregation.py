@@ -1,4 +1,4 @@
-from drain.aggregation import SimpleAggregation, SpacetimeAggregation
+from drain.aggregation import SimpleAggregation, SpacetimeAggregation, AggregationJoin, SpacetimeAggregationJoin
 from drain.aggregate import Count
 from drain import step
 from datetime import date
@@ -55,6 +55,17 @@ def test_spacetime_join(drain_setup, spacetime_crime_agg):
     left = pd.DataFrame({'District':[1,2], 'Community Area':[1,2], 
         'date':[np.datetime64(date(2015,12,30)), np.datetime64(date(2015,12,31))]})
     print spacetime_crime_agg.join(left)
+
+def test_spacetime_join_step(spacetime_crime_agg, spacetime_crime_left):
+    join = AggregationJoin(inputs=[spacetime_crime_left, spacetime_crime_agg])
+    result = step.run(join)
+    print result
+
+def test_spacetime_join_lag(spacetime_crime_agg, spacetime_crime_left):
+    join = SpacetimeAggregationJoin(lag='1d', 
+            inputs=[spacetime_crime_left, spacetime_crime_agg])
+    result = step.run(join)
+    print result
 
 def test_spacetime_join_select(drain_setup, spacetime_crime_agg):
     step.run(spacetime_crime_agg)
