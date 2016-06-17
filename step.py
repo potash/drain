@@ -173,8 +173,7 @@ class Step(object):
         if hasattr(self, 'inputs_mapping'):
             inputs_mapping = util.make_list(self.inputs_mapping)
             
-            diff = len(self.inputs) - len(inputs_mapping)
-            if diff < 0:
+            if len(self.inputs) < len(inputs_mapping):
                 raise ValueError('Too many inputs_mappings')
 
             for input, mapping in zip(self.inputs, inputs_mapping):
