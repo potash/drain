@@ -323,6 +323,7 @@ class Step(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+# checks if l is a collection of DataFrames or a DataFrame-valued dictionary
 def is_dataframe_collection(l):
     if isinstance(l, dict):
         l = l.values()
@@ -346,7 +347,6 @@ class Echo(Step):
     def run(self, *args, **kwargs):
         for i in self.inputs:
             print('%s: %s' % (i, i.get_result()))
-
 
 class Scalar(Step):
     def __init__(self, value, **kwargs):
