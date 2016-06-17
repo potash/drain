@@ -55,6 +55,7 @@ def to_drake_step(inputs, output):
         output_str += ', ' + os.path.join(output._target_filename)
     return '{output} <- {inputs} [method:drain]\n\n'.format(output=output_str, inputs=str.join(', ', i))
 
+# steps is a collection of Step objects, typically leaf nodes of a workflow
 # if preview then don't create the dump directories and step yaml files
 # if debug then steps are run with 'python -m pdb'
 def to_drakefile(steps, preview=True, debug=False):
