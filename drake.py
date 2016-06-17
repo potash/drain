@@ -56,7 +56,8 @@ def to_drake_step(inputs, output):
     return '{output} <- {inputs} [method:drain]\n\n'.format(output=output_str, inputs=str.join(', ', i))
 
 # if preview then don't create the dump directories and step yaml files
-def to_drakefile(steps, preview=True, debug=False, bindir=None):
+# if debug then steps are run with 'python -m pdb'
+def to_drakefile(steps, preview=True, debug=False):
     data = get_drake_data(steps)
     drakefile = StringIO.StringIO()
 
