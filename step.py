@@ -78,15 +78,20 @@ def load(steps):
     return loaded
 
 class Step(object):
-    def __init__(self, name=None, target=False, **kwargs):
+    def __new__(cls, name=None, target=False, **kwargs):
+        obj = object.__new__(cls, *args, **kwargs)
+
         """
         name and target are special because a Step's result 
         is independent of their values.
         """
-        self._kwargs = kwargs
-        self._name = name
-        self._target = target
+        obj._kwargs = kwargs
+        obj._name = name
+        obj._target = target
 
+        return obj
+
+    def __init__(self, **kwargs):
         for k in kwargs:
             setattr(self, k, kwargs[k])
         
