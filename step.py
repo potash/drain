@@ -241,7 +241,7 @@ class Step(object):
         return os.path.join(self._target_dirname, 'target')
         
     def run(self, *args, **kwargs):
-        pass
+        raise NotImplementedError
     
     def is_target(self):
         return self._target
