@@ -19,7 +19,8 @@ class FitPredict(Step):
     def __init__(self, return_estimator=False, return_feature_importances=True, return_predictions=True, prefit=False, **kwargs):
         Step.__init__(self, return_estimator=return_estimator,
                 return_feature_importances=return_feature_importances,
-                return_predictions=return_predictions, prefit=prefit, **kwargs)
+                return_predictions=return_predictions, prefit=prefit,
+                **kwargs)
 
     def run(self, estimator, X, y, train=None, test=None, aux=None, sample_weight=None, **kwargs):
         if not self.prefit:

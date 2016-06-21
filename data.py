@@ -95,8 +95,9 @@ class Merge(Step):
 # pass put_arguments (format, mode, data_columns, etc.) to init
 # pass DataFrames by name via inputs
 class ToHDF(Step):
-    def __init__(self, target=True, objects_to_ascii=False, **kwargs):
-        Step.__init__(self, target=True, objects_to_ascii=objects_to_ascii, **kwargs)
+    def __init__(self, objects_to_ascii=False, **kwargs):
+        Step.__init__(self, objects_to_ascii=objects_to_ascii, **kwargs)
+        self._target = True
 
     def run(self, **kwargs):
         store = pd.HDFStore(os.path.join(self._target_dump_dirname, 'result.h5'))

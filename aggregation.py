@@ -21,23 +21,26 @@ class AggregationBase(Step):
                 to) aggregator_args.
 
         """
-
-        self.insert_args = insert_args
-        self.concat_args = concat_args
-        self.aggregator_args = aggregator_args
-        self.prefix = prefix
-
-        Step.__init__(self, parallel=parallel, target=target and not parallel, **kwargs)
+        Step.__init__(self, 
+                insert_args=insert_args, 
+                concat_args=concat_args, 
+                aggregator_args=aggregator_args, 
+                prefix=prefix, 
+                parallel=parallel, **kwargs)
 
         if parallel:
+            # when parallel=True don't cache this but parents
             inputs = self.inputs if hasattr(self, 'inputs') else []
             self.inputs = []
             # create a new Aggregation according to parallel_kwargs
             # pass our input to those steps
             # those become the inputs to this step
             for kwargs in self.parallel_kwargs:
-                a = self.__class__(parallel=False, target=target, inputs=inputs, **kwargs)
+                a = self.__class__(parallel=False, 
+                        target=self._target, 
+                        inputs=inputs, **kwargs)
                 self.inputs.append(a)
+            self._target = False
 
         self._aggregators = {}
     

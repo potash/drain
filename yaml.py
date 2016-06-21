@@ -14,10 +14,8 @@ def load(filename):
 # temporary holder of step arguments
 # useful to get around pyyaml bug: https://bitbucket.org/xi/pyyaml/issues/56/sub-dictionary-unavailable-in-constructor
 class StepTemplate(object):
-    def __init__(self, _cls, name=None, target=False, **kwargs):
+    def __init__(self, _cls, **kwargs):
         self._cls = _cls
-        self.name = name
-        self.target = target
         self.kwargs = kwargs
 
     # it's important that this is cached so that multiple calls to step return the same Step object
@@ -26,8 +24,7 @@ class StepTemplate(object):
         if 'inputs' in self.kwargs:
             self.kwargs['inputs'] = [t.step for t in self.kwargs['inputs']]
 
-        return self._cls(target=self.target, name=self.name, 
-                **self.kwargs)
+        return self._cls(**self.kwargs)
 
 def step_multi_representer(dumper, data):
     tag = '!step:%s.%s' % (data.__class__.__module__, data.__class__.__name__)

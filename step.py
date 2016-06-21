@@ -78,14 +78,16 @@ def load(steps):
     return loaded
 
 class Step(object):
-    def __new__(cls, name=None, target=False, **kwargs):
-        obj = object.__new__(cls, *args, **kwargs)
+    def __new__(cls, **kwargs):
+        # do this here so we can capture positional args, too
+        name = kwargs.pop('name', None)
+        target = kwargs.pop('target', False)
 
-        """
-        name and target are special because a Step's result 
-        is independent of their values.
-        """
-        obj._kwargs = kwargs
+        obj = object.__new__(cls, **kwargs)
+
+        # name and target are special because a Step's result 
+        # is independent of their values.
+        obj._kwargs =  kwargs
         obj._name = name
         obj._target = target
 
@@ -339,13 +341,16 @@ def is_dataframe_collection(l):
     return True
 
 class Construct(Step):
-    def __init__(self, __class_name__, name=None, target=False, **kwargs):
-        Step.__init__(self, __class_name__=__class_name__, name=name, target=target, **kwargs)
+    def __init__(self, _class_name, **kwargs):
+        Step.__init__(self, _class_name=_class_name, **kwargs)
 
     def run(self, **update_kwargs):
-        kwargs = self.get_arguments(inputs=False, inputs_mapping=False)
+        cls = util.get_attr(self._class_name)
+
+        kwargs = self.get_arguments(_class_name=False, 
+                inputs=False, inputs_mapping=False)
         kwargs.update(update_kwargs)
-        cls = util.get_attr(kwargs.pop('__class_name__'))
+
         return cls(**kwargs)
 
 class Echo(Step):
@@ -354,8 +359,8 @@ class Echo(Step):
             print('%s: %s' % (i, i.get_result()))
 
 class Scalar(Step):
-    def __init__(self, value, **kwargs):
-        Step.__init__(self, value=value, **kwargs)
+    def __init__(self, value):
+        Step.__init__(self, value=value)
 
     def run(self):
         return self.value
