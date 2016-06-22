@@ -2,7 +2,11 @@
 
 Drain integrates Python machine learning tasks with [drake](https://github.com/Factual/drake), resulting in a robust and efficient machine learning pipeline. Drain additionally provides a library of methods for both the processing data going into the pipeline and exploration of models coming out of the pipeline.
 
-## Inputs Mapping
+## Steps
+
+A workflow consists of steps, each of which are inherit from the drain.step.Step class.  Each step must implement the `run()` method, whose return value is the `result` of the step. A step should be a deterministic function from its constructor arguments to its result.
+
+## Inputs mapping
 
 The `inputs_mapping` argument to a step allows for convenience and flexibility in passing that step's inputs' results to the step's `run()` method.
 
