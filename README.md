@@ -6,6 +6,26 @@ Drain integrates Python machine learning tasks with [drake](https://github.com/F
 
 A workflow consists of steps, each of which are inherit from the drain.step.Step class.  Each step must implement the `run()` method, whose return value is the `result` of the step. A step should be a deterministic function from its constructor arguments to its result.
 
+### Serialization
+
+Because a step is only a function of its arguments, serialization and hashing is easy. We use YAML for serialization, and hash the YAML for hashing. Thus all arguments to a step's constructor should be YAML serializable.
+
+### Arguments
+
+There are two kinds of arguments to a step: input steps, and everything else.
+
+## Inputs
+
+The step attribute `inputs` should be a list of input step objects. Steps appearing in other arguments will not be run correctly. Inputs can be specified in two ways.
+
+### Passed inputs
+
+Inputs can be passed through the constructor argument keyword `inputs`. Note that the `Step.__init__` superconstructor automatically assigns all keywords to object attributes.
+
+### Declared inputs
+
+Inputs can be declared within a step's constructor by setting the `inputs` attribute.
+
 ## Inputs mapping
 
 The `inputs_mapping` argument to a step allows for convenience and flexibility in passing that step's inputs' results to the step's `run()` method.
@@ -53,7 +73,7 @@ def run(self, *args, **kwargs):
     results = [i.get_result() for i in self.inputs]
 ```
 
-## explore
+## Exploration
 
 ## Future improvements
 option to store in db instead of files
