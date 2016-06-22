@@ -73,6 +73,10 @@ def run(self, *args, **kwargs):
     results = [i.get_result() for i in self.inputs]
 ```
 
+## Execution
+
+Given a collection of steps, drain executes them by generating a temporary Drakefile for them and then calling `drake`.
+
 ## Exploration
 
 ## Future improvements
