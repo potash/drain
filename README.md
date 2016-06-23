@@ -43,9 +43,7 @@ behind the scenes, it offers a different and extended interface:
  setting in one of your data processing steps, then `drain` will run all
  those follow-up steps that are affected by this change.
 
-## Inputs Mapping
-
-### Arithmetic
+## Arithmetic Example
 
 This is a toy example, in which each `Step` produces a number.
 
