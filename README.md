@@ -86,33 +86,33 @@ are only a few hundred lines of code.
 
 ## Steps
 
-A workflow consists of steps, each of which are inherit from the drain.step.Step class.  Each step must implement the `run()` method, whose return value is the `result` of the step. A step should be a deterministic function from its constructor arguments to its result.
+A workflow consists of steps, each of which is inherited from the drain.step.Step class.  Each step must implement the `run()` method, whose return value is the `result` of the step. A step should be a deterministic function from its constructor arguments to its result.
 
-### Serialization
+`Step`'s constructor accepts any keyword argument, but does **not** accept positional arguments.
+
+When passing keyword arguments to a `Step` (or `Step` child) constructor, then all the arguments become part of the signature (i.e., they will be part of this `Step`'s serialization). Any instance of a `Step` automatically has an attribute `_kwargs` holding these arguments.
 
 Because a step is only a function of its arguments, serialization and hashing is easy. We use YAML for serialization, and hash the YAML for hashing. Thus all arguments to a step's constructor should be YAML serializable.
 
-### Arguments
+When a `Step` does not override `__init__()` (i.e., when it uses the default `Step.__init__()`), then all the keyword arguments that are being passed become attributes of the new instance. This is a mere convenience functionality. It can be overriden simply by overriding `__init__()`, and it does not affect serialization.
 
-There are two kinds of arguments to a step: input steps, and everything else.
+Each `Step` has several reserved keyword arguments, namely `target`, `name, `inputs_mapping`, `resources`, and `inputs`.
 
-## Inputs
+### `name` and `target`
 
-The step attribute `inputs` should be a list of input step objects. Steps appearing in other arguments will not be run correctly. Inputs can be specified in two ways.
+`name` defaults to None and `target` to `False`. `name` is a string and allows you to name your current `Step`; this is useful later, when handling the step graph. `target` decides if the `Step`'s output should be cached on disk or not. These two arguments are _not_ serialized.
 
-### Passed inputs
+### `inputs`
 
-Inputs can be passed through the constructor argument keyword `inputs`. Note that the `Step.__init__` superconstructor automatically assigns all keywords to object attributes.
+The step attribute `inputs` should be a list of input step objects. Steps appearing in other arguments will not be run correctly. Note that the `Step.__init__` superconstructor automatically assigns all keywords to object attributes.
 
-### Declared inputs
+Inputs can also be declared within a step's constructor by setting the `inputs` attribute.
 
-Inputs can be declared within a step's constructor by setting the `inputs` attribute.
-
-## Inputs mapping
+### `inputs_mapping`
 
 The `inputs_mapping` argument to a step allows for convenience and flexibility in passing that step's inputs' results to the step's `run()` method.
 
-### Default behavior
+#### Default behavior
 
 By default, results are passed as positional arguments. So a step with `inputs=[a, b]` will have `run` called as
 ```
@@ -126,7 +126,7 @@ run(a_0=a.get_result()['a_0'], a_1=a.get_result()['a_1'],
     b_0=a.get_result()['b_0'], b_1=b.get_result()['b_1'])
 ```
 
-### Custom behavior
+#### Custom behavior
 This mapping of input results to run arguments can be customized when constructing steps. For example if the results of `a` and `b` are objects then specifying
 ```
 inputs_mapping = ['a', 'b']
@@ -154,6 +154,10 @@ To ignore the inputs mapping simply define
 def run(self, *args, **kwargs):
     results = [i.get_result() for i in self.inputs]
 ```
+
+### `resources`
+
+**TODO**
 
 ## Execution
 
