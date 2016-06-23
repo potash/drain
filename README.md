@@ -1,6 +1,98 @@
-#drain
+# drain
 
-Drain integrates Python machine learning tasks with [drake](https://github.com/Factual/drake), resulting in a robust and efficient machine learning pipeline. Drain additionally provides a library of methods for both the processing data going into the pipeline and exploration of models coming out of the pipeline.
+## Introduction
+
+Drain integrates Python machine learning tasks with 
+[drake](https://github.com/Factual/drake), resulting in a robust and efficient 
+machine learning pipeline. Drain additionally provides a library of methods 
+for both the processing data going into the pipeline and exploration of models 
+coming out of the pipeline.
+
+`drake` is a useful data science pipeline tool because it allows the user to 
+define dependencies between files (usually the inputs and outputs of data processing
+steps) in a simple-to-read bash file. 
+Once the dependency graph (a DAG) is defined, `drake` can take care of running 
+all the steps necessary to produce a desired step's output. `drake` also looks out 
+for changes to files (by inspecting their timestamp); if a file gets updated,
+`drake` can re-run only those steps that are children of said file.
+
+While highly useful, our data science pipelines frequently require features 
+that `drake` does not provide. Thus, while `drain` relies on `drake` 
+behind the scenes, it offers a different and extended interface:
+
+1. In `drain`, a step does not need to produce a file. This way, you can
+ define a DAG of steps, and decide later which parts of it should be cached,
+ and which steps should always re-run. This allows the user to think of steps 
+ as natural units of work (instead of as file-producing units of work). For 
+ example, you might have a step that performs a costly imputation (and which 
+ you thus would like to cache), and another step that drops some columns from 
+ your dataframe (and which you do not want to cache, as that would be a waste 
+ of disk space). In `drain`, these two steps follow the same template, and 
+ caching is enabled by passing a flag to `drain`.
+ 
+2. `drain` steps are written in Python.
+
+3. `drain` takes care of filepaths behind the scenes. The user does not define
+ dependencies between files, but rather dependencies between steps. This is 
+ extremely useful when your pipeline has to handle a large and variable 
+ amount of files, e.g. when you iterate over many different models 
+ or feature subsets.
+
+4. Finally, `drain` keeps track not only of file timestamps, 
+ but also of each step's parameters (it's 'signature'). If you change some 
+ setting in one of your data processing steps, then `drain` will run all
+ those follow-up steps that are affected by this change.
+
+## Inputs Mapping
+
+### Arithmetic
+
+This is a toy example, in which each `Step` produces a number.
+
+1. We define a simple `Step` that wraps a numeric value:
+	```
+	class Scalar(Step):
+		def __init__(self, value, **kwargs):
+			
+			# note how we do not need to say self.value=value; the parent constructor does that for us
+			Step.__init__(self, value=value, **kwargs)
+
+		def run(self):
+			return self.value
+	```
+
+2.	
+	``` > s = Scalar(value=5)
+ 	```
+
+	Note that the result of a step's `run()` method is accessible via `get_result()`.
+
+3. Steps can use the results of others steps, called `inputs`. For example we can define an `Add` step which adds the values of its inputs:
+	```
+	class Add(Step):
+		def __init__(self, inputs):
+			Step.__init__(self, inputs=inputs)
+
+		def run(self, *values)
+			return sum((i.get_result() for i in self.inputs))
+	```
+
+	In order to avoid calling `get_result()`, drain does so-called inputs mapping which is explained in the corresponding section below. In its most basic form, inputs mapping allows us to rewrite `Add.run` as follows:
+
+	```
+	def run(self, *values):
+		return sum(values)
+	```
+
+	```
+	a = Add(inputs = [Scalar(value=v) for v in range(1,10)])
+	```
+	
+## How does `drain` work?
+
+`drain` is a pretty lightweight wrapper around `drake`; its core functionality 
+are only a few hundred lines of code.
+
 
 ## Steps
 
@@ -78,6 +170,8 @@ def run(self, *args, **kwargs):
 Given a collection of steps, drain executes them by generating a temporary Drakefile for them and then calling `drake`.
 
 ## Exploration
+
+## metrics
 
 ## Future improvements
 option to store in db instead of files

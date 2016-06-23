@@ -4,3 +4,4 @@
 test/output/
 notebooks/
 env/
+drake.log

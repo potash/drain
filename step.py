@@ -80,8 +80,13 @@ def load(steps):
 class Step(object):
     def __init__(self, name=None, target=False, **kwargs):
         """
-        name and target are special because a Step's result 
-        is independent of their values.
+        Args:
+            name (str): Optional. Used for accessing this Step in a tree of Steps.
+            target (bool): Optional. Sets whether this Step will be cached on the disk.
+            kwargs: Every argument in kwargs will become part of this Step's serialization signature.
+                    Objects have to be YAML-serializable for this to work.
+                    Every kwarg becomes an attribute of this Step object. (Thus,
+                    avoid names that are probably already taken.)
         """
         self._kwargs = kwargs
         self._name = name
@@ -104,16 +109,21 @@ class Step(object):
 
     @cached_property
     def _digest(self):
+        """ Returns this Step's unique hash, which identifies the 
+        Step's dump on disk. Depends on the constructor's kwargs. """
         return base64.urlsafe_b64encode(self._hasher.digest())
 
     @cached_property
     def named_steps(self):
-        """
+        """ Gives a dictionary that maps names of Steps (if they have been set) to
+        references to the various Steps. The dict includes this Step (if it's named), too.
+
         returns a dictionary of name: step pairs
         recursively searches self and inputs
         doesn't use a visited set so that it can be a property, 
             also seems faster this way (needs testing)
         """
+        
         named = {}
 
         for i in self.inputs:
