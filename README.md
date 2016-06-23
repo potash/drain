@@ -88,13 +88,17 @@ are only a few hundred lines of code.
 
 A workflow consists of steps, each of which is inherited from the drain.step.Step class.  Each step must implement the `run()` method, whose return value is the `result` of the step. A step should be a deterministic function from its constructor arguments to its result.
 
-`Step`'s constructor accepts any keyword argument, but does **not** accept positional arguments.
-
-When passing keyword arguments to a `Step` (or `Step` child) constructor, then all the arguments become part of the signature (i.e., they will be part of this `Step`'s serialization). Any instance of a `Step` automatically has an attribute `_kwargs` holding these arguments.
-
 Because a step is only a function of its arguments, serialization and hashing is easy. We use YAML for serialization, and hash the YAML for hashing. Thus all arguments to a step's constructor should be YAML serializable.
 
-When a `Step` does not override `__init__()` (i.e., when it uses the default `Step.__init__()`), then all the keyword arguments that are being passed become attributes of the new instance. This is a mere convenience functionality. It can be overriden simply by overriding `__init__()`, and it does not affect serialization.
+### Design decisions
+
+**TODO**: _Explanations_
+
+- `Step`'s constructor accepts any keyword argument, but does **not** accept positional arguments.
+- A `Step` can decide to only accept certain keyword arguments by defining a custom `__init__()`.
+- Reserved keyword arguments are `name`, `target`, `inputs`, `inputs_mapping`, and `resources`. These are handled specifically by `Step.__new__()`.
+- When passing keyword arguments to a `Step` constructor, then all the arguments (except `name` and `target`) become part of the signature (i.e., they will be part of this `Step`'s serialization). Any instance of a `Step` automatically has an attribute `_kwargs` holding these arguments.
+- When a `Step` does not override `__init__()` (i.e., when it uses the default `Step.__init__()`), then all the keyword arguments that are being passed become attributes of the new instance. This is a mere convenience functionality. It can be overriden simply by overriding `__init__()`, and it does not affect serialization.
 
 Each `Step` has several reserved keyword arguments, namely `target`, `name, `inputs_mapping`, `resources`, and `inputs`.
 
