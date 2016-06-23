@@ -62,7 +62,8 @@ This is a toy example, in which each `Step` produces a number.
 	```
 
 2.	
-	``` > s = Scalar(value=5)
+	``` 
+	> s = Scalar(value=5)
  	```
 
 	Note that the result of a step's `run()` method is accessible via `get_result()`.
