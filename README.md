@@ -2,25 +2,18 @@
 
 ## Introduction
 
-Drain integrates Python machine learning tasks with 
+Drain integrates Python with 
 [drake](https://github.com/Factual/drake), resulting in a robust and efficient 
-machine learning pipeline. Drain additionally provides a library of methods 
-for both the processing data going into the pipeline and exploration of models 
-coming out of the pipeline.
+machine learning pipeline tool. Drain additionally provides a library of pipeline steps 
+for processing data, training models, making predictions, and analyzing results.
 
-`drake` is a useful data science pipeline tool because it allows the user to 
-define dependencies between files (usually the inputs and outputs of data processing
-steps) in a simple-to-read bash file. 
-Once the dependency graph (a DAG) is defined, `drake` can take care of running 
-all the steps necessary to produce a desired step's output. `drake` also looks out 
-for changes to files (by inspecting their timestamp); if a file gets updated,
-`drake` can re-run only those steps that are children of said file.
+> Drake is a simple-to-use, extensible, text-based data workflow tool that organizes command execution around data and its dependencies. Data processing steps are defined along with their inputs and outputs and Drake automatically resolves their dependencies and calculates:
+- which commands to execute (based on file timestamps)
+-    in what order to execute the commands (based on dependencies)
 
-While highly useful, our data science pipelines frequently require features 
-that `drake` does not provide. Thus, while `drain` relies on `drake` 
-behind the scenes, it offers a different and extended interface:
+Drain builds on drake and adds:
 
-1. In `drain`, a step does not need to produce a file. This way, you can
+1. Steps need not produce file outputs. This way, you can
  define a DAG of steps, and decide later which parts of it should be cached,
  and which steps should always re-run. This allows the user to think of steps 
  as natural units of work (instead of as file-producing units of work). For 
@@ -29,16 +22,14 @@ behind the scenes, it offers a different and extended interface:
  your dataframe (and which you do not want to cache, as that would be a waste 
  of disk space). In `drain`, these two steps follow the same template, and 
  caching is enabled by passing a flag to `drain`.
- 
-2. `drain` steps are written in Python.
 
-3. `drain` takes care of filepaths behind the scenes. The user does not define
+2. Management of filepaths behind the scenes. The user does not define
  dependencies between files, but rather dependencies between steps. This is 
  extremely useful when your pipeline has to handle a large and variable 
  amount of files, e.g. when you iterate over many different models 
  or feature subsets.
 
-4. Finally, `drain` keeps track not only of file timestamps, 
+3. Finally, `drain` keeps track not only of file timestamps, 
  but also of each step's parameters (it's 'signature'). If you change some 
  setting in one of your data processing steps, then `drain` will run all
  those follow-up steps that are affected by this change.
