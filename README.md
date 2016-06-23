@@ -4,7 +4,7 @@
 
 Drain integrates Python with 
 [drake](https://github.com/Factual/drake), resulting in a robust and efficient 
-machine learning pipeline tool. Drain additionally provides a library of pipeline steps 
+Python workflow tool. Drain additionally provides a library of pipeline steps 
 for processing data, training models, making predictions, and analyzing results.
 
 > Drake is a simple-to-use, extensible, text-based data workflow tool that organizes command execution around data and its dependencies. Data processing steps are defined along with their inputs and outputs and Drake automatically resolves their dependencies and calculates:
