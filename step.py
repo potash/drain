@@ -79,6 +79,16 @@ def load(steps):
 
 class Step(object):
     def __new__(cls, **kwargs):
+
+        # get the constructor's default args, as they might not appear
+        # in the kwargs
+        dargs = inspect.getargspec(cls.__init__)
+        dargs = dict(zip(dargs.args[-len(dargs.defaults):],dargs.defaults))
+
+        # if kwargs contains overriden default parameters, take those
+        dargs.update(kwargs)
+        kwargs = dargs
+
         # do this here so we can capture positional args, too
         name = kwargs.pop('name', None)
         target = kwargs.pop('target', False)
