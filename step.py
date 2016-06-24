@@ -83,7 +83,10 @@ class Step(object):
         # get the constructor's default args, as they might not appear
         # in the kwargs
         dargs = inspect.getargspec(cls.__init__)
-        dargs = dict(zip(dargs.args[-len(dargs.defaults):],dargs.defaults))
+        if dargs.defaults:
+            dargs = dict(zip(dargs.args[-len(dargs.defaults):],dargs.defaults))
+        else:
+            dargs = {}
 
         # if kwargs contains overriden default parameters, take those
         dargs.update(kwargs)
