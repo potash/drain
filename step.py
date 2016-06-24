@@ -28,41 +28,6 @@ from drain import util
 
 OUTPUTDIR=None
 
-# run the given step
-# inputs should be loaded from disk
-# output should be written to disk
-# also loads targets from disk-- could make this optional
-# recreate the dump directory before dumping
-# if load_targets, assume all targets have been run and dumped
-# TODO: move this to Step.execute()
-def run(step, inputs=None, output=None, load_targets=False):
-    if step == output:
-        if os.path.exists(step._target_dump_dirname):
-            shutil.rmtree(step._target_dump_dirname)
-        if os.path.exists(step._target_filename):
-            os.remove(step._target_filename)
-        os.makedirs(step._target_dump_dirname)
-
-    if inputs is None:
-        inputs = []
-
-    if not step.has_result():
-        if (step in inputs or (load_targets and step.is_target())) and not step.has_result():
-            logging.info('Loading\n\t%s' % str(step).replace('\n','\n\t'))
-            step.load()
-        else:
-            for i in step.inputs:
-                run(step=i, inputs=inputs, output=output, load_targets=load_targets)
-
-            args, kwargs = step.map_inputs()
-            logging.info('Running\n\t%s' % str(step).replace('\n','\n\t'))
-            step.set_result(step.run(*args, **kwargs))
-
-    if step == output:
-        step.dump()
-        util.touch(step._target_filename)
-
-    return step.get_result()
 
 def load(steps):
     """
@@ -101,6 +66,49 @@ class Step(object):
 
         if not hasattr(self, 'dependencies'):
             self.dependencies = []
+
+    # run the given step
+    # inputs should be loaded from disk
+    # output should be written to disk
+    # also loads targets from disk-- could make this optional
+    # recreate the dump directory before dumping
+    # if load_targets, assume all targets have been run and dumped
+    # TODO: move this to Step.execute()
+    def execute(self, inputs=None, output=None, load_targets=False):
+        """ Recursively run or load all parent steps, and return self's result.
+        Args:
+            inputs (list): List of Steps that this step requires.
+            output (Step): 
+            load_target (bool)
+
+        """
+        if self == output:
+            if os.path.exists(self._target_dump_dirname):
+                shutil.rmtree(self._target_dump_dirname)
+            if os.path.exists(self._target_filename):
+                os.remove(self._target_filename)
+            os.makedirs(self._target_dump_dirname)
+    
+        if inputs is None:
+            inputs = []
+    
+        if not self.has_result():
+            if self in inputs or (load_targets and self.is_target()):
+                logging.info('Loading\n\t%s' % str(self).replace('\n','\n\t'))
+                self.load()
+            else:
+                for i in self.inputs:
+                    i.execute(inputs=inputs, output=output, load_targets=load_targets)
+    
+                args, kwargs = self.map_inputs()
+                logging.info('Running\n\t%s' % str(self).replace('\n','\n\t'))
+                self.set_result(self.run(*args, **kwargs))
+    
+        if self == output:
+            self.dump()
+            util.touch(self._target_filename)
+
+        return self.get_result()
 
     @cached_property
     def _hasher(self):

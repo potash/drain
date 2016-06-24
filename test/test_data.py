@@ -10,7 +10,7 @@ def test_to_hdf():
     h = data.ToHDF(inputs=[d], target=True)
 
     h.setup_dump()
-    step.run(h)
+    h.execute()
 
     r0, r1 = h.get_result(), d.get_result()
 
