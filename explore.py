@@ -1,6 +1,8 @@
+from __future__ import absolute_import
+import yaml
+
 import os
 import sys
-import yaml
 from collections import Hashable
 from copy import deepcopy
 from tempfile import NamedTemporaryFile
