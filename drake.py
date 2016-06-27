@@ -55,10 +55,22 @@ def to_drake_step(inputs, output):
         output_str += ', ' + os.path.join(output._target_filename)
     return '{output} <- {inputs} [method:drain]\n\n'.format(output=output_str, inputs=str.join(', ', i))
 
-# if preview then don't create the dump directories and step yaml files
-def to_drakefile(steps, preview=True, debug=False, bindir=None):
+def to_drakefile(steps, preview=True, debug=False, input_drakefile=None):
+    """
+    Args:
+        steps: collection of drain.step.Step objects to generate drakefile for
+        preview: boolean, when False will create directories for output steps. 
+            When True do not touch filesystem.
+        debug: run python with '-m pdb'
+        drakefile: path to drakefile to include
+    Returns:
+        a string representation of the drakefile
+    """
     data = get_drake_data(steps)
     drakefile = StringIO.StringIO()
+
+    if input_drakefile:
+        drakefile.write('%context {}\n\n'.format(input_drakefile))
 
     bindir = os.path.join(os.path.dirname(__file__), 'bin')
     drakefile.write("drain()\n\tpython %s %s/run_step.py $OUTPUT $INPUTS 2>&1\n\n" % ('-m pdb' if debug else '', bindir))
