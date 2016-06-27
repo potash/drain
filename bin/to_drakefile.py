@@ -23,7 +23,7 @@ if __name__ == "__main__":
     if args.drakeoutput is None or args.drakeargsfile is None:
         args.preview = True
 
-    step.BASEDIR = os.path.abspath(args.outputdir)
+    step.OUTPUTDIR = os.path.abspath(args.outputdir)
     drain.yaml.configure()
 
     steps = []

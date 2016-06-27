@@ -26,7 +26,7 @@ from tables import NaturalNameWarning
 
 from drain import util
 
-BASEDIR=None
+OUTPUTDIR=None
 
 # run the given step
 # inputs should be loaded from disk
@@ -161,7 +161,7 @@ class Step(object):
         named = self.named_steps
 
         for name, step in named.iteritems():
-            for k,v in step.get_arguments().iteritems():
+            for k,v in step.get_arguments(inputs=False).iteritems():
                 d[(name, k)] = v
 
         return d
@@ -233,10 +233,10 @@ class Step(object):
     
     @cached_property
     def _target_dirname(self):
-        if BASEDIR is None:
-            raise ValueError('BASEDIR not initialized')
+        if OUTPUTDIR is None:
+            raise ValueError('drain.step.OUTPUTDIR not set')
 
-        return os.path.join(BASEDIR, self.__class__.__name__, self._digest[0:8])
+        return os.path.join(OUTPUTDIR, self.__class__.__name__, self._digest[0:8])
 
     @cached_property
     def _target_yaml_filename(self):
