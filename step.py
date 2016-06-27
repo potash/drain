@@ -80,8 +80,13 @@ def load(steps):
 class Step(object):
     def __init__(self, name=None, target=False, **kwargs):
         """
-        name and target are special because a Step's result 
-        is independent of their values.
+        Args:
+            name (str): Optional. Used for accessing this Step in a tree of Steps.
+            target (bool): Optional. Sets whether this Step will be cached on the disk.
+            kwargs: Every argument in kwargs will become part of this Step's serialization signature.
+                    Objects have to be YAML-serializable for this to work.
+                    Every kwarg becomes an attribute of this Step object. (Thus,
+                    avoid names that are probably already taken.)
         """
         self._kwargs = kwargs
         self._name = name
@@ -104,16 +109,21 @@ class Step(object):
 
     @cached_property
     def _digest(self):
+        """ Returns this Step's unique hash, which identifies the 
+        Step's dump on disk. Depends on the constructor's kwargs. """
         return base64.urlsafe_b64encode(self._hasher.digest())
 
     @cached_property
     def named_steps(self):
-        """
+        """ Gives a dictionary that maps names of Steps (if they have been set) to
+        references to the various Steps. The dict includes this Step (if it's named), too.
+
         returns a dictionary of name: step pairs
         recursively searches self and inputs
         doesn't use a visited set so that it can be a property, 
             also seems faster this way (needs testing)
         """
+        
         named = {}
 
         for i in self.inputs:
@@ -173,8 +183,7 @@ class Step(object):
         if hasattr(self, 'inputs_mapping'):
             inputs_mapping = util.make_list(self.inputs_mapping)
             
-            diff = len(self.inputs) - len(inputs_mapping)
-            if diff < 0:
+            if len(self.inputs) < len(inputs_mapping):
                 raise ValueError('Too many inputs_mappings')
 
             for input, mapping in zip(self.inputs, inputs_mapping):
@@ -242,7 +251,7 @@ class Step(object):
         return os.path.join(self._target_dirname, 'target')
         
     def run(self, *args, **kwargs):
-        pass
+        raise NotImplementedError
     
     def is_target(self):
         return self._target
@@ -324,6 +333,7 @@ class Step(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+# checks if l is a collection of DataFrames or a DataFrame-valued dictionary
 def is_dataframe_collection(l):
     if isinstance(l, dict):
         l = l.values()
@@ -347,7 +357,6 @@ class Echo(Step):
     def run(self, *args, **kwargs):
         for i in self.inputs:
             print('%s: %s' % (i, i.get_result()))
-
 
 class Scalar(Step):
     def __init__(self, value, **kwargs):

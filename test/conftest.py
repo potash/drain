@@ -20,7 +20,7 @@ def drain_setup(request):
     # configure for yaml dumping/serialization
     drain.yaml.configure()
     def fin():
-	print ("\nDoing teardown")
+        print ("\nDoing teardown")
     request.addfinalizer(fin)
 
 @pytest.fixture

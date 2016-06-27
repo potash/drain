@@ -32,7 +32,6 @@ def get_drake_data(steps):
         output_inputs[step] = get_input_targets(step)
 
     # recursively do the same for all the inputs
-    #    inputs |= i
     inputs = set(itertools.chain(*output_inputs.values()))
     o = get_drake_data(inputs)
     output_inputs.update(o)

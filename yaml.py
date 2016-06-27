@@ -5,14 +5,11 @@ from cached_property import cached_property
 from drain import util
 from drain.step import Step
 
-# load step(s) via templates
+# load step from file via template
 def load(filename):
     with open(filename) as f:
-        templates = yaml.load(f)
-        if isinstance(templates, StepTemplate):
-            return templates.step
-        elif hasattr(templates, '__iter__'):
-            return [t.step for t in templates]
+        template = yaml.load(f)
+        return template.step
 
 # temporary holder of step arguments
 # useful to get around pyyaml bug: https://bitbucket.org/xi/pyyaml/issues/56/sub-dictionary-unavailable-in-constructor
