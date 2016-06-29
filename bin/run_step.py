@@ -40,4 +40,4 @@ for i in args[1:]:
     if is_step(i) or is_target(i):
         inputs.append(get_step(i))
 
-drain.step.run(step=step, output=output, inputs=inputs)
+step.execute(output=output, inputs=inputs)
