@@ -40,7 +40,7 @@ def get_drake_data(steps):
 
 # returns a drake step string for the given inputs and outputs
 def to_drake_step(inputs, output):
-    i = [output._target_yaml_filename]
+    i = [output._yaml_filename]
     i.extend(map(lambda i: i._target_filename, list(inputs)))
     i.extend(output.dependencies)
     # add source file if it's not in the drain library

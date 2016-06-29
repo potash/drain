@@ -80,11 +80,11 @@ class Step(object):
                 running steps directly.
         """
         if self == output:
-            if os.path.exists(self._target_dump_dirname):
-                shutil.rmtree(self._target_dump_dirname)
+            if os.path.exists(self._dump_dirname):
+                shutil.rmtree(self._dump_dirname)
             if os.path.exists(self._target_filename):
                 os.remove(self._target_filename)
-            os.makedirs(self._target_dump_dirname)
+            os.makedirs(self._dump_dirname)
     
         if inputs is None:
             inputs = []
@@ -246,23 +246,23 @@ class Step(object):
         return hasattr(self, '_result')
     
     @cached_property
-    def _target_dirname(self):
+    def _output_dirname(self):
         if OUTPUTDIR is None:
             raise ValueError('drain.step.OUTPUTDIR not set')
 
         return os.path.join(OUTPUTDIR, self.__class__.__name__, self._digest[0:8])
 
     @cached_property
-    def _target_yaml_filename(self):
-        return os.path.join(self._target_dirname, 'step.yaml')
+    def _yaml_filename(self):
+        return os.path.join(self._output_dirname, 'step.yaml')
 
     @cached_property
-    def _target_dump_dirname(self):
-        return os.path.join(self._target_dirname, 'dump')
+    def _dump_dirname(self):
+        return os.path.join(self._output_dirname, 'dump')
 
     @cached_property
     def _target_filename(self):
-        return os.path.join(self._target_dirname, 'target')
+        return os.path.join(self._output_dirname, 'target')
         
     def run(self, *args, **kwargs):
         raise NotImplementedError
@@ -274,7 +274,7 @@ class Step(object):
         """
         Load this step's result from its dump directory
         """
-        hdf_filename = os.path.join(self._target_dump_dirname, 'result.h5')
+        hdf_filename = os.path.join(self._dump_dirname, 'result.h5')
         if os.path.isfile(hdf_filename):
             store = pd.HDFStore(hdf_filename)
             keys = store.keys()
@@ -288,7 +288,7 @@ class Step(object):
                     self.set_result({k[1:]:store[k] for k in keys})
                 
         else:
-            self.set_result(joblib.load(os.path.join(self._target_dirname, 'dump', 'result.pkl')))
+            self.set_result(joblib.load(os.path.join(self._output_dirname, 'dump', 'result.pkl')))
 
     def setup_dump(self):
         """
@@ -299,12 +299,12 @@ class Step(object):
             step.yaml
             dump/
         """
-        dumpdir = self._target_dump_dirname
+        dumpdir = self._dump_dirname
         if not os.path.isdir(dumpdir):
             os.makedirs(dumpdir)
             
         dump = False
-        yaml_filename = self._target_yaml_filename
+        yaml_filename = self._yaml_filename
         
         if not os.path.isfile(yaml_filename):
             dump = True
@@ -322,7 +322,7 @@ class Step(object):
         self.setup_dump()
         result = self.get_result()
         if isinstance(result, pd.DataFrame):
-            result.to_hdf(os.path.join(self._target_dump_dirname, 'result.h5'), 'df')
+            result.to_hdf(os.path.join(self._dump_dirname, 'result.h5'), 'df')
         elif hasattr(result, '__iter__') and is_dataframe_collection(result):
             if not isinstance(result, dict):
                 keys = map(str, range(len(result)))
@@ -331,14 +331,14 @@ class Step(object):
                 keys = result.keys()
                 values = result.values()
 
-            store = pd.HDFStore(os.path.join(self._target_dump_dirname, 'result.h5'))
+            store = pd.HDFStore(os.path.join(self._dump_dirname, 'result.h5'))
             # ignore NaturalNameWarning
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore', category=NaturalNameWarning)
                 for key, df in zip(keys, values):
                     store.put(key, df, mode='w')
         else:
-            joblib.dump(self.get_result(), os.path.join(self._target_dump_dirname, 'result.pkl'))
+            joblib.dump(self.get_result(), os.path.join(self._dump_dirname, 'result.pkl'))
 
     def __repr__(self):
         class_name = self.__class__.__name__

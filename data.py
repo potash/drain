@@ -99,7 +99,7 @@ class ToHDF(Step):
         Step.__init__(self, target=True, objects_to_ascii=objects_to_ascii, **kwargs)
 
     def run(self, **kwargs):
-        store = pd.HDFStore(os.path.join(self._target_dump_dirname, 'result.h5'))
+        store = pd.HDFStore(os.path.join(self._dump_dirname, 'result.h5'))
 
         for key, df in kwargs.iteritems():
             if self.objects_to_ascii:
@@ -118,7 +118,7 @@ class ToHDF(Step):
         return
 
     def load(self):
-        self.set_result(pd.HDFStore(os.path.join(self._target_dump_dirname, 'result.h5')))
+        self.set_result(pd.HDFStore(os.path.join(self._dump_dirname, 'result.h5')))
 
 class Shape(Step):
     def run(self, X, index=None, **kwargs):

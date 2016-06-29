@@ -62,25 +62,25 @@ class FitPredict(Step):
     def dump(self):
         result = self.get_result()
         if self.return_estimator:
-            filename = os.path.join(self._target_dump_dirname, 'estimator.pkl')
+            filename = os.path.join(self._dump_dirname, 'estimator.pkl')
             joblib.dump(result['estimator'], filename)
         if self.return_feature_importances:
-            filename = os.path.join(self._target_dump_dirname, 'feature_importances.hdf')
+            filename = os.path.join(self._dump_dirname, 'feature_importances.hdf')
             result['feature_importances'].to_hdf(filename, 'df')
         if self.return_predictions:
-            filename = os.path.join(self._target_dump_dirname, 'y.hdf')
+            filename = os.path.join(self._dump_dirname, 'y.hdf')
             result['y'].to_hdf(filename, 'df')
 
     def load(self):
         result = {}
         if self.return_estimator:
-            filename = os.path.join(self._target_dump_dirname, 'estimator.pkl')
+            filename = os.path.join(self._dump_dirname, 'estimator.pkl')
             result['estimator'] = joblib.load(filename)
         if self.return_feature_importances:
-            filename = os.path.join(self._target_dump_dirname, 'feature_importances.hdf')
+            filename = os.path.join(self._dump_dirname, 'feature_importances.hdf')
             result['feature_importances'] = pd.read_hdf(filename, 'df')
         if self.return_predictions:
-            filename = os.path.join(self._target_dump_dirname, 'y.hdf')
+            filename = os.path.join(self._dump_dirname, 'y.hdf')
             result['y'] = pd.read_hdf(filename, 'df')
 
         self.set_result(result)
