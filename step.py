@@ -67,20 +67,17 @@ class Step(object):
         if not hasattr(self, 'dependencies'):
             self.dependencies = []
 
-    # run the given step
-    # inputs should be loaded from disk
-    # output should be written to disk
-    # also loads targets from disk-- could make this optional
-    # recreate the dump directory before dumping
-    # if load_targets, assume all targets have been run and dumped
-    # TODO: move this to Step.execute()
     def execute(self, inputs=None, output=None, load_targets=False):
-        """ Recursively run or load all parent steps, and return self's result.
+        """ 
+        Run this step, recursively running or loading inputs. 
+        Used in bin/run_step.py which is run by drake.
         Args:
-            inputs (list): List of Steps that this step requires.
-            output (Step): 
-            load_target (bool)
-
+            inputs: collection of steps that should be loaded
+            output: step that should be dumped after it is run
+            load_targets (boolean): load all steps which are targets.
+                This argument is not used by run_step.py because target 
+                does not get serialized. But it can be useful for 
+                running steps directly.
         """
         if self == output:
             if os.path.exists(self._target_dump_dirname):
