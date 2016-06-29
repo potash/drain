@@ -115,15 +115,10 @@ class Step(object):
 
     @cached_property
     def named_steps(self):
-        """ Gives a dictionary that maps names of Steps (if they have been set) to
-        references to the various Steps. The dict includes this Step (if it's named), too.
-
+        """ 
         returns a dictionary of name: step pairs
         recursively searches self and inputs
-        doesn't use a visited set so that it can be a property, 
-            also seems faster this way (needs testing)
         """
-        
         named = {}
 
         for i in self.inputs:
@@ -141,6 +136,9 @@ class Step(object):
         return named
 
     def get_input(self, name):
+        """
+        Searches the inputs tree for a step of the given name
+        """
         for i in self.inputs:
             step = i.get_input(name)
             if step is not None:
@@ -157,6 +155,12 @@ class Step(object):
 
     @cached_property
     def named_arguments(self):
+        """
+        Returns a dictionary of (name, kwarg): value pairs where
+            name is the name of a step
+            kwarg is an argument name
+            value is the value of the argument
+        """
         d = dict()
         named = self.named_steps
 
@@ -261,8 +265,11 @@ class Step(object):
     def is_target(self):
         return self._target
     
-    def load(self, **kwargs):
-        hdf_filename = os.path.join(self._target_dirname, 'dump', 'result.h5')
+    def load(self):
+        """
+        Load this step's result from its dump directory
+        """
+        hdf_filename = os.path.join(self._dump_dirname, 'result.h5')
         if os.path.isfile(hdf_filename):
             store = pd.HDFStore(hdf_filename)
             keys = store.keys()
@@ -279,6 +286,14 @@ class Step(object):
             self.set_result(joblib.load(os.path.join(self._target_dirname, 'dump', 'result.pkl')))
 
     def setup_dump(self):
+        """
+        Set up dump, creating directories and writing step.yaml file 
+        containing yaml dump of this step.
+
+        {OUTPUTDIR}/{self._digest}/
+            step.yaml
+            dump/
+        """
         dumpdir = self._target_dump_dirname
         if not os.path.isdir(dumpdir):
             os.makedirs(dumpdir)
