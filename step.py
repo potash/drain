@@ -169,6 +169,11 @@ class Step(object):
     # returns a shallow copy of _kwargs
     # any argument specified is excluded if False
     def get_arguments(self, **include):
+        """
+        return a shallow copy of self._kwargs
+        passing {key}=False will pop the {key} from the dict
+        e.g. get_arguments(inputs=False) returns all keywords except inputs
+        """
         d = dict(self._kwargs)
 
         for k in include:
