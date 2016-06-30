@@ -40,7 +40,7 @@ def get_drake_data(steps):
 
 # returns a drake step string for the given inputs and outputs
 def to_drake_step(inputs, output):
-    i = [output._target_yaml_filename]
+    i = [output._yaml_filename]
     i.extend(map(lambda i: i._target_filename, list(inputs)))
     i.extend(output.dependencies)
     # add source file if it's not in the drain library
@@ -54,12 +54,22 @@ def to_drake_step(inputs, output):
         output_str += ', ' + os.path.join(output._target_filename)
     return '{output} <- {inputs} [method:drain]\n\n'.format(output=output_str, inputs=str.join(', ', i))
 
-# steps is a collection of Step objects, typically leaf nodes of a workflow
-# if preview then don't create the dump directories and step yaml files
-# if debug then steps are run with 'python -m pdb'
-def to_drakefile(steps, preview=True, debug=False):
+def to_drakefile(steps, preview=True, debug=False, input_drakefile=None):
+    """
+    Args:
+        steps: collection of drain.step.Step objects to generate drakefile for
+        preview: boolean, when False will create directories for output steps. 
+            When True do not touch filesystem.
+        debug: run python with '-m pdb'
+        drakefile: path to drakefile to include
+    Returns:
+        a string representation of the drakefile
+    """
     data = get_drake_data(steps)
     drakefile = StringIO.StringIO()
+
+    if input_drakefile:
+        drakefile.write('%context {}\n\n'.format(input_drakefile))
 
     bindir = os.path.join(os.path.dirname(__file__), 'bin')
     drakefile.write("drain()\n\tpython %s %s/run_step.py $OUTPUT $INPUTS 2>&1\n\n" % ('-m pdb' if debug else '', bindir))

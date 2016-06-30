@@ -26,43 +26,8 @@ from tables import NaturalNameWarning
 
 from drain import util
 
-BASEDIR=None
+OUTPUTDIR=None
 
-# run the given step
-# inputs should be loaded from disk
-# output should be written to disk
-# also loads targets from disk-- could make this optional
-# recreate the dump directory before dumping
-# if load_targets, assume all targets have been run and dumped
-# TODO: move this to Step.execute()
-def run(step, inputs=None, output=None, load_targets=False):
-    if step == output:
-        if os.path.exists(step._target_dump_dirname):
-            shutil.rmtree(step._target_dump_dirname)
-        if os.path.exists(step._target_filename):
-            os.remove(step._target_filename)
-        os.makedirs(step._target_dump_dirname)
-
-    if inputs is None:
-        inputs = []
-
-    if not step.has_result():
-        if (step in inputs or (load_targets and step.is_target())) and not step.has_result():
-            logging.info('Loading\n\t%s' % str(step).replace('\n','\n\t'))
-            step.load()
-        else:
-            for i in step.inputs:
-                run(step=i, inputs=inputs, output=output, load_targets=load_targets)
-
-            args, kwargs = step.map_inputs()
-            logging.info('Running\n\t%s' % str(step).replace('\n','\n\t'))
-            step.set_result(step.run(*args, **kwargs))
-
-    if step == output:
-        step.dump()
-        util.touch(step._target_filename)
-
-    return step.get_result()
 
 def load(steps):
     """
@@ -117,6 +82,46 @@ class Step(object):
         if not hasattr(self, 'dependencies'):
             self.dependencies = []
 
+    def execute(self, inputs=None, output=None, load_targets=False):
+        """ 
+        Run this step, recursively running or loading inputs. 
+        Used in bin/run_step.py which is run by drake.
+        Args:
+            inputs: collection of steps that should be loaded
+            output: step that should be dumped after it is run
+            load_targets (boolean): load all steps which are targets.
+                This argument is not used by run_step.py because target 
+                does not get serialized. But it can be useful for 
+                running steps directly.
+        """
+        if self == output:
+            if os.path.exists(self._dump_dirname):
+                shutil.rmtree(self._dump_dirname)
+            if os.path.exists(self._target_filename):
+                os.remove(self._target_filename)
+            os.makedirs(self._dump_dirname)
+    
+        if inputs is None:
+            inputs = []
+    
+        if not self.has_result():
+            if self in inputs or (load_targets and self.is_target()):
+                logging.info('Loading\n\t%s' % str(self).replace('\n','\n\t'))
+                self.load()
+            else:
+                for i in self.inputs:
+                    i.execute(inputs=inputs, output=output, load_targets=load_targets)
+    
+                args, kwargs = self.map_inputs()
+                logging.info('Running\n\t%s' % str(self).replace('\n','\n\t'))
+                self.set_result(self.run(*args, **kwargs))
+    
+        if self == output:
+            self.dump()
+            util.touch(self._target_filename)
+
+        return self.get_result()
+
     @cached_property
     def _hasher(self):
         # TODO: check to make sure configure_yaml has been called!
@@ -124,15 +129,15 @@ class Step(object):
 
     @cached_property
     def _digest(self):
+        """ Returns this Step's unique hash, which identifies the 
+        Step's dump on disk. Depends on the constructor's kwargs. """
         return base64.urlsafe_b64encode(self._hasher.digest())
 
     @cached_property
     def named_steps(self):
-        """
+        """ 
         returns a dictionary of name: step pairs
         recursively searches self and inputs
-        doesn't use a visited set so that it can be a property, 
-            also seems faster this way (needs testing)
         """
         named = {}
 
@@ -151,6 +156,9 @@ class Step(object):
         return named
 
     def get_input(self, name):
+        """
+        Searches the inputs tree for a step of the given name
+        """
         for i in self.inputs:
             step = i.get_input(name)
             if step is not None:
@@ -167,11 +175,17 @@ class Step(object):
 
     @cached_property
     def named_arguments(self):
+        """
+        Returns a dictionary of (name, kwarg): value pairs where
+            name is the name of a step
+            kwarg is an argument name
+            value is the value of the argument
+        """
         d = dict()
         named = self.named_steps
 
         for name, step in named.iteritems():
-            for k,v in step.get_arguments().iteritems():
+            for k,v in step.get_arguments(inputs=False).iteritems():
                 d[(name, k)] = v
 
         return d
@@ -179,6 +193,11 @@ class Step(object):
     # returns a shallow copy of _kwargs
     # any argument specified is excluded if False
     def get_arguments(self, **include):
+        """
+        return a shallow copy of self._kwargs
+        passing {key}=False will pop the {key} from the dict
+        e.g. get_arguments(inputs=False) returns all keywords except inputs
+        """
         d = dict(self._kwargs)
 
         for k in include:
@@ -242,23 +261,23 @@ class Step(object):
         return hasattr(self, '_result')
     
     @cached_property
-    def _target_dirname(self):
-        if BASEDIR is None:
-            raise ValueError('BASEDIR not initialized')
+    def _output_dirname(self):
+        if OUTPUTDIR is None:
+            raise ValueError('drain.step.OUTPUTDIR not set')
 
-        return os.path.join(BASEDIR, self.__class__.__name__, self._digest[0:8])
-
-    @cached_property
-    def _target_yaml_filename(self):
-        return os.path.join(self._target_dirname, 'step.yaml')
+        return os.path.join(OUTPUTDIR, self.__class__.__name__, self._digest[0:8])
 
     @cached_property
-    def _target_dump_dirname(self):
-        return os.path.join(self._target_dirname, 'dump')
+    def _yaml_filename(self):
+        return os.path.join(self._output_dirname, 'step.yaml')
+
+    @cached_property
+    def _dump_dirname(self):
+        return os.path.join(self._output_dirname, 'dump')
 
     @cached_property
     def _target_filename(self):
-        return os.path.join(self._target_dirname, 'target')
+        return os.path.join(self._output_dirname, 'target')
         
     def run(self, *args, **kwargs):
         raise NotImplementedError
@@ -266,8 +285,11 @@ class Step(object):
     def is_target(self):
         return self._target
     
-    def load(self, **kwargs):
-        hdf_filename = os.path.join(self._target_dirname, 'dump', 'result.h5')
+    def load(self):
+        """
+        Load this step's result from its dump directory
+        """
+        hdf_filename = os.path.join(self._dump_dirname, 'result.h5')
         if os.path.isfile(hdf_filename):
             store = pd.HDFStore(hdf_filename)
             keys = store.keys()
@@ -281,15 +303,23 @@ class Step(object):
                     self.set_result({k[1:]:store[k] for k in keys})
                 
         else:
-            self.set_result(joblib.load(os.path.join(self._target_dirname, 'dump', 'result.pkl')))
+            self.set_result(joblib.load(os.path.join(self._output_dirname, 'dump', 'result.pkl')))
 
     def setup_dump(self):
-        dumpdir = self._target_dump_dirname
+        """
+        Set up dump, creating directories and writing step.yaml file 
+        containing yaml dump of this step.
+
+        {OUTPUTDIR}/{self._digest}/
+            step.yaml
+            dump/
+        """
+        dumpdir = self._dump_dirname
         if not os.path.isdir(dumpdir):
             os.makedirs(dumpdir)
             
         dump = False
-        yaml_filename = self._target_yaml_filename
+        yaml_filename = self._yaml_filename
         
         if not os.path.isfile(yaml_filename):
             dump = True
@@ -307,7 +337,7 @@ class Step(object):
         self.setup_dump()
         result = self.get_result()
         if isinstance(result, pd.DataFrame):
-            result.to_hdf(os.path.join(self._target_dump_dirname, 'result.h5'), 'df')
+            result.to_hdf(os.path.join(self._dump_dirname, 'result.h5'), 'df')
         elif hasattr(result, '__iter__') and is_dataframe_collection(result):
             if not isinstance(result, dict):
                 keys = map(str, range(len(result)))
@@ -316,14 +346,14 @@ class Step(object):
                 keys = result.keys()
                 values = result.values()
 
-            store = pd.HDFStore(os.path.join(self._target_dump_dirname, 'result.h5'))
+            store = pd.HDFStore(os.path.join(self._dump_dirname, 'result.h5'))
             # ignore NaturalNameWarning
             with warnings.catch_warnings():
                 warnings.simplefilter('ignore', category=NaturalNameWarning)
                 for key, df in zip(keys, values):
                     store.put(key, df, mode='w')
         else:
-            joblib.dump(self.get_result(), os.path.join(self._target_dump_dirname, 'result.pkl'))
+            joblib.dump(self.get_result(), os.path.join(self._dump_dirname, 'result.pkl'))
 
     def __repr__(self):
         class_name = self.__class__.__name__

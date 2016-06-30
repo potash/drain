@@ -16,7 +16,7 @@ from datetime import date
 def drain_setup(request):
     # use a temporary dir
     tmpdir = tempfile.mkdtemp()
-    step.BASEDIR = tmpdir
+    step.OUTPUTDIR = tmpdir
     # configure for yaml dumping/serialization
     drain.yaml.configure()
     def fin():

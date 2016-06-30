@@ -1,5 +1,6 @@
 import sys
 import os
+from os.path import dirname
 import logging
 
 import drain.step
@@ -13,7 +14,7 @@ def is_step(filename):
 
 # given the filename of a step or a target, load it
 def get_step(filename):
-    yaml_filename = os.path.join(os.path.dirname(filename), 'step.yaml')
+    yaml_filename = os.path.join(dirname(filename), 'step.yaml')
     return drain.yaml.load(yaml_filename)
 
 if len(sys.argv) == 1:
@@ -21,9 +22,7 @@ if len(sys.argv) == 1:
 
 args = sys.argv[1:]
 
-basedir = os.path.dirname(os.path.dirname(os.path.dirname(args[0])))
-
-drain.step.BASEDIR = basedir
+drain.step.OUTPUTDIR = dirname(dirname(dirname(args[0])))
 drain.yaml.configure()
 
 if is_target(args[0]):
@@ -41,4 +40,4 @@ for i in args[1:]:
     if is_step(i) or is_target(i):
         inputs.append(get_step(i))
 
-drain.step.run(step=step, output=output, inputs=inputs)
+step.execute(output=output, inputs=inputs)
