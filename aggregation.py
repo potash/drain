@@ -11,36 +11,44 @@ class AggregationBase(Step):
     AggregationBase uses aggregate.Aggregator to aggregate data. It can include aggregations over multiple indexes and multiple data transformations (e.g. subsets). The combinations can be run in parallel and can be returned disjoint or concatenated. Finally the results may be pivoted and joined to other datasets.
     """
     def __init__(self, insert_args, aggregator_args, concat_args, 
-            parallel=False, target=False, prefix=None, **kwargs):
+            parallel=False, parallel_targets=False, prefix=None, **kwargs):
         """
-        insert_args: collection of argument names to insert into results
-        aggregator_args: collection of argument names to pass 
-                to get_aggregator
-        concat_args: collection of argument names on which to 
+        Args:
+            insert_args: collection of argument names to insert
+                into results
+            aggregator_args: collection of argument names to pass to 
+                get_aggregator
+            concat_args: collection of argument names on which to 
                 concatenate results. Typically a subset (or equal 
                 to) aggregator_args.
-
+            parallel: whether to distribute the aggregation over 
+                many inputs. uses self._parallel_kwargs to determine how
+                to distribute.
+            parallel_target: whether to make the parallel inputs targets
+            prefix: used as a prefix for feature names by join()
         """
         Step.__init__(self, 
                 insert_args=insert_args, 
                 concat_args=concat_args, 
                 aggregator_args=aggregator_args, 
                 prefix=prefix, 
-                parallel=parallel, **kwargs)
+                parallel=parallel, 
+                parallel_targets=parallel_targets, 
+                **kwargs)
 
         if parallel:
-            # when parallel=True don't cache this but parents
             inputs = self.inputs if hasattr(self, 'inputs') else []
             self.inputs = []
             # create a new Aggregation according to parallel_kwargs
             # pass our input to those steps
             # those become the inputs to this step
-            for kwargs in self.parallel_kwargs:
-                a = self.__class__(parallel=False, 
-                        target=self._target, 
-                        inputs=inputs, **kwargs)
+            pkwargs = self.get_arguments()
+            pkwargs.update(parallel=False, inputs=inputs, 
+                    target=parallel_targets)
+            for pk in self._parallel_kwargs:
+                pkwargs.update(pk)
+                a = self.__class__(**pkwargs)
                 self.inputs.append(a)
-            self._target = False
 
         self._aggregators = {}
     
@@ -48,10 +56,6 @@ class AggregationBase(Step):
         arguments is a list of dictionaries of argument names and values.
         it must include the special 'index' argument, whose values are keys to plug into the self.indexes dictionary, whose values are the actual index
         the index is used for aggregation its index name is used to prefix the results
-        """
-        """
-        called by __init__ when parallel=True
-        to get keyword args to pass to parallelized inputs
         """
     @property
     def argument_names(self):
@@ -202,7 +206,6 @@ class SpacetimeAggregationJoin(AggregationJoin):
         AggregationJoin.__init__(self, lag=lag, inputs=inputs, **kwargs)
 
     def run(self, left, aggregation):
-        #import pdb; pdb.set_trace()
         if self.lag is not None:
             delta = data.parse_delta(self.lag)
             for a in aggregation:
@@ -232,7 +235,10 @@ class SimpleAggregation(AggregationBase):
         return Aggregator(self.inputs[0].get_result(), self.aggregates)
 
     @property
-    def parallel_kwargs(self):
+    def _parallel_kwargs(self):
+        """
+        Returns: a list of kwargs for each parallel input
+        """
         return [{'indexes': {name:index}} for name,index in self.indexes.iteritems()]
 
     @property
@@ -289,7 +295,7 @@ class SpacetimeAggregation(AggregationBase):
         return a
 
     @property
-    def parallel_kwargs(self):
+    def _parallel_kwargs(self):
         return [{'spacedeltas':self.spacedeltas, 'dates':[date]} for date in self.dates]
 
     def join(self, left):
