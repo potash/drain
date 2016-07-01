@@ -8,7 +8,11 @@ import logging
 
 class AggregationBase(Step):
     """
-    AggregationBase uses aggregate.Aggregator to aggregate data. It can include aggregations over multiple indexes and multiple data transformations (e.g. subsets). The combinations can be run in parallel and can be returned disjoint or concatenated. Finally the results may be pivoted and joined to other datasets.
+    AggregationBase uses aggregate.Aggregator to aggregate data. 
+    It can include aggregations over multiple indexes and multiple data 
+    transformations (e.g. subsets). The combinations can be run in 
+    parallel and can be returned disjoint or concatenated. Finally 
+    the results may be pivoted and joined to other datasets.
     """
     def __init__(self, insert_args, aggregator_args, concat_args, 
             parallel=False, parallel_targets=False, prefix=None, **kwargs):
@@ -24,7 +28,7 @@ class AggregationBase(Step):
             parallel: whether to distribute the aggregation over 
                 many inputs. uses self._parallel_kwargs to determine how
                 to distribute.
-            parallel_target: whether to make the parallel inputs targets
+            parallel_targets: whether to make the parallel inputs targets
             prefix: used as a prefix for feature names by join()
         """
         Step.__init__(self, 
@@ -54,8 +58,9 @@ class AggregationBase(Step):
     
         """
         arguments is a list of dictionaries of argument names and values.
-        it must include the special 'index' argument, whose values are keys to plug into the self.indexes dictionary, whose values are the actual index
-        the index is used for aggregation its index name is used to prefix the results
+        it must include the special 'index' argument, whose values are 
+        keys to plug into the self.indexes dictionary, whose values are 
+        the actual index that is passed to Aggregator.aggregate() 
         """
     @property
     def argument_names(self):
@@ -177,7 +182,10 @@ class AggregationBase(Step):
         """
         Given the arguments, return an aggregator
 
-        This method exists to allow subclasses to use Aggregator objects efficiently, i.e. only apply AggregateSeries once per set of Aggregates. If the set of Aggregates depends on some or none of the arguments the subclass need not recreate Aggregators
+        This method exists to allow subclasses to use Aggregator objects 
+        efficiently, i.e. only apply AggregateSeries once per set of 
+        Aggregates. If the set of Aggregates depends on some or none of 
+        the arguments the subclass need not recreate Aggregators
         """
         raise NotImplementedError
 
@@ -219,7 +227,8 @@ class SimpleAggregation(AggregationBase):
     """
     A simple AggreationBase subclass with a single aggregrator
     The only argument is the index
-    An implementation need only define an aggregates attributes, see test_aggregation.SimpleCrimeAggregation for an example.
+    An implementation need only define an aggregates attributes, see 
+    test_aggregation.SimpleCrimeAggregation for an example.
     """
     def __init__(self, indexes, **kwargs):
         # if indexes was not a dict but a list, make it a dict
@@ -265,7 +274,8 @@ class SpacetimeAggregation(AggregationBase):
         self.date_column = date_column
 
         """
-        spacedeltas is a dict of the form {name: (index, deltas)} where deltas is an array of delta strings
+        spacedeltas is a dict of the form {name: (index, deltas)} 
+            where deltas is an array of delta strings
         dates are end dates for the aggregators
         """
         AggregationBase.__init__(self,
