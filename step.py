@@ -43,7 +43,7 @@ def load(steps):
     return loaded
 
 class Step(object):
-    def __new__(cls, name=None, target=False, *args, **kwargs):
+    def __new__(cls, *args, **kwargs):
         # use inspection to handle positional argument names
         # default argument values
         argspec = inspect.getargspec(cls.__init__)
@@ -62,25 +62,15 @@ class Step(object):
         kwargs = dargs
 
         obj = object.__new__(cls, **kwargs)
-
-        # name and target are special because a Step's result 
-        # is independent of their values.
         obj._kwargs =  kwargs
-        obj._name = name
-        obj._target = target
 
         return obj
 
-    def __init__(self, **kwargs):
-        for k in kwargs:
-            setattr(self, k, kwargs[k])
-        
-        # avoid overriding inputs if it was set somewhere else
-        if not hasattr(self, 'inputs'):
-            self.inputs = []
-
-        if not hasattr(self, 'dependencies'):
-            self.dependencies = []
+    def __init__(self):
+        self.target = False
+        self.name = None
+        self.inputs = []
+        self.dependencies = []
 
     def execute(self, inputs=None, output=None, load_targets=False):
         """ 
