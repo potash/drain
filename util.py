@@ -437,27 +437,6 @@ def capture_print(f, *args):
     sys.stdout = stdout_
     return stream.getvalue()
 
-class Callable(object):
-    """Helper class to wrap functions and lambdas, so that
-    they can be cashed.
-    Lambda functions are hashed based on their bytecode, while 
-    standard functions use their regular hash value.
-    """
-    def __init__(self, func):
-        self.func = func
-    def __hash__(self):
-        # anonymous functions can only be hashed based on their bytecode
-        if isinstance(self.func, types.LambdaType):
-            return hash(capture_print(dis.dis, self.func))
-        return hash(self.func)
-    def __eq__(self, other):
-        return hash(self) == hash(other)
-    def __call__(self, *args, **kwargs):
-        return self.func(*args, **kwargs)
-    def __repr__(self):
-        return self.func.__repr__()
-
-
 # TODO: use this for a global step cache
 from functools import wraps
 
