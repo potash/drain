@@ -87,3 +87,20 @@ def test_proportion(small_df):
     ag = ag.reindex_axis(sorted(ag.columns), axis=1)
     df.index.name = 'name'
     assert_frame_equal(ag, df)
+
+def test_lambda_counts(small_df):
+    
+    aggregates = [Count([lambda x,c=c: x.score+c for c in range(2)],
+                         name=['lambdaname_%d'%c for c in range(2)])]
+
+    ag = Aggregator(small_df, aggregates).aggregate('name')
+
+    df = pd.DataFrame({'lambdaname_0_count':[0.3, 0.4, 1.0],
+                       'lambdaname_1_count':[2.3, 1.4, 2.0]},
+                        index=['Anne','Ben','Charlie'], dtype=np.float32)
+
+    df = df.reindex_axis(sorted(df.columns), axis=1)
+    ag = ag.reindex_axis(sorted(ag.columns), axis=1)
+    df.index.name = 'name'
+    assert_frame_equal(ag, df)
+
