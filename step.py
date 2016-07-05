@@ -28,7 +28,6 @@ from drain import util
 
 OUTPUTDIR=None
 
-
 def load(steps):
     """
     safely load steps, excluding those that fail
@@ -66,15 +65,16 @@ class Step(object):
 
         return obj
 
-    def __init__(self, **kwargs):
+    def __init__(self, inputs=None, dependencies=None, **kwargs):
+        """
+        initialize name and target attributes 
+        and set all arguments as attributes
+        """
         self.target = False
         self.name = None
 
-        if 'inputs' not in kwargs:
-            kwargs['inputs'] = []
-
-        if 'dependencies' not in kwargs:
-            kwargs['dependencies'] = []
+        self.inputs = inputs if inputs is not None else []
+        self.dependencies = dependencies if dependencies is not None else []
 
         for k,v in kwargs.iteritems():
             setattr(self,k,v)

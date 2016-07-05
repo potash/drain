@@ -23,7 +23,7 @@ from drain.step import Step
 
 class ClassificationData(Step):
     def run(self):
-        X,y = datasets.make_classification(**self.get_arguments())
+        X,y = datasets.make_classification(**self.get_arguments(inputs=False, inputs_mapping=False, dependencies=False))
         X,y = pd.DataFrame(X), pd.Series(y)
 
         train = np.zeros(len(X), dtype=bool)
@@ -234,33 +234,6 @@ def train_test_subset(df, train, test, drop=False):
     test = test.loc[df.index]
 
     return df, train, test
-
-# returns endogenous and exogenous variables
-# normalization requires imputation (can't normalize null values)
-# training mask is used for normalization
-def Xy(df, y_column, include=None, exclude=None, train=None, category_classes={}):
-    y = df[y_column]
-    exclude.add(y_column)
-
-    X = select_features(df=df, exclude=exclude, include=include)
-    
-    X = binarize(X, category_classes)
-
-    #nulcols = null_columns(X, train)
-    #if len(nulcols) > 0:
-    #    print 'Warning: null columns ' + str(nulcols)
-    
-    #nonnum = non_numeric_columns(X)
-    #if len(nonnum) > 0:
-    #    print 'Warning: non-numeric columns ' + str(nonnum)
-
-    X = X.astype(np.float32, copy=False)
-
-    #inf = infinite_columns(X)
-    #if len(inf) > 0:
-    #    print 'Warning: columns contain infinite values' + str(inf)
-    
-    return (X,y)
 
 def normalize(X, train=None):
     Xfit = X[train] if train is not None else X

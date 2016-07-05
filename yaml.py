@@ -21,7 +21,7 @@ class StepTemplate(object):
     # it's important that this is cached so that multiple calls to step return the same Step object
     @cached_property
     def step(self):
-        if 'inputs' in self.kwargs:
+        if 'inputs' in self.kwargs and self.kwargs['inputs'] is not None:
             self.kwargs['inputs'] = [t.step for t in self.kwargs['inputs']]
 
         return self._cls(**self.kwargs)
