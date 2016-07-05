@@ -66,11 +66,18 @@ class Step(object):
 
         return obj
 
-    def __init__(self):
+    def __init__(self, **kwargs):
         self.target = False
         self.name = None
-        self.inputs = []
-        self.dependencies = []
+
+        if 'inputs' not in kwargs:
+            kwargs['inputs'] = []
+
+        if 'dependencies' not in kwargs:
+            kwargs['dependencies'] = []
+
+        for k,v in kwargs.iteritems():
+            setattr(self,k,v)
 
     def execute(self, inputs=None, output=None, load_targets=False):
         """ 
@@ -95,7 +102,7 @@ class Step(object):
             inputs = []
     
         if not self.has_result():
-            if self in inputs or (load_targets and self.is_target()):
+            if self in inputs or (load_targets and self.target):
                 logging.info('Loading\n\t%s' % str(self).replace('\n','\n\t'))
                 self.load()
             else:
@@ -137,11 +144,10 @@ class Step(object):
                     raise NameError('Multiple steps with the same name: %s' % name)
                 named[name] = step
         
-        if self.has_name():
-            name = self.get_name()
-            if name in named and named[name] != self:
+        if self.name:
+            if self.name in named and named[self.name] != self:
                 raise NameError('Multiple steps with the same name: %s' % name)
-            named[name] = self
+            named[self.name] = self
 
         return named
 
@@ -154,14 +160,8 @@ class Step(object):
             if step is not None:
                 return step
 
-        if self.get_name() == name:
+        if self.name == name:
             return self
-
-    def get_name(self):
-        return self._name
-
-    def has_name(self):
-        return self._name is not None
 
     @cached_property
     def named_arguments(self):
@@ -271,9 +271,6 @@ class Step(object):
         
     def run(self, *args, **kwargs):
         raise NotImplementedError
-    
-    def is_target(self):
-        return self._target
     
     def load(self):
         """

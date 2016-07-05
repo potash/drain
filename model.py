@@ -17,6 +17,7 @@ from drain.step import Step, Construct
 
 class FitPredict(Step):
     def __init__(self, return_estimator=False, return_feature_importances=True, return_predictions=True, prefit=False, **kwargs):
+
         Step.__init__(self, return_estimator=return_estimator,
                 return_feature_importances=return_feature_importances,
                 return_predictions=return_predictions, prefit=prefit,

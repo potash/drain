@@ -8,7 +8,7 @@ from drain.util import StringIO
 # used below by get_input_targets and get_output_targets
 def get_targets(step, ignore):
     outputs = set()
-    if not ignore and step.is_target():
+    if not ignore and step.target:
         outputs.add(step)
     else:
         for i in step.inputs:
@@ -50,7 +50,7 @@ def to_drake_step(inputs, output):
         i.append(source)
 
     output_str = '%' + output.__class__.__name__
-    if output.is_target():
+    if output.target:
         output_str += ', ' + os.path.join(output._target_filename)
     return '{output} <- {inputs} [method:drain]\n\n'.format(output=output_str, inputs=str.join(', ', i))
 
