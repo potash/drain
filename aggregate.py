@@ -42,7 +42,6 @@ import pandas as pd
 import numpy as np
 
 from drain import util, data
-from drain.util import Callable
 
 class Column(object):
     """Defines a new or existing column that can be calculated from a dataframe.
@@ -63,10 +62,7 @@ class Column(object):
             astype (Pandas dtype): A Pandas datatype to which the
                 resulting pd.Series will be converted to.
         """
-        if hasattr(definition, '__call__'):
-            self.definition = Callable(definition)
-        else:
-            self.definition = definition
+        self.definition = definition
         self.astype = astype
 
     def apply(self, df):
@@ -101,8 +97,8 @@ class ColumnReduction(object):
         if not isinstance(column, Column):
             raise ValueError("ColumnReduction needs a Column")
         self.column = column
-        # wrap callables in Callable
-        self.agg_func = Callable(agg_func) if hasattr(agg_func, '__call__') else agg_func 
+        self.agg_func = agg_func
+
         if isinstance(agg_func, basestring) and self.column.astype is None:
             self.column.astype = np.float32
     def __hash__(self):
