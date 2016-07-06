@@ -44,21 +44,9 @@ def load(steps):
 class Step(object):
     def __new__(cls, *args, **kwargs):
         # use inspection to handle positional argument names
-        # default argument values
         argspec = inspect.getargspec(cls.__init__)
-        argnames = argspec.args
-
-        # get the constructor's default args
-        defaults = argspec.defaults
-        dargs = dict(zip(argnames[-len(defaults):],defaults)) if defaults else {}
-
-        # get the names corresponding to positional args
-        nargs = zip(argnames[:len(args)], args)
-        dargs.update(nargs)
-
-        # override default args with kwargs 
-        dargs.update(kwargs)
-        kwargs = dargs
+        nargs = zip(argspec.args[:len(args)], args)
+        kwargs.update(nargs)
 
         obj = object.__new__(cls, **kwargs)
         obj._kwargs =  kwargs
@@ -144,7 +132,7 @@ class Step(object):
                     raise NameError('Multiple steps with the same name: %s' % name)
                 named[name] = step
         
-        if self.name:
+        if self.name is not None:
             if self.name in named and named[self.name] != self:
                 raise NameError('Multiple steps with the same name: %s' % name)
             named[self.name] = self
