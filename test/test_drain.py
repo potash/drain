@@ -5,6 +5,22 @@
 from drain import step, model, data
 from itertools import product
 
+def grid_search():
+    d = data.ClassificationData(n_samples=1000, n_features=100)
+    d.target = True
+
+    models = []
+    for n_estimators in range(1,11):
+        est = step.Construct(_class_name='sklearn.ensemble.RandomForestClassifier',
+                n_estimators=n_estimators)
+        est.name = 'estimator'
+
+        m = model.FitPredict(inputs=[est, d])
+        m.target = True
+        models.append(m)
+
+    return models
+
 def calibration():
     steps = []
     for n_estimators, k_folds in product(range(50,300,100), [2,5]):
@@ -38,7 +54,7 @@ def calibration():
     return steps
 
 def product_model():
-    d = data.ClassificationData(target=True, n_samples=1000, n_features=100)
+    d = data.ClassificationData(n_samples=1000, n_features=100)
     d.target = True
 
     est = step.Construct(_class_name='sklearn.ensemble.RandomForestClassifier',
