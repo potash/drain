@@ -140,8 +140,6 @@ class LogisticRegression(object):
     def predict_proba(self, X):
         return self.result.predict(X)
 
-from sklearn.externals.joblib import Parallel, delayed
-from sklearn.ensemble.forest import _parallel_helper
 
 def _proximity_parallel_helper(train_nodes, t, k):
     d = (train_nodes == t).sum(axis=1)
@@ -150,6 +148,9 @@ def _proximity_parallel_helper(train_nodes, t, k):
     return d[n], n #distance, neighbors
 
 def _proximity_helper(train_nodes, test_nodes, k):
+    from sklearn.ensemble.forest import _parallel_helper
+    from sklearn.externals.joblib import Parallel, delayed
+
     results = Parallel(n_jobs=16, backend='threading')(delayed(_proximity_parallel_helper)(train_nodes, t, k) for t in test_nodes)
     distance, neighbors = zip(*results)
     return np.array(distance), np.array(neighbors)
