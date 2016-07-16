@@ -2,6 +2,5 @@
 !.gitignore
 *.pyc
 test/output/
-notebooks/
 env/
 drake.log
