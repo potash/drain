@@ -92,3 +92,9 @@ def to_drakefile(steps, preview=True, debug=False, input_drakefile=None):
         drakefile.write(to_drake_step(inputs, output))
 
     return drakefile.getvalue()
+
+def is_target_filename(filename):
+    return filename.endswith('/target')
+
+def is_step_filename(filename):
+    return filename.endswith('/step.yaml')

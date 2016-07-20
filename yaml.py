@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 import yaml
+import os
 
 from cached_property import cached_property
 from drain import util
@@ -7,9 +8,12 @@ from drain.step import Step
 
 def load(filename):
     """
-    Load step from file via template
+    Load step from yaml file (via template)
+    Args:
+        filename: a target or step.yaml filename
     """
-    with open(filename) as f:
+    yaml_filename = os.path.join(os.path.dirname(filename), 'step.yaml')
+    with open(yaml_filename) as f:
         template = yaml.load(f)
         return template.step
 
