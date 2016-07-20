@@ -17,7 +17,7 @@ from collections import Counter
 import matplotlib.colors
 from matplotlib import cm
 
-from . import model, util, metrics
+from drain import model, util, metrics
 
 def to_dataframe(steps):
     """
