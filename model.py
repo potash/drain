@@ -16,7 +16,16 @@ from drain.util import merge_dicts
 from drain.step import Step, Construct
 
 class FitPredict(Step):
+    """
+    Step which can fit a scikit-learn estimator and make predictions.
+    """
     def __init__(self, return_estimator=False, return_feature_importances=True, return_predictions=True, prefit=False, **kwargs):
+        """
+        Args:
+            return_estimator: whether or not to return the fitted estimator object
+            return_feature_importances: whether or not to return a DataFrame of feature names and their importances
+            prefit: whether the estimator input is already fitted
+        """
         Step.__init__(self, return_estimator=return_estimator,
                 return_feature_importances=return_feature_importances,
                 return_predictions=return_predictions, prefit=prefit, **kwargs)
@@ -92,6 +101,14 @@ class Fit(FitPredict):
                 kwargs)
         FitPredict.__init__(self, **kwargs)
 
+class Predict(FitPredict):
+    def __init__(self, **kwargs):
+        kwargs = merge_dicts(dict(return_feature_importances=False, 
+                return_predictions=True, prefit=True), kwargs)
+         
+        FitPredict.__init__(self, **kwargs)
+       
+
 class PredictProduct(Step):
     def run(self, **kwargs):
         keys = kwargs.keys()
@@ -103,12 +120,6 @@ class PredictProduct(Step):
 
         return {'y':y}
 
-class Predict(FitPredict):
-    def __init__(self, **kwargs):
-        kwargs = merge_dicts(dict(return_feature_importances=False, 
-                return_predictions=True, prefit=True), kwargs)
-        FitPredict.__init__(self, **kwargs)
-       
 def y_score(estimator, X):
     if hasattr(estimator, 'decision_function'):
         return estimator.decision_function(X)

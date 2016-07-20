@@ -4,9 +4,10 @@ import inspect
 
 from drain.util import StringIO
 
-# returns set of target steps
-# used below by get_input_targets and get_output_targets
 def get_targets(step, ignore):
+    """
+    Recursion helper used by get_input_targets()
+    """
     outputs = set()
     if not ignore and step.is_target():
         outputs.add(step)
@@ -16,14 +17,18 @@ def get_targets(step, ignore):
 
     return outputs
 
-# traverse input tree for closest parent targets
 def get_input_targets(step):
+    """
+    Traverse input tree for closest parent targets
+    """
     return get_targets(step, ignore=True)
 
-# returns a dictionary of outputs mapped to inputs
-# note that an output is either a target
-# or a leaf node in the step tree
 def get_drake_data(steps):
+    """
+    Returns: a dictionary of outputs mapped to inputs
+    Note that an output is either a target or a leaf node in the 
+        step tree
+    """
     output_inputs = {}
     if len(steps) == 0:
         return output_inputs
@@ -38,8 +43,14 @@ def get_drake_data(steps):
 
     return output_inputs
 
-# returns a drake step string for the given inputs and outputs
 def to_drake_step(inputs, output):
+    """
+    Args:
+        inputs: collection of input Steps
+        output: output Step
+
+    Returns: a string of the drake step for the given inputs and output
+    """
     i = [output._yaml_filename]
     i.extend(map(lambda i: i._target_filename, list(inputs)))
     i.extend(output.dependencies)
@@ -57,9 +68,10 @@ def to_drake_step(inputs, output):
 def to_drakefile(steps, preview=True, debug=False, input_drakefile=None):
     """
     Args:
-        steps: collection of drain.step.Step objects to generate drakefile for
-        preview: boolean, when False will create directories for output steps. 
-            When True do not touch filesystem.
+        steps: collection of drain.step.Step objects for which to 
+            generate a drakefile 
+        preview: boolean, when False will create directories for output 
+            steps.  When True do not touch filesystem.
         debug: run python with '-m pdb'
         drakefile: path to drakefile to include
     Returns:

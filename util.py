@@ -48,6 +48,14 @@ def touch(path):
     open(path, 'a').close()
     os.utime(path, None)
 
+def get_subdirs(directory): 
+    """ 
+    Returns: a list of subdirectories of the given directory 
+    """ 
+    return [os.path.join(directory, name)
+    		for name in os.listdir(directory)  
+             		if os.path.isdir(os.path.join(directory, name))] 
+
 def intersect(sets):
     return reduce(lambda a,b: a & b, sets)
 

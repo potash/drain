@@ -5,15 +5,19 @@ from cached_property import cached_property
 from drain import util
 from drain.step import Step
 
-# load step from file via template
 def load(filename):
+    """
+    Load step from file via template
+    """
     with open(filename) as f:
         template = yaml.load(f)
         return template.step
 
-# temporary holder of step arguments
-# useful to get around pyyaml bug: https://bitbucket.org/xi/pyyaml/issues/56/sub-dictionary-unavailable-in-constructor
 class StepTemplate(object):
+    """
+    Temporary holder of step arguments
+    Used to get around pyyaml bug: https://bitbucket.org/xi/pyyaml/issues/56/sub-dictionary-unavailable-in-constructor
+    """
     def __init__(self, _cls, name=None, target=False, **kwargs):
         self._cls = _cls
         self.name = name
@@ -41,5 +45,9 @@ def step_multi_constructor(loader, tag_suffix, node):
     return StepTemplate(_cls=cls, **kwargs)
 
 def configure():
+    """
+    Configures YAML parser for Step serialization and deserialization
+    Called in drain/__init__.py
+    """
     yaml.add_multi_representer(Step, step_multi_representer)
     yaml.add_multi_constructor('!step', step_multi_constructor)

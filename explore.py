@@ -20,6 +20,10 @@ from matplotlib import cm
 from . import model, util, metrics
 
 def to_dataframe(steps):
+    """
+    Args: a collection of Step objects
+    Returns: a DataFrame indexing the steps by their arguments
+    """
     args = [s.named_arguments for s in steps]
     diffs = map(util.dict_expand, util.diff_dicts(args, multilevel=True))
 
@@ -38,8 +42,21 @@ def to_dataframe(steps):
 
     return df
 
-# pairwise returns a dataframe with intersections
 def intersection(df, pairwise=False, **subset_args):
+    """
+    Counts the size of intersections of subsets of predicted examples.
+    E.g. count the overlap between the top k of two different models
+    Args:
+        df: the result of to_dataframe(), Predict steps of length n_steps
+        pairwise: when False, returns the mutual intersection between 
+            all subsets. Otherwise returns an n_steps x n_steps matrix 
+            whose i,j entry is the number of examples in the 
+            intersection between the i and j step subsets.
+        **subset_args: arguments to be passed to model.y_subset()
+            for each predict step
+    Returns: the intersection, either an integer, if pairwise is False, 
+        or a DataFrame, otherwise.
+    """
     indexes = map(lambda row: set(model.y_subset(row[1].step.get_result()['y'], **subset_args).index), df.iterrows())
 
     if not pairwise:
@@ -53,7 +70,7 @@ def intersection(df, pairwise=False, **subset_args):
                 r.values[i][j] = len(indexes[i] & indexes[j])
         return r
 
-def apply(df, fn, include_baseline=False,**kwargs):
+def apply(df, fn, **kwargs):
     # make all arguments hashable so they can be column names for result
     df = df.copy()
     non_step = list(df.columns.difference({'step'}))
@@ -63,24 +80,10 @@ def apply(df, fn, include_baseline=False,**kwargs):
 
     result = df.set_index(non_step)['step'].apply(lambda step: fn(step, **kwargs)).T
 
-
-    if include_baseline:
-        baseline_kwargs = util.dict_subset(kwargs, 
-                ['dropna', 'outcome', 'score', 'query'])
-        result['baseline'] = model.baseline(df.iloc[0]['step'], 
-                **baseline_kwargs)
     return result
 
 def apply_y(df, fn, **kwargs):
     return apply(df, lambda s: fn(model.y_subset(s.get_result()['y'], **kwargs)))
-
-def get_subdirs(directory):
-     return [os.path.join(directory, name) for name in os.listdir(directory) 
-             if os.path.isdir(os.path.join(directory, name))]
-
-# for a given example idx get the series X*\beta
-def get_example_series(run, idx):
-    return pd.DataFrame({'c':(run['data'].X.ix[[idx]].values[0]*run['estimator'].coef_)[0], 'name':run['columns']}).sort('c')
 
 # http://sensitivecities.com/so-youd-like-to-make-a-map-using-python-EN.html
 # Convenience functions for working with colour ramps and bars
