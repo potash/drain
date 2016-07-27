@@ -48,6 +48,14 @@ def touch(path):
     open(path, 'a').close()
     os.utime(path, None)
 
+def get_subdirs(directory): 
+    """ 
+    Returns: a list of subdirectories of the given directory 
+    """ 
+    return [os.path.join(directory, name)
+    		for name in os.listdir(directory)  
+             		if os.path.isdir(os.path.join(directory, name))] 
+
 def intersect(sets):
     return reduce(lambda a,b: a & b, sets)
 
@@ -489,3 +497,15 @@ def cached_class(klass):
     
     return _decorated
 
+def indent(s, n_spaces=2, initial=True):
+    """
+    Indent all new lines
+    Args:
+        n_spaces: number of spaces to use for indentation
+        initial: whether or not to start with an indent
+    """
+    i = ' '*n_spaces
+    t = s.replace('\n','\n%s' % i)
+    if initial:
+        t = i + t
+    return t

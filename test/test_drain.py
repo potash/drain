@@ -5,21 +5,31 @@
 from drain import step, model, data
 from itertools import product
 
-def grid_search():
-    d = data.ClassificationData(n_samples=1000, n_features=100)
-    d.target = True
+def prediction():
+    # generate the data including a training and test split
+    d = data.ClassificationData(target=True, n_samples=1000, n_features=100)
 
-    models = []
-    for n_estimators in range(1,11):
-        est = step.Construct(_class_name='sklearn.ensemble.RandomForestClassifier',
-                n_estimators=n_estimators)
-        est.name = 'estimator'
+    # construct a random forest estimator
+    e = step.Construct('sklearn.ensemble.RandomForestClassifier', n_estimators=1)
+    # fit the estimator
+    f = model.Fit(inputs=[e, d], return_estimator=True, return_feature_importances=True)
+    # make predictions
 
-        m = model.FitPredict(inputs=[est, d])
-        m.target = True
-        models.append(m)
+    p = model.Predict(inputs=[f, d], target=True)
+    return p
 
-    return models
+def n_estimators_search():
+    d = data.ClassificationData(target=True, n_samples=1000, n_features=100)
+    
+    predict = []
+    for n_estimators in range(1, 4):
+        e = step.Construct('sklearn.ensemble.RandomForestClassifier', n_estimators=n_estimators, name = 'estimator')
+        f = model.Fit(inputs=[e, d], return_estimator=True, return_feature_importances=True)
+
+        p = model.Predict(inputs=[f, d], target=True)
+        predict.append(p)
+        
+    return predict
 
 def calibration():
     steps = []

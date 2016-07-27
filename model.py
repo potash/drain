@@ -11,13 +11,21 @@ import numpy as np
 from sklearn.externals import joblib
 from sklearn.base import _pprint
 
-from . import util, metrics
+from drain import util, metrics
 from drain.util import merge_dicts
 from drain.step import Step, Construct
 
 class FitPredict(Step):
+    """
+    Step which can fit a scikit-learn estimator and make predictions.
+    """
     def __init__(self, return_estimator=False, return_feature_importances=True, return_predictions=True, prefit=False, **kwargs):
-
+        """
+        Args:
+            return_estimator: whether or not to return the fitted estimator object
+            return_feature_importances: whether or not to return a DataFrame of feature names and their importances
+            prefit: whether the estimator input is already fitted
+        """
         Step.__init__(self, return_estimator=return_estimator,
                 return_feature_importances=return_feature_importances,
                 return_predictions=return_predictions, prefit=prefit,
@@ -94,6 +102,14 @@ class Fit(FitPredict):
                 kwargs)
         FitPredict.__init__(self, **kwargs)
 
+class Predict(FitPredict):
+    def __init__(self, **kwargs):
+        kwargs = merge_dicts(dict(return_feature_importances=False, 
+                return_predictions=True, prefit=True), kwargs)
+         
+        FitPredict.__init__(self, **kwargs)
+       
+
 class PredictProduct(Step):
     def run(self, **kwargs):
         keys = kwargs.keys()
@@ -105,12 +121,6 @@ class PredictProduct(Step):
 
         return {'y':y}
 
-class Predict(FitPredict):
-    def __init__(self, **kwargs):
-        kwargs = merge_dicts(dict(return_feature_importances=False, 
-                return_predictions=True, prefit=True), kwargs)
-        FitPredict.__init__(self, **kwargs)
-       
 def y_score(estimator, X):
     if hasattr(estimator, 'decision_function'):
         return estimator.decision_function(X)
@@ -142,8 +152,6 @@ class LogisticRegression(object):
     def predict_proba(self, X):
         return self.result.predict(X)
 
-from sklearn.externals.joblib import Parallel, delayed
-from sklearn.ensemble.forest import _parallel_helper
 
 def _proximity_parallel_helper(train_nodes, t, k):
     d = (train_nodes == t).sum(axis=1)
@@ -152,6 +160,9 @@ def _proximity_parallel_helper(train_nodes, t, k):
     return d[n], n #distance, neighbors
 
 def _proximity_helper(train_nodes, test_nodes, k):
+    from sklearn.ensemble.forest import _parallel_helper
+    from sklearn.externals.joblib import Parallel, delayed
+
     results = Parallel(n_jobs=16, backend='threading')(delayed(_proximity_parallel_helper)(train_nodes, t, k) for t in test_nodes)
     distance, neighbors = zip(*results)
     return np.array(distance), np.array(neighbors)

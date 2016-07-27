@@ -21,6 +21,48 @@ from sklearn.utils.validation import _assert_all_finite
 
 from drain.step import Step
 
+class Column(object):
+    """Defines a new or existing column that can be calculated from a dataframe.
+
+    Column accepts as ``definition`` a string that refers to an 
+    existing column, or a lambda function that returns a pd.Series,
+    or a constant, in which case it creates a pd.Series of that constant.
+
+    Columns are hashed based on their definition and type.
+    """
+
+    def __init__(self, definition, astype=None):
+        """Args:
+            definition ({str, function, constant}): Specifies a 
+                new column (that is, a pd.Series) from a dataframe.
+                It can be a function, an existing column name, or a
+                constant (that will be replicated along rows).
+            astype (Pandas dtype): A Pandas datatype to which the
+                resulting pd.Series will be converted to.
+        """
+        self.definition = definition
+        self.astype = astype
+
+    def apply(self, df):
+        """Takes a pd.DataFrame and returns the newly defined column, i.e.
+        a pd.Series that has the same index as `df`.
+        """
+        if hasattr(self.definition, '__call__'):
+            r =  self.definition(df)
+        elif self.definition in df.columns:
+            r = df[self.definition]
+        elif not isinstance(self.definition, basestring):
+            r = pd.Series(self.definition, index=df.index)
+        else:
+            raise ValueError("Invalid column definition: %s"%str(self.definition))
+        return r.astype(self.astype) if self.astype else r
+
+    def __hash__(self):
+        return hash((self.definition, self.astype))
+    def __eq__(self, other):
+        return hash(self) == hash(other)
+  
+
 class ClassificationData(Step):
     def run(self):
         X,y = datasets.make_classification(**self.get_arguments(inputs=False, inputs_mapping=False, dependencies=False))

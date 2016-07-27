@@ -6,7 +6,6 @@ import sys
 import itertools
 import pandas as pd
 from cached_property import cached_property
-from pprint import pformat
 
 try:
     import StringIO
@@ -16,6 +15,7 @@ except ImportError:
 from sklearn.base import _pprint
 import joblib
 import os
+import traceback
 import base64
 import hashlib
 import itertools
@@ -38,6 +38,7 @@ def load(steps):
             s.load()
             loaded.append(s)
         except:
+            logging.warn('Error during step load:\n%s' % util.indent(traceback.format_exc()))
             pass
     return loaded
 
@@ -90,15 +91,15 @@ class Step(object):
             inputs = []
     
         if not self.has_result():
-            if self in inputs or (load_targets and self.target):
-                logging.info('Loading\n\t%s' % str(self).replace('\n','\n\t'))
+            if self in inputs or (load_targets and self.is_target()):
+                logging.info('Loading\n%s' % util.indent(str(self)))
                 self.load()
             else:
                 for i in self.inputs:
                     i.execute(inputs=inputs, output=output, load_targets=load_targets)
     
                 args, kwargs = self.map_inputs()
-                logging.info('Running\n\t%s' % str(self).replace('\n','\n\t'))
+                logging.info('Running\n%s' % util.indent(str(self)))
                 self.set_result(self.run(*args, **kwargs))
     
         if self == output:

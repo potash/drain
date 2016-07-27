@@ -1,3 +1,4 @@
 cached_property
 repoze.lru
 joblib
+sqlalchemy
