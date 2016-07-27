@@ -89,6 +89,7 @@ def to_drakefile(steps, preview=True, debug=False, input_drakefile=None):
         if not preview:
             output.setup_dump()
 
+        drakefile.write(';' + output.__repr__().replace('\n', '\n;') + '\n')
         drakefile.write(to_drake_step(inputs, output))
 
     return drakefile.getvalue()
