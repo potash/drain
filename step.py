@@ -277,7 +277,7 @@ class Step(object):
         """
         hdf_filename = os.path.join(self._dump_dirname, 'result.h5')
         if os.path.isfile(hdf_filename):
-            store = pd.HDFStore(hdf_filename)
+            store = pd.HDFStore(hdf_filename, mode='r')
             keys = store.keys()
             if keys == ['/df']:
                 self.set_result(store['df'])
