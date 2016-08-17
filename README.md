@@ -30,7 +30,7 @@ Drain builds on drake and adds:
  or feature subsets.
 
 3. Finally, `drain` keeps track not only of file timestamps, 
- but also of each step's parameters (it's 'signature'). If you change some 
+ but also of each step's parameters (its 'signature'). If you change some 
  setting in one of your data processing steps, then `drain` will run all
  those follow-up steps that are affected by this change.
 
