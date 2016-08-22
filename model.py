@@ -256,7 +256,7 @@ def lift_series(predict_step, **kwargs):
 
     # pass everything except k or p to baseline
     b_kwargs = {k:v for k,v in kwargs.items() if k not in ('k', 'p')}
-    b = baseline(predict_step, **kwargs)
+    b = baseline(predict_step, **b_kwargs)
 
     return p/b 
 
