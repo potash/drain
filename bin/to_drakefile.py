@@ -2,6 +2,7 @@ import os
 import sys
 import argparse
 import importlib
+import logging
 
 from drain import step, util, drake
 import drain.yaml
@@ -31,7 +32,7 @@ if __name__ == "__main__":
         if s.endswith('.yaml'):
             steps +=  drain.yaml.load(s)
         else:
-            print s
+            logging.info('Loading workflow %s' % s)
             modulename, fname = s.split('::')
             mod = importlib.import_module(modulename)
             s = getattr(mod, fname)
@@ -48,6 +49,7 @@ if __name__ == "__main__":
 
     if not args.preview:
         with open(args.drakeoutput, 'w') as drakefile:
+            logging.info('Writing drake workflow %s' % args.drakeoutput)
             drakefile.write(workflow)
     else:
         sys.stdout.write(workflow)
