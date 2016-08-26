@@ -338,6 +338,7 @@ class Step(object):
                 warnings.simplefilter('ignore', category=NaturalNameWarning)
                 for key, df in zip(keys, values):
                     store.put(key, df, mode='w')
+                store.close()
         else:
             joblib.dump(self.get_result(), os.path.join(self._dump_dirname, 'result.pkl'))
 
