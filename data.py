@@ -78,6 +78,10 @@ class CreateEngine(Step):
     def run(self):
         return util.create_engine()
 
+class CreateDatabase(Step):
+    def run(self):
+        return util.create_db()
+
 class FromSQL(Step):
     def __init__(self, query=None, to_str=None, table=None, tables=None, **kwargs):
         """
@@ -111,6 +115,32 @@ class FromSQL(Step):
                 df[column] = df[column].astype(str)
 
         return df
+
+class ToSQL(Step):
+    """
+    Step for util.PgSQLDatabase.to_sql()
+    inputs:
+        df is the DataFrame to import
+        db is an instance of PgSQLDatabase
+            defaults to CreateDatabase()
+    TODO: once drain Steps have outputs,
+        include psql/schema/name
+    """
+    def __init__(self, table_name, **kwargs):
+        """
+        Args:
+            table_name: a hack because name is a special kwarg currently
+                TODO: use name once refactor/init is merged
+        """
+        Step.__init__(self, table_name=table_name, **kwargs)
+
+        if len(self.inputs) == 1:
+            self.inputs.append(CreateDatabase())
+ 
+    def run(self, df, db):
+        kwargs = self.get_arguments(inputs=False, inputs_mapping=False)
+        kwargs['name'] = kwargs.pop('table_name')
+        db.to_sql(df, **kwargs)
 
 class FromCSV(Step):
     """
