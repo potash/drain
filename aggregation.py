@@ -277,10 +277,13 @@ class SpacetimeAggregation(AggregationBase):
 
     @property
     def arguments(self):
+        names = self.spacedeltas.keys()
+        names.sort()
+
         a = []
         for date in self.dates:
-            for name,spacedeltas in self.spacedeltas.iteritems():
-                for delta in spacedeltas[1]:
+            for name in names:
+                for delta in self.spacedeltas[name][1]:
                     a.append({'date':date, 'delta': delta, 'index':name})
 
         return a
