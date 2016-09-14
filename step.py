@@ -106,8 +106,6 @@ class Step(object):
             self.dump()
             util.touch(self._target_filename)
 
-        return self.get_result()
-
     @cached_property
     def _hasher(self):
         # TODO: check to make sure configure_yaml has been called!

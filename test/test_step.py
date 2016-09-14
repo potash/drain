@@ -4,12 +4,14 @@ import tempfile
 
 def test_run(drain_setup):
     s = Add(inputs = [Scalar(value=value) for value in range(1,10)])
-    assert s.execute() == 45
+    s.execute()
+    assert s.get_result() == 45
 
 def test_run_inputs_mapping():
     s = Divide(inputs = [Scalar(value=1), Scalar(value=2)], 
             inputs_mapping=['denominator', 'numerator'])
-    assert s.execute() == 2
+    s.execute()
+    assert s.get_result() == 2
 
 def test_get_named_inputs():
     step1 = Step(a=1, name='Step1')
@@ -58,7 +60,6 @@ def test_dump_hdf_single():
     t.dump()
     t.load()
     print t.get_result()
-
 
 def test_dump_hdf_list():
     t = DumpStep(n=0, n_df=5, return_list=True, target=True)
