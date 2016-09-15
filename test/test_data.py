@@ -26,3 +26,23 @@ def test_date_select():
     df['date'] = pd.to_datetime(df['date'])
     assert np.array_equal(data.date_select(df, 'date', date(2013,4,1), 'all').values, df.values[0:3])
 
+def test_binarize_inplace():
+    df = pd.DataFrame({'a':['b','c']})
+    data.binarize(df, ['a'], inplace=True)
+    assert df.columns.tolist() == ['a_b', 'a_c']
+
+def test_binarize_drop():
+    df = pd.DataFrame({'a':['b','c']})
+    data.binarize(df, ['a'], drop=False, inplace=True)
+    assert df.columns.tolist() == ['a', 'a_b', 'a_c']
+
+def test_binarize_all_classes():
+    df = pd.DataFrame({'a':['b','c']})
+    data.binarize(df, ['a'], all_classes=False, inplace=True)
+    assert df.columns.tolist() == ['a_b']
+
+def test_binarize_not_inplace():
+    df = pd.DataFrame({'a':['b','c']})
+    df2 = data.binarize(df, ['a'], inplace=False)
+    assert df.columns.tolist() == ['a']
+    assert df2.columns.tolist() == ['a_b', 'a_c']
