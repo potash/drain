@@ -322,7 +322,7 @@ class Step(object):
         result = self.get_result()
         if isinstance(result, pd.DataFrame):
             result.to_hdf(os.path.join(self._dump_dirname, 'result.h5'), 'df')
-        elif hasattr(result, '__iter__') and is_dataframe_collection(result):
+        elif is_pandas_collection(result):
             if not isinstance(result, dict):
                 keys = map(str, range(len(result)))
                 values = result
@@ -358,14 +358,24 @@ class Step(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
-# checks if l is a collection of DataFrames or a DataFrame-valued dictionary
-def is_dataframe_collection(l):
+def is_pandas_collection(l):
+    """
+    Checks if the argument is a non-empty collection of pandas objects, 
+        i.e. pd.DataFrame and pd.Series
+    """
+    if not (hasattr(l, '__iter__') and len(l) > 0):
+        # make sure it's iterable
+        # don't include empty iterables because 
+        # that would include some sklearn estimator objects
+        return False
+
     if isinstance(l, dict):
         l = l.values()
 
     for i in l:
-        if not isinstance(i, pd.DataFrame):
+        if not (isinstance(i, pd.DataFrame) or isinstance(i, pd.Series)):
             return False
+
     return True
 
 class Construct(Step):
