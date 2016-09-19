@@ -43,12 +43,7 @@ def load(steps):
     return loaded
 
 class Step(object):
-    def __new__(cls, *args, **kwargs):
-        # use inspection to handle positional argument names
-        argspec = inspect.getargspec(cls.__init__)
-        nargs = zip(argspec.args[:len(args)], args)
-        kwargs.update(nargs)
-
+    def __new__(cls, **kwargs):
         obj = object.__new__(cls, **kwargs)
         obj._kwargs =  kwargs
 
