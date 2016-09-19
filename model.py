@@ -245,6 +245,23 @@ for name,function in metrics:
     function.__name__ = name
     setattr(sys.modules[__name__], name, function)
 
+def lift(predict_step, **kwargs):
+    p = precision(predict_step, **kwargs)
+    kwargs.pop('k', None)
+    kwargs.pop('p', None)
+    b = baseline(predict_step, **kwargs)
+    return p/b
+
+def lift_series(predict_step, **kwargs):
+    p = precision_series(predict_step, **kwargs)
+
+    # pass everything except k or p to baseline
+    b_kwargs = {k:v for k,v in kwargs.items() if k not in ('k', 'p')}
+    b = baseline(predict_step, **b_kwargs)
+
+    return p/b 
+
+
 class PrintMetrics(Step):
     def __init__(self, metrics, **kwargs):
         Step.__init__(self, metrics=metrics, **kwargs)

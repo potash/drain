@@ -78,6 +78,10 @@ class CreateEngine(Step):
     def run(self):
         return util.create_engine()
 
+class CreateDatabase(Step):
+    def run(self):
+        return util.create_db()
+
 class FromSQL(Step):
     def __init__(self, query=None, to_str=None, table=None, tables=None, **kwargs):
         """
@@ -111,6 +115,32 @@ class FromSQL(Step):
                 df[column] = df[column].astype(str)
 
         return df
+
+class ToSQL(Step):
+    """
+    Step for util.PgSQLDatabase.to_sql()
+    inputs:
+        df is the DataFrame to import
+        db is an instance of PgSQLDatabase
+            defaults to CreateDatabase()
+    TODO: once drain Steps have outputs,
+        include psql/schema/name
+    """
+    def __init__(self, table_name, **kwargs):
+        """
+        Args:
+            table_name: a hack because name is a special kwarg currently
+                TODO: use name once refactor/init is merged
+        """
+        Step.__init__(self, table_name=table_name, **kwargs)
+
+        if len(self.inputs) == 1:
+            self.inputs.append(CreateDatabase())
+ 
+    def run(self, df, db):
+        kwargs = self.get_arguments(inputs=False, inputs_mapping=False)
+        kwargs['name'] = kwargs.pop('table_name')
+        db.to_sql(df, **kwargs)
 
 class FromCSV(Step):
     """
@@ -161,7 +191,7 @@ class ToHDF(Step):
         return
 
     def load(self):
-        self.set_result(pd.HDFStore(os.path.join(self._dump_dirname, 'result.h5')))
+        self.set_result(pd.HDFStore(os.path.join(self._dump_dirname, 'result.h5'), mode='r'))
 
 class Shape(Step):
     def run(self, X, index=None, **kwargs):
@@ -195,18 +225,31 @@ def expand_dates(df, columns=[]):
         df2[column + '_day'] = df[column].apply(lambda x: x.day)
     return df2
 
-# binarize specified categoricals
-# category_classes is either a dict of (column : [class1, class2, ...]) pairs
-# or a list of columns, in which case possible values are found using df[column].unique()
-# all_classes = False means the last class is skipped
-# drop means drop the original column
-# astype allows setting the type of the resulting binary columns, e.g. np.float32
-def binarize(df, category_classes, all_classes=True, drop=True, astype=None):
+def binarize(df, category_classes, all_classes=True, drop=True, astype=None, inplace=True):
+    """
+    Binarize specified categoricals. Works inplace!
+    
+    Args:
+        - df: the DataFrame whose columns to binarize
+        - category_classes: either a dict of (column : [class1, class2, ...]) pairs
+            or a collection of column names, in which case classes are
+            given using df[column].unique()
+        - all_classes: when False, the last class is skipped
+        - drop: when True, the original categorical columns are dropped
+        - astype: a type for the resulting binaries, e.g. np.float32.
+            When None, use the defualt (bool).
+        - inplace: whether to modify the DataFrame inplace
+
+    Returns:
+        the DataFrame with binarized columns
+    """
     if type(category_classes) is not dict:
         columns = set(category_classes)
         category_classes = {column : df[column].unique() for column in columns}
     else:
         columns = set(category_classes.keys()).intersection(df.columns)
+
+    df_new = df if inplace else df.drop(columns, axis=1)
 
     for category in columns:
         classes = category_classes[category]
@@ -214,11 +257,12 @@ def binarize(df, category_classes, all_classes=True, drop=True, astype=None):
             c = df[category] == classes[i]
             if astype is not None:
                 c = c.astype(astype)
-            df[category + '_' + str(classes[i]).replace( ' ', '_')] = c
+            df_new['%s_%s' % (category, str(classes[i]).replace(' ', '_'))] = c
     
-    if drop:
-        df.drop(columns, axis=1, inplace=True)                                  
-    return df
+    if drop and inplace:
+        df_new.drop(columns, axis=1, inplace=True)
+
+    return df_new
 
 def binarize_set(df, column, values=None):
     d = df[column].dropna() # avoid nulls

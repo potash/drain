@@ -8,31 +8,13 @@ from drain.step import Step
 
 def load(filename):
     """
-    Load step from yaml file (via template)
+    Load step from yaml file
     Args:
         filename: a target or step.yaml filename
     """
     yaml_filename = os.path.join(os.path.dirname(filename), 'step.yaml')
     with open(yaml_filename) as f:
-        template = yaml.load(f)
-        return template.step
-
-class StepTemplate(object):
-    def __init__(self, _cls, **kwargs):
-        """
-        Temporary holder of step arguments
-        Used to get around pyyaml bug: https://bitbucket.org/xi/pyyaml/issues/56/sub-dictionary-unavailable-in-constructor
-        """
-        self._cls = _cls
-        self.kwargs = kwargs
-
-    # it's important that this is cached so that multiple calls to step return the same Step object
-    @cached_property
-    def step(self):
-        if 'inputs' in self.kwargs and self.kwargs['inputs'] is not None:
-            self.kwargs['inputs'] = [t.step for t in self.kwargs['inputs']]
-
-        return self._cls(**self.kwargs)
+        return yaml.load(f)
 
 def step_multi_representer(dumper, data):
     tag = '!step:%s.%s' % (data.__class__.__module__, data.__class__.__name__)
@@ -41,9 +23,9 @@ def step_multi_representer(dumper, data):
 
 def step_multi_constructor(loader, tag_suffix, node):
     cls = util.get_attr(tag_suffix[1:])
-    kwargs = loader.construct_mapping(node)
+    kwargs = loader.construct_mapping(node, deep=True)
 
-    return StepTemplate(_cls=cls, **kwargs)
+    return cls(**kwargs)
 
 def configure():
     """

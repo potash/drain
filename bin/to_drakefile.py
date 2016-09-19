@@ -2,6 +2,7 @@ import os
 import sys
 import argparse
 import importlib
+import logging
 
 from drain import step, util, drake
 import drain.yaml
@@ -31,14 +32,14 @@ if __name__ == "__main__":
         if s.endswith('.yaml'):
             steps +=  drain.yaml.load(s)
         else:
-            print s
             modulename, fname = s.split('::')
             mod = importlib.import_module(modulename)
-            s = getattr(mod, fname)
+            s_attr = getattr(mod, fname)
             # if s is callable, it should return a collection of Steps
             # otherwise assume it is a collection of Steps
-            s = util.make_list(s() if hasattr(s, '__call__') else s)
-            steps += s
+            ss = util.make_list(s_attr() if hasattr(s_attr, '__call__') else s_attr)
+            logging.info('Loaded %s with %s leaf steps' % (s, len(ss)))
+            steps += ss
 
     if args.Drakeinput is None and os.path.exists('Drakefile'):
         args.Drakeinput = 'Drakefile'
@@ -48,6 +49,7 @@ if __name__ == "__main__":
 
     if not args.preview:
         with open(args.drakeoutput, 'w') as drakefile:
+            logging.info('Writing drake workflow %s' % args.drakeoutput)
             drakefile.write(workflow)
     else:
         sys.stdout.write(workflow)

@@ -289,17 +289,24 @@ class SpacetimeAggregation(AggregationBase):
 
     def fillna_value(self, df, left, **kwargs):
         """
-        fills counts with zero
+        fills counts with zero.
+            TODO: identify counts more robustly instead of relying on column name
+        typically fill other fields with mean but can't do that during the join
+            because that would leak information across a train/test split
         """
-        value = pd.Series(0, index=[c for c in df.columns if c.endswith('_count') and c.find('_per_') == -1])
+        value = pd.Series(0, index=[c for c in df.columns if c.endswith('_count') 
+                                                             and c.find('_per_') == -1])
         return value
 
     @property
     def arguments(self):
+        names = self.spacedeltas.keys()
+        names.sort()
+
         a = []
         for date in self.dates:
-            for name,spacedeltas in self.spacedeltas.iteritems():
-                for delta in spacedeltas[1]:
+            for name in names:
+                for delta in self.spacedeltas[name][1]:
                     a.append({'date':date, 'delta': delta, 'index':name})
 
         return a

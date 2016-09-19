@@ -106,8 +106,6 @@ class Step(object):
             self.dump()
             util.touch(self._target_filename)
 
-        return self.get_result()
-
     @cached_property
     def _hasher(self):
         # TODO: check to make sure configure_yaml has been called!
@@ -267,7 +265,7 @@ class Step(object):
         """
         hdf_filename = os.path.join(self._dump_dirname, 'result.h5')
         if os.path.isfile(hdf_filename):
-            store = pd.HDFStore(hdf_filename)
+            store = pd.HDFStore(hdf_filename, mode='r')
             keys = store.keys()
             if keys == ['/df']:
                 self.set_result(store['df'])
@@ -328,6 +326,7 @@ class Step(object):
                 warnings.simplefilter('ignore', category=NaturalNameWarning)
                 for key, df in zip(keys, values):
                     store.put(key, df, mode='w')
+                store.close()
         else:
             joblib.dump(self.get_result(), os.path.join(self._dump_dirname, 'result.pkl'))
 
