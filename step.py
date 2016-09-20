@@ -103,7 +103,6 @@ class Step(object):
 
     @cached_property
     def _hasher(self):
-        # TODO: check to make sure configure_yaml has been called!
         return hashlib.md5(yaml.dump(self).encode('utf-8'))
 
     @cached_property
@@ -251,7 +250,7 @@ class Step(object):
     def _target_filename(self):
         return os.path.join(self._output_dirname, 'target')
         
-    def run(self, *args, **kwargs):
+    def run(self):
         raise NotImplementedError
     
     def load(self):
