@@ -12,7 +12,7 @@ def prediction():
 
     # construct a random forest estimator
     e = step.Construct(_class_name='sklearn.ensemble.RandomForestClassifier', n_estimators=1)
-    e.target = True
+    e.target = False
 
     # fit the estimator
     f = model.Fit(inputs=[e, d], return_estimator=True, return_feature_importances=True)

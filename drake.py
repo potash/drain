@@ -4,24 +4,25 @@ import inspect
 
 from drain.util import StringIO
 
-def get_targets(step, ignore):
+def get_inputs_helper(step, ignore, target):
     """
-    Recursion helper used by get_input_targets()
+    Recursion helper used by get_inputs()
     """
     outputs = set()
-    if not ignore and step.target:
+    if not ignore and step.target == target:
         outputs.add(step)
-    else:
+
+    if ignore or not step.target:
         for i in step.inputs:
-            outputs.update(get_targets(i, False))
+            outputs.update(get_inputs_helper(i, ignore=False, target=target))
 
     return outputs
 
-def get_input_targets(step):
+def get_inputs(step, target):
     """
-    Traverse input tree for closest parent targets
+    Traverse input parents tree returning all steps which are targets or not targets (depending on argument target). Stop traversing at parent targets
     """
-    return get_targets(step, ignore=True)
+    return get_inputs_helper(step, ignore=True, target=target)
 
 def get_drake_data(steps):
     """
@@ -34,7 +35,7 @@ def get_drake_data(steps):
         return output_inputs
 
     for step in steps:
-        output_inputs[step] = get_input_targets(step)
+        output_inputs[step] = get_inputs(step, target=True)
 
     # recursively do the same for all the inputs
     inputs = set(itertools.chain(*output_inputs.values()))
@@ -54,11 +55,13 @@ def to_drake_step(inputs, output):
     i = [output._yaml_filename]
     i.extend(map(lambda i: i._target_filename, list(inputs)))
     i.extend(output.dependencies)
-    # add source file if it's not in the drain library
-    # TODO: do this for all non-target inputs, too
-    source = os.path.abspath(inspect.getsourcefile(output.__class__))
-    if not source.startswith(os.path.dirname(__file__)):
-        i.append(source)
+
+    # add source file of output and its non-target inputs 
+    # if they're not in the drain library
+    objects = get_inputs(output, target=False)
+    objects.add(output)
+    sources = set([os.path.abspath(inspect.getsourcefile(o.__class__)) for o in objects])
+    i.extend([s for s in sources if not s.startswith(os.path.dirname(__file__))])
 
     output_str = '%' + output.__class__.__name__
     if output.target:

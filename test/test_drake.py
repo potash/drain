@@ -1,10 +1,10 @@
 from drain.drake import *
 from drain.step import Step
 
-def test_input_targets(drain_setup):
-    assert get_input_targets(Step(value=1, inputs=[Step(value=2)])) == set()
+def test_inputs_target(drain_setup):
+    assert get_inputs(Step(value=1, inputs=[Step(value=2)]), target=True) == set()
 
-def test_input_targets2(drain_setup):
+def test_inputs_target2(drain_setup):
     inputs = [Step(value=2), Step(value=3)]
     inputs[0].target = True
 
@@ -12,7 +12,17 @@ def test_input_targets2(drain_setup):
     step.inputs = inputs
     step.target = True
 
-    assert get_input_targets(step) == set([Step(value=2)])
+    assert get_inputs(step, target=True) == set([Step(value=2)])
+
+def test_inputs_no_target(drain_setup):
+    inputs = [Step(value=2), Step(value=3, inputs=[Step(value=4)])]
+    inputs[0].target = True
+
+    step = Step(value=1, inputs=inputs)
+    step.target = True
+
+    assert get_inputs(step, target=False) ==\
+            set([Step(value=3, inputs=[Step(value=4)]), Step(value=4)])
 
 # no output step
 def test_drake_data(drain_setup):
