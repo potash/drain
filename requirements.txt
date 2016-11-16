@@ -2,3 +2,4 @@ cached_property
 repoze.lru
 sqlalchemy
 pyyaml
+tables

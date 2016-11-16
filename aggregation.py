@@ -199,7 +199,6 @@ class SpacetimeAggregationJoin(AggregationJoin):
         AggregationJoin.__init__(self, lag=lag, inputs=inputs, **kwargs)
 
     def run(self, left, aggregation):
-        #import pdb; pdb.set_trace()
         if self.lag is not None:
             delta = data.parse_delta(self.lag)
             for a in aggregation:
