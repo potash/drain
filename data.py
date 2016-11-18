@@ -544,17 +544,28 @@ class Revise(Step):
 
         return pd.concat((source[subset],revised), copy=False)
 
-def date_select(df, date_column, date, delta):
+def date_select(df, date_column, date, delta, max_date_column=None):
     """
     given a series an end date and number of days, return subset in the date range
     if delta is None then there is no starting date
+    if max_date_column is specified then look for rows where the interval 
+        [date_column, max_date_column] intersects [date-delta, date+delta)
     """
     delta = parse_delta(delta)
-    df = df.query("%s < '%s'" % (date_column, date))
-
-    if delta is not None:
-        start_date = date - delta
-        df = df.query("%s >= '%s'" % (date_column, start_date))
+    if not max_date_column:
+        df = df.query("%s < '%s'" % (date_column, date))
+        if delta:
+            start_date = date - delta
+            df = df.query("%s >= '%s'" % (date_column, start_date))
+    else:
+        # event not entirely after
+        df = df.query("not ({min} >= {end} and {max} >= {end})".format( 
+                          min=date_column, max=max_date_column, end=date))
+        if delta:
+            # event not entirely before
+            df = df.query("not ({min} < {start} and {max} < {start})".format( 
+                          min=date_column, max=max_date_column,
+                          start=start_date, end=date))
 
     return df
 
