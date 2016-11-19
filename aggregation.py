@@ -265,13 +265,14 @@ class SpacetimeAggregation(AggregationBase):
     However since pandas automatically turns a datetime column in the index into datetime64 DatetimeIndex, the left dataframe passed to join() should use datetime64!
     See test_aggregation.SpacetimeCrimeAggregation for an example.
     """
-    def __init__(self, spacedeltas, dates, date_column, 
+    def __init__(self, spacedeltas, dates, date_column, max_date_column=None,
             censor_columns=None, aggregator_args=None, concat_args=None, **kwargs):
         if aggregator_args is None: aggregator_args = ['date', 'delta']
         if concat_args is None: concat_args = ['index', 'delta']
 
         self.censor_columns = censor_columns if censor_columns is not None else {}
         self.date_column = date_column
+        self.max_date_column = max_date_column
 
         """
         spacedeltas is a dict of the form {name: (index, deltas)} 
@@ -330,7 +331,7 @@ class SpacetimeAggregation(AggregationBase):
 
     def get_data(self, date, delta):
         df = self.inputs[0].get_result()
-        df = data.date_select(df, self.date_column, date, delta)
+        df = data.date_select(df, self.date_column, date, delta, self.max_date_column)
         df = data.date_censor(df.copy(), self.censor_columns, date)
         return df
 

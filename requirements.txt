@@ -2,3 +2,5 @@ cached_property
 repoze.lru
 joblib
 sqlalchemy
+pyyaml
+tables
