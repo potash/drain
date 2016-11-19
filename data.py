@@ -552,20 +552,21 @@ def date_select(df, date_column, date, delta, max_date_column=None):
         [date_column, max_date_column] intersects [date-delta, date+delta)
     """
     delta = parse_delta(delta)
+    if delta:
+        start_date = date - delta
+
     if not max_date_column:
         df = df.query("%s < '%s'" % (date_column, date))
         if delta:
-            start_date = date - delta
             df = df.query("%s >= '%s'" % (date_column, start_date))
     else:
         # event not entirely after
-        df = df.query("not ({min} >= {end} and {max} >= {end})".format( 
+        df = df.query("not ({min} >= '{end}' and {max} >= '{end}')".format( 
                           min=date_column, max=max_date_column, end=date))
         if delta:
             # event not entirely before
-            df = df.query("not ({min} < {start} and {max} < {start})".format( 
-                          min=date_column, max=max_date_column,
-                          start=start_date, end=date))
+            df = df.query("not ({min} < '{start}' and {max} < '{start}')".format( 
+                          min=date_column, max=max_date_column, start=start_date))
 
     return df
 
