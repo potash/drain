@@ -41,8 +41,8 @@ from collections import defaultdict
 import pandas as pd
 import numpy as np
 
-from drain import util, data
-from drain.data import Column
+from . import util, data
+from .data import Column
       
 class ColumnReduction(object):
     """Wraps and hashes a `Column` together with a function that aggregates across rows.

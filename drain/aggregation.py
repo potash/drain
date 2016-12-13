@@ -1,6 +1,6 @@
-from drain.step import Step
-from drain.aggregate import Aggregator
-from drain import util, data
+from .step import Step
+from .aggregate import Aggregator
+from . import util, data
 
 from itertools import product,chain
 import pandas as pd

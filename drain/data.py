@@ -2,7 +2,7 @@ import random
 import datetime
 import re
 import os
-from drain import util
+from . import util
 import logging
 
 from copy import deepcopy
@@ -19,7 +19,7 @@ from itertools import product
 from sklearn import preprocessing, datasets
 from sklearn.utils.validation import _assert_all_finite
 
-from drain.step import Step
+from .step import Step
 
 class Column(object):
     """Defines a new or existing column that can be calculated from a dataframe.

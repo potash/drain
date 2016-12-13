@@ -1,7 +1,0 @@
-!serial
-  - !product
-    - !search
-      - !construct:sklearn.ensemble.RandomForestClassifier
-        n_estimators: !range [1,10]
-    - !step:drain.data.ClassificationData {}
-  - !step:drain.model.FitPredict {}
