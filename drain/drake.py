@@ -86,7 +86,7 @@ def to_drakefile(steps, preview=True, debug=False, input_drakefile=None):
     if input_drakefile:
         drakefile.write('%context {}\n\n'.format(input_drakefile))
 
-    bindir = os.path.join(os.path.dirname(__file__), 'bin')
+    bindir = os.path.join(os.path.dirname(__file__), '..', 'bin')
     drakefile.write("drain()\n\tpython %s %s/run_step.py $OUTPUT $INPUTS 2>&1\n\n" % ('-m pdb' if debug else '', bindir))
     for output, inputs in data.iteritems():
         if not preview:
