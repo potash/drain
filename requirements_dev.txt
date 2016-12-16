@@ -15,3 +15,5 @@ sqlalchemy
 tables
 pandas
 sklearn
+scipy
+numpy
