@@ -12,6 +12,5 @@ pytest==2.9.2
 cached_property
 repoze.lru
 sqlalchemy
-pyyaml
 tables
 pandas
