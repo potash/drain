@@ -18,14 +18,12 @@ class SimpleCrimeAggregation(SimpleAggregation):
 def test_simple_aggregation_parallel(drain_setup, crime_step):
     s = SimpleCrimeAggregation(inputs=[crime_step], 
 	indexes=['District', 'Community Area'], parallel=True)
-    s.inputs=[crime_step]
     s.execute()
     print s.get_result()
 
 def test_simple_aggregation(drain_setup, crime_step):
     s = SimpleCrimeAggregation(inputs=[crime_step], 
 	indexes=['District', 'Community Area'], parallel=False)
-    s.inputs=[crime_step]
     s.execute()
     print s.get_result()
 

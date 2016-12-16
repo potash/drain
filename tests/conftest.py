@@ -46,12 +46,12 @@ def crime_step():
     return CrimeDataStep()
 
 class SpacetimeCrimeAggregation(SpacetimeAggregation):
-    def __init__(self, inputs, spacedeltas, dates, **kwargs):
-        #import pdb; pdb.set_trace()
+    def __init__(self, inputs, spacedeltas, dates, parallel=False):
+        self.inputs = inputs
+
         SpacetimeAggregation.__init__(self,
-                inputs=inputs, spacedeltas=spacedeltas, dates=dates,
-                date_column='Date', prefix='crimes',
-                **kwargs)
+                spacedeltas=spacedeltas, dates=dates,
+                date_column='Date', prefix='crimes', parallel=parallel)
 
     def get_aggregates(self, date, delta):
         return [
@@ -71,7 +71,6 @@ def spacetime_crime_agg(crime_step):
     return SpacetimeCrimeAggregation(inputs=[crime_step],
         spacedeltas={'district': ('District', ['12h', '24h']),
                      'community':('Community Area', ['1d', '2d'])}, 
-        parallel=True,
         dates=[date(2015,12,30), date(2015,12,31)])
 
 class SpacetimeCrimeLeft(Step):

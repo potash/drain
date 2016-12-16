@@ -57,7 +57,8 @@ class Step(object):
         self.target = False
         self.name = None
 
-        self.inputs = inputs if inputs is not None else []
+        if not hasattr(self, 'inputs'):
+            self.inputs = inputs if inputs is not None else []
         self.dependencies = dependencies if dependencies is not None else []
 
         for k,v in kwargs.iteritems():

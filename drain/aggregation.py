@@ -15,7 +15,7 @@ class AggregationBase(Step):
     the results may be pivoted and joined to other datasets.
     """
     def __init__(self, insert_args, aggregator_args, concat_args, 
-            parallel=False, parallel_targets=False, prefix=None, **kwargs):
+            parallel=False, parallel_targets=False, prefix=None):
         """
         Args:
             insert_args: collection of argument names to insert
@@ -37,21 +37,20 @@ class AggregationBase(Step):
                 aggregator_args=aggregator_args, 
                 prefix=prefix, 
                 parallel=parallel, 
-                parallel_targets=parallel_targets, 
-                **kwargs)
+                parallel_targets=parallel_targets)
 
         if parallel:
-            inputs = self.inputs if hasattr(self, 'inputs') else []
-            self.inputs = []
             # create a new Aggregation according to parallel_kwargs
             # pass our input to those steps
             # those become the inputs to this step
             pkwargs = self.get_arguments()
-            pkwargs.update(parallel=False, inputs=inputs, 
-                    target=parallel_targets)
+            pkwargs.update(parallel=False)
+            
+            self.inputs = []
             for pk in self._parallel_kwargs:
                 pkwargs.update(pk)
                 a = self.__class__(**pkwargs)
+                a.target=parallel_targets
                 self.inputs.append(a)
 
         self._aggregators = {}
@@ -230,12 +229,14 @@ class SimpleAggregation(AggregationBase):
     An implementation need only define an aggregates attributes, see 
     test_aggregation.SimpleCrimeAggregation for an example.
     """
-    def __init__(self, indexes, **kwargs):
+    def __init__(self, inputs, indexes, parallel=False):
         # if indexes was not a dict but a list, make it a dict
         if not isinstance(indexes, dict):
             indexes = {index:index for index in indexes}
+        self.indexes = indexes
+        self.inputs = inputs
 
-        AggregationBase.__init__(self, indexes=indexes, insert_args=[], concat_args=['index'], aggregator_args=[], **kwargs)
+        AggregationBase.__init__(self, insert_args=[], concat_args=['index'], aggregator_args=[], parallel=parallel)
 
     def fillna_value(self, df, left, index):
         return left[df.columns].mean()
@@ -265,14 +266,16 @@ class SpacetimeAggregation(AggregationBase):
     However since pandas automatically turns a datetime column in the index into datetime64 DatetimeIndex, the left dataframe passed to join() should use datetime64!
     See test_aggregation.SpacetimeCrimeAggregation for an example.
     """
-    def __init__(self, spacedeltas, dates, date_column, max_date_column=None,
-            censor_columns=None, aggregator_args=None, concat_args=None, **kwargs):
+    def __init__(self, spacedeltas, dates, date_column, parallel=False, max_date_column=None,
+            censor_columns=None, aggregator_args=None, concat_args=None, inputs=None, prefix=None):
         if aggregator_args is None: aggregator_args = ['date', 'delta']
         if concat_args is None: concat_args = ['index', 'delta']
 
         self.censor_columns = censor_columns if censor_columns is not None else {}
         self.date_column = date_column
         self.max_date_column = max_date_column
+        self.dates = dates
+        self.spacedeltas = spacedeltas
 
         """
         spacedeltas is a dict of the form {name: (index, deltas)} 
@@ -280,9 +283,8 @@ class SpacetimeAggregation(AggregationBase):
         dates are end dates for the aggregators
         """
         AggregationBase.__init__(self,
-                spacedeltas=spacedeltas, dates=dates, 
                 insert_args=['date'], aggregator_args=aggregator_args,
-                concat_args=concat_args, **kwargs)
+                concat_args=concat_args, prefix=prefix, parallel=parallel)
 
     @property
     def indexes(self):
