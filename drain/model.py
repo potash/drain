@@ -19,19 +19,19 @@ class FitPredict(Step):
     """
     Step which can fit a scikit-learn estimator and make predictions.
     """
-    def __init__(self, return_estimator=False, return_feature_importances=True, return_predictions=True, prefit=False, **kwargs):
+    def __init__(self, inputs, return_estimator=False, return_feature_importances=True, return_predictions=True, prefit=False):
         """
         Args:
             return_estimator: whether or not to return the fitted estimator object
             return_feature_importances: whether or not to return a DataFrame of feature names and their importances
             prefit: whether the estimator input is already fitted
         """
-        Step.__init__(self, return_estimator=return_estimator,
+        Step.__init__(self, inputs=inputs, return_estimator=return_estimator,
                 return_feature_importances=return_feature_importances,
-                return_predictions=return_predictions, prefit=prefit,
-                **kwargs)
+                return_predictions=return_predictions, prefit=prefit)
 
-    def run(self, estimator, X, y, train=None, test=None, aux=None, sample_weight=None, **kwargs):
+    def run(self, estimator, X, y, train=None, test=None, aux=None, sample_weight=None, 
+            feature_importances=None):
         if not self.prefit:
             if train is not None:
                 X_train, y_train = X[train], y[train]
@@ -96,20 +96,19 @@ class FitPredict(Step):
         self.set_result(result)
 
 class Fit(FitPredict):
-    def __init__(self, **kwargs):
-        kwargs = merge_dicts(
-                dict(prefit=False, return_predictions=False),
-                kwargs)
-        FitPredict.__init__(self, **kwargs)
+    def __init__(self, inputs, return_estimator=True, return_feature_importances=False):
+        FitPredict.__init__(self, inputs=inputs, prefit=False, 
+                            return_estimator=return_estimator, 
+                            return_feature_importances=return_feature_importances, 
+                            return_predictions=False)
 
 class Predict(FitPredict):
-    def __init__(self, **kwargs):
-        kwargs = merge_dicts(dict(return_feature_importances=False, 
-                return_predictions=True, prefit=True), kwargs)
-         
-        FitPredict.__init__(self, **kwargs)
+    def __init__(self, inputs, return_estimator=False, return_feature_importances=False):
+        FitPredict.__init__(self, inputs=inputs, 
+                            return_feature_importances=return_feature_importances, 
+                            return_estimator=return_estimator, 
+                            return_predictions=True, prefit=True)
        
-
 class PredictProduct(Step):
     def run(self, **kwargs):
         keys = kwargs.keys()
