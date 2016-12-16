@@ -14,3 +14,4 @@ repoze.lru
 sqlalchemy
 tables
 pandas
+sklearn
