@@ -5,7 +5,6 @@ import os
 import tempfile
 
 from drain import step
-import drain.yaml
 from drain.step import Step
 from drain.aggregation import SpacetimeAggregation
 from drain.aggregate import Count
@@ -18,7 +17,6 @@ def drain_setup(request):
     tmpdir = tempfile.mkdtemp()
     step.OUTPUTDIR = tmpdir
     # configure for yaml dumping/serialization
-    drain.yaml.configure()
     def fin():
         print ("\nDoing teardown")
     request.addfinalizer(fin)
