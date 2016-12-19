@@ -119,7 +119,6 @@ def recall(y_true, y_score, k=None, value=True):
     """
     Returns recall (number of positive examples) in the top k
     If value is False then counts number of negative examples
-    TODO: add prop argument to return recall proportion instead of count
     """
     y_true, y_score = to_float(y_true, y_score)
     top = _argtop(y_score, k)
@@ -127,9 +126,10 @@ def recall(y_true, y_score, k=None, value=True):
     if not value:
         y_true = 1-y_true
 
-    r = np.nan_to_num(y_true[top]).sum()
+    n = np.nan_to_num(y_true[top]).sum()
+    d = (~np.isnan(y_true)).sum()
 
-    return r
+    return n/d
 
 def recall_series(y_true, y_score, k=None, value=True):
     """
@@ -141,5 +141,6 @@ def recall_series(y_true, y_score, k=None, value=True):
     if not value:
         y_true = 1-y_true
 
-    a = np.nan_to_num(y_true[top]).cumsum()
-    return pd.Series(a, index=np.arange(1,len(a)+1))
+    n = np.nan_to_num(y_true[top]).cumsum()
+    d = (~np.isnan(y_true)).sum()
+    return pd.Series(n/d, index=np.arange(1,len(n)+1))
