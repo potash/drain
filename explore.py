@@ -71,14 +71,39 @@ def intersection(df, pairwise=False, **subset_args):
         return r
 
 def apply(df, fn, **kwargs):
+    """
+    apply function to each step object, passing all kwargs
+    if any kwarg or function is iterable it gets grid-searched
+    returns a dataframe whose columns are indexed by the non-step columns of df,
+        i.e. the differential arguments of the steps
+    """
     # make all arguments hashable so they can be column names for result
     df = df.copy()
     non_step = list(df.columns.difference({'step'}))
     df.loc[:,non_step] = df.loc[:,non_step].applymap(
-        lambda d: d if isinstance(d, Hashable) 
+        lambda d: d if isinstance(d, Hashable)
                     else yaml.dump(d).replace('\n', ', ').rstrip(', '))
+    df.set_index(non_step, inplace=True)
+        
+    search = list(product(util.make_list(fn), util.dict_product(kwargs)))
+    results = [df['step'].apply(lambda step: fn(step, **kw)).T for fn,kw in search]
+    
+    # when function returns a scalar reshape it into a DataFrame
+    # so it can be concatted properly
+    dfs = []
+    for r in results:
+        if not isinstance(r, pd.DataFrame):
+            r = pd.DataFrame(r).T
+            r.index = [0]
+        dfs.append(r)
+        
+    result = pd.concat(dfs, axis=1)
+        
+    tuples = [[fn.__name__] + kw.values() + util.make_list(c) for (fn,kw),c in product(search, df.index)]
+    names = [None]+search[0][1].keys() + df.index.names
 
-    result = df.set_index(non_step)['step'].apply(lambda step: fn(step, **kwargs)).T
+    index = pd.MultiIndex.from_tuples(tuples, names=names)
+    result.columns = index
 
     return result
 
