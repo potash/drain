@@ -7,6 +7,7 @@ from collections import Hashable
 from copy import deepcopy
 from tempfile import NamedTemporaryFile
 from pprint import pformat
+from itertools import product
 
 from sklearn.externals import joblib
 from sklearn import tree
@@ -98,12 +99,14 @@ def apply(df, fn, **kwargs):
         dfs.append(r)
         
     result = pd.concat(dfs, axis=1)
-        
+    
+    # get subset of parameters that were searched over
     tuples = [[fn.__name__] + kw.values() + util.make_list(c) for (fn,kw),c in product(search, df.index)]
     names = [None]+search[0][1].keys() + df.index.names
 
     index = pd.MultiIndex.from_tuples(tuples, names=names)
     result.columns = index
+    util.drop_constant_column_levels(result)
 
     return result
 
