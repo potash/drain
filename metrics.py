@@ -83,6 +83,7 @@ def baseline(y_true, y_score=None):
     """
     Number of positive labels divided by number of labels, 
         or zero if there are no labels
+    TODO: use count for this
     """
     if len(y_true) > 0:
         return np.nansum(y_true)/count(y_true, countna=False)
@@ -108,6 +109,7 @@ def precision(y_true, y_score, k=None, return_bounds=False):
             unlabaled examples are False
         - upper bound of precision in the top k, assuming all 
             unlabaled examples are True
+    TODO: use count
     """
     y_true, y_score = to_float(y_true, y_score)
     top = _argtop(y_score, k)
@@ -127,6 +129,7 @@ def precision_series(y_true, y_score, k=None):
     """
     Returns series of length k whose i-th entry is the precision in the top i
     TODO: extrapolate here
+    TODO: use count
     """
     y_true, y_score = to_float(y_true, y_score)
     top = _argsort(y_score, k)
@@ -140,6 +143,7 @@ def recall(y_true, y_score, k=None, value=True):
     Returns recall (number of positive examples) in the top k
     If value is False then counts number of negative examples
     TODO: add prop argument to return recall proportion instead of count
+    TODO: use count
     """
     y_true, y_score = to_float(y_true, y_score)
     top = _argtop(y_score, k)
@@ -154,6 +158,7 @@ def recall(y_true, y_score, k=None, value=True):
 def recall_series(y_true, y_score, k=None, value=True):
     """
     Returns series of length k whose i-th entry is the recall in the top i
+    TODO: use count
     """
     y_true, y_score = to_float(y_true, y_score)
     top = _argsort(y_score, k)

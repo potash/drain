@@ -264,7 +264,7 @@ def recall(predict_step, value=1, **kwargs):
     kwargs.pop('k', None)
     kwargs.pop('p', None)
     n = count(predict_step, value=value, **kwargs)
-    return r/n
+    return np.float32(r)/n
 
 def recall_series(predict_step, value=1, **kwargs):
     r = count_series(predict_step, value=value, **kwargs)
