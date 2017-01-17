@@ -40,7 +40,7 @@ class FitPredict(Step):
             y_train = y_train.astype(bool)
 
             logging.info('Fitting with %s examples, %s features' % X_train.shape)
-            if 'sample_weight' in inspect.getargspec(estimator.fit) and sample_weight is not None:
+            if 'sample_weight' in inspect.getargspec(estimator.fit).args and sample_weight is not None:
                 logging.info('Using sample weight')
                 estimator.fit(X_train, y_train, sample_weight=sample_weight)
             else:
@@ -121,7 +121,7 @@ class PredictProduct(Step):
         return {'y':y}
 
 class InverseProbabilityWeights(Step):
-    def run(self, y):
+    def run(self, y, **kwargs):
         return {'sample_weight':y.score**-1}
 
 def y_score(estimator, X):
