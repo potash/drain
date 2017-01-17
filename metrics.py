@@ -35,26 +35,46 @@ def _argtop(y_score, k=None):
     else:
         return _argsort(y_score, k)
 
-def count(y_true, y_score=None, countna=False):
+def count(y_true, y_score=None, value=None, countna=False):
     """
     Counts the number of examples. If countna is False then only count labeled examples, i.e. those with y_true not NaN
     """
     if not countna:
-        return (~np.isnan(to_float(y_true))).sum()
+        if value is not None:
+            # count value
+            return (to_float(y_true) == value).sum()
+        else:
+            # count non-nan
+            return (~np.isnan(to_float(y_true))).sum()
     else:
-        return len(y_true)
+        if value is not None:
+            # count value or nan
+            y_true = to_float(y_true)
+            return ((y_true == value) | np.isnan(y_true)).sum()
+        else:
+            # count everything
+            return len(y_true)
 
-def count_series(y_true, y_score, countna=False):
+def count_series(y_true, y_score, value=None, countna=False):
     """
-    Returns series whose i-th entry is the number of examples in the top i 
+    Returns series whose i-th entry is the number of examples in the top i
+    Args:
+        value: count this value. defaults to None, which counts all non-nan values
+        countna: whether to count nan values, defaults to False
     """
     y_true, y_score = to_float(y_true, y_score)
     top = _argsort(y_score)
 
     if not countna:
-        a = (~np.isnan(y_true[top])).cumsum()
+        if value is not None:
+            a = (y_true[top] == value).cumsum()
+        else:
+            a = (~np.isnan(y_true[top])).cumsum()
     else:
-        a = range(1, len(y)+1)
+        if value is not None:
+            a = ((y_true[top] == value) | np.isnan(y_true[top])).cumsum()
+        else:
+            a = range(1, len(y)+1)
 
     return pd.Series(a, index=range(1, len(a)+1))
 

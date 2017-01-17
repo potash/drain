@@ -253,13 +253,25 @@ def lift(predict_step, **kwargs):
 
 def lift_series(predict_step, **kwargs):
     p = precision_series(predict_step, **kwargs)
-
-    # pass everything except k or p to baseline
-    b_kwargs = {k:v for k,v in kwargs.items() if k not in ('k', 'p')}
-    b = baseline(predict_step, **b_kwargs)
+    kwargs.pop('k', None)
+    kwargs.pop('p', None)
+    b = baseline(predict_step, b_kwargs)
 
     return p/b 
 
+def recall(predict_step, value=1, **kwargs):
+    r = count(predict_step, value=value, **kwargs)
+    kwargs.pop('k', None)
+    kwargs.pop('p', None)
+    n = count(predict_step, value=value, **kwargs)
+    return r/n
+
+def recall_series(predict_step, value=1, **kwargs):
+    r = count_series(predict_step, value=value, **kwargs)
+    kwargs.pop('k', None)
+    kwargs.pop('p', None)
+    n = count(predict_step, value=value, **kwargs)
+    return r/n
 
 class PrintMetrics(Step):
     def __init__(self, metrics, **kwargs):
