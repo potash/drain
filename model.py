@@ -120,6 +120,10 @@ class PredictProduct(Step):
 
         return {'y':y}
 
+class InverseProbabilityWeights(Step):
+    def run(self, y):
+        return {'sample_weight':y.score**-1}
+
 def y_score(estimator, X):
     if hasattr(estimator, 'decision_function'):
         return estimator.decision_function(X)
