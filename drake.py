@@ -61,6 +61,8 @@ def to_drake_step(inputs, output):
         i.append(source)
 
     output_str = '%' + output.__class__.__name__
+    if output.has_name():
+        output_str += ', %' + output.get_name()
     if output.is_target():
         output_str += ', ' + os.path.join(output._target_filename)
     return '{output} <- {inputs} [method:drain]\n\n'.format(output=output_str, inputs=str.join(', ', i))
