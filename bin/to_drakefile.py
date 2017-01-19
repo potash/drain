@@ -4,8 +4,7 @@ import argparse
 import importlib
 import logging
 
-from drain import step, util, drake
-import drain.serialize
+from drain import step, util, drake, serialize
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Use this script to generate a Drakefile for grid search')
@@ -29,7 +28,7 @@ if __name__ == "__main__":
     steps = []
     for s in args.steps.split(';'):
         if s.endswith('.yaml'):
-            steps +=  drain.serialize.load(s)
+            steps += serialize.load(s)
         else:
             modulename, fname = s.split('::')
             mod = importlib.import_module(modulename)
