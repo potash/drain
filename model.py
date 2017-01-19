@@ -19,16 +19,18 @@ class FitPredict(Step):
     """
     Step which can fit a scikit-learn estimator and make predictions.
     """
-    def __init__(self, return_estimator=False, return_feature_importances=True, return_predictions=True, prefit=False, **kwargs):
+    def __init__(self, return_estimator=False, return_feature_importances=True, return_predictions=True, prefit=False, predict_train=False, **kwargs):
         """
         Args:
             return_estimator: whether or not to return the fitted estimator object
             return_feature_importances: whether or not to return a DataFrame of feature names and their importances
             prefit: whether the estimator input is already fitted
+            predict_train: whether to make predictions on training set
         """
         Step.__init__(self, return_estimator=return_estimator,
                 return_feature_importances=return_feature_importances,
-                return_predictions=return_predictions, prefit=prefit, **kwargs)
+                return_predictions=return_predictions, prefit=prefit, 
+                predict_train=predict_train, **kwargs)
 
     def run(self, estimator, X, y, train=None, test=None, aux=None, sample_weight=None, **kwargs):
         if not self.prefit:
@@ -40,8 +42,9 @@ class FitPredict(Step):
             y_train = y_train.astype(bool)
 
             logging.info('Fitting with %s examples, %s features' % X_train.shape)
-            if 'sample_weight' in inspect.getargspec(estimator.fit) and sample_weight is not None:
+            if 'sample_weight' in inspect.getargspec(estimator.fit).args and sample_weight is not None:
                 logging.info('Using sample weight')
+                sample_weight = sample_weight.ix[train.index][train].values
                 estimator.fit(X_train, y_train, sample_weight=sample_weight)
             else:
                 estimator.fit(X_train, y_train)
@@ -53,7 +56,7 @@ class FitPredict(Step):
         if self.return_feature_importances:
             result['feature_importances'] = feature_importance(estimator, X)
         if self.return_predictions:
-            if test is not None:
+            if test is not None and not self.predict_train:
                 X_test, y_test = X[test], y[test]
             else:
                 X_test, y_test = X, y
@@ -121,7 +124,7 @@ class PredictProduct(Step):
         return {'y':y}
 
 class InverseProbabilityWeights(Step):
-    def run(self, y):
+    def run(self, y, **kwargs):
         return {'sample_weight':y.score**-1}
 
 def y_score(estimator, X):
