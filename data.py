@@ -265,6 +265,13 @@ def binarize(df, category_classes, all_classes=True, drop=True, astype=None, inp
     return df_new
 
 def binarize_set(df, column, values=None):
+    """
+    Create dummies for the elements of a set-valued column. Operates in place.
+    Args:
+        df: data frame
+        column: set-valued column
+        values: values for which to create dummies (defaults to union(df[column]))
+    """
     d = df[column].dropna() # avoid nulls
     if values is None:
         values = util.union(d)

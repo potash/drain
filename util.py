@@ -175,6 +175,19 @@ def merge_dicts(*dict_args):
 def dict_subset(d, keys):
     return {k:d[k] for k in keys if k in d}
 
+def drop_constant_column_levels(df):
+    """
+    drop the levels of a multi-level column dataframe which are constant
+    operates in place
+    """
+    columns = df.columns
+    constant_levels = [i for i,level in enumerate(columns.levels) if len(level) <= 1]
+    constant_levels.reverse()
+    
+    for i in constant_levels:
+        columns = columns.droplevel(i)
+    df.columns = columns
+
 
 def list_expand(d, prefix=None):
     """
@@ -433,17 +446,6 @@ class PgSQLDatabase(pandas.io.sql.SQLDatabase):
             sys.exit(r)
  
         return df
-
-def capture_print(f, *args):
-    """Helper function; calls function f(*args), 
-    captures whatever f prints to
-    STDOUT, and returns it as a string."""
-    stdout_ = sys.stdout
-    stream = StringIO.StringIO()
-    sys.stdout = stream
-    f(*args)
-    sys.stdout = stdout_
-    return stream.getvalue()
 
 # TODO: use this for a global step cache
 from functools import wraps
