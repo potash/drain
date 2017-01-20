@@ -94,14 +94,16 @@ class FromSQL(Step):
             tables = [table]
         
         if tables is not None and 'SQL_DIR' in os.environ:
-            self.dependencies = [os.path.join(
+            dependencies = [os.path.join(
                     os.environ['SQL_DIR'], table.replace('.','/')) 
                         for table in tables]
+        else:
+            dependencies = []
 
         if to_str is None:
             to_str = []
 
-        Step.__init__(self, query=query, to_str=to_str, **kwargs)
+        Step.__init__(self, query=query, to_str=to_str, dependencies=dependencies, **kwargs)
 
         if 'inputs' not in kwargs:
             self.inputs = [CreateEngine()]
