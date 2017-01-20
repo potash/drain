@@ -15,7 +15,7 @@ class AggregationBase(Step):
     the results may be pivoted and joined to other datasets.
     """
     def __init__(self, insert_args, aggregator_args, concat_args, 
-            parallel=False, parallel_targets=False, prefix=None):
+            parallel=False, parallel_targets=False, prefix=None, inputs=None):
         """
         Args:
             insert_args: collection of argument names to insert
@@ -37,7 +37,8 @@ class AggregationBase(Step):
                 aggregator_args=aggregator_args, 
                 prefix=prefix, 
                 parallel=parallel, 
-                parallel_targets=parallel_targets)
+                parallel_targets=parallel_targets,
+                inputs=inputs)
 
         if parallel:
             # create a new Aggregation according to parallel_kwargs
@@ -229,14 +230,14 @@ class SimpleAggregation(AggregationBase):
     An implementation need only define an aggregates attributes, see 
     test_aggregation.SimpleCrimeAggregation for an example.
     """
-    def __init__(self, inputs, indexes, parallel=False):
+    def __init__(self, inputs, indexes, prefix=None, parallel=False):
         # if indexes was not a dict but a list, make it a dict
         if not isinstance(indexes, dict):
             indexes = {index:index for index in indexes}
         self.indexes = indexes
         self.inputs = inputs
 
-        AggregationBase.__init__(self, insert_args=[], concat_args=['index'], aggregator_args=[], parallel=parallel)
+        AggregationBase.__init__(self, insert_args=[], concat_args=['index'], aggregator_args=[], parallel=parallel, prefix=prefix)
 
     def fillna_value(self, df, left, index):
         return left[df.columns].mean()
@@ -284,7 +285,7 @@ class SpacetimeAggregation(AggregationBase):
         """
         AggregationBase.__init__(self,
                 insert_args=['date'], aggregator_args=aggregator_args,
-                concat_args=concat_args, prefix=prefix, parallel=parallel)
+                concat_args=concat_args, prefix=prefix, parallel=parallel, inputs=inputs)
 
     @property
     def indexes(self):
