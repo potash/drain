@@ -15,7 +15,7 @@ class AggregationBase(Step):
     the results may be pivoted and joined to other datasets.
     """
     def __init__(self, insert_args, aggregator_args, concat_args, 
-            parallel=False, parallel_targets=False, prefix=None, inputs=None):
+            parallel=False, prefix=None, inputs=None):
         """
         Args:
             insert_args: collection of argument names to insert
@@ -28,7 +28,6 @@ class AggregationBase(Step):
             parallel: whether to distribute the aggregation over 
                 many inputs. uses self._parallel_kwargs to determine how
                 to distribute.
-            parallel_targets: whether to make the parallel inputs targets
             prefix: used as a prefix for feature names by join()
         """
         Step.__init__(self, 
@@ -37,7 +36,6 @@ class AggregationBase(Step):
                 aggregator_args=aggregator_args, 
                 prefix=prefix, 
                 parallel=parallel, 
-                parallel_targets=parallel_targets,
                 inputs=inputs)
 
         if parallel:
@@ -51,7 +49,6 @@ class AggregationBase(Step):
             for pk in self._parallel_kwargs:
                 pkwargs.update(pk)
                 a = self.__class__(**pkwargs)
-                a.target=parallel_targets
                 self.inputs.append(a)
 
         self._aggregators = {}
