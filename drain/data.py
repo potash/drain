@@ -83,7 +83,7 @@ class CreateDatabase(Step):
         return util.create_db()
 
 class FromSQL(Step):
-    def __init__(self, query=None, to_str=None, table=None, tables=None, **kwargs):
+    def __init__(self, query=None, to_str=None, table=None, tables=None, inputs=None, **read_sql_kwargs):
         """
         Use tables to automatically set dependecies
         """
@@ -93,25 +93,24 @@ class FromSQL(Step):
             query = "SELECT * FROM %s" % table
             tables = [table]
         
-        if tables is not None and 'SQL_DIR' in os.environ:
-            dependencies = [os.path.join(
-                    os.environ['SQL_DIR'], table.replace('.','/')) 
-                        for table in tables]
-        else:
-            dependencies = []
-
         if to_str is None:
             to_str = []
 
-        Step.__init__(self, query=query, to_str=to_str, dependencies=dependencies, **kwargs)
-
-        if 'inputs' not in kwargs:
+        if 'inputs' is None:
             self.inputs = [CreateEngine()]
+
+        Step.__init__(self, query=query, 
+                to_str=to_str, 
+                inputs=inputs,
+                read_sql_kwargs=read_sql_kwargs)
+
+        if tables is not None and 'SQL_DIR' in os.environ:
+            self.dependencies = [os.path.join(
+                    os.environ['SQL_DIR'], table.replace('.','/')) 
+                        for table in tables]
  
     def run(self, engine):
-        kwargs = self.get_arguments(query=False, to_str=False, table=False, tables=False, inputs=False)
-
-        df = pd.read_sql(self.query, engine, **kwargs)
+        df = pd.read_sql(self.query, engine, self.from_sql_kwargs)
         for column in self.to_str:
             if column in df.columns:
                 df[column] = df[column].astype(str)
