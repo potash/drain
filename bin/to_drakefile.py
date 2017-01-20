@@ -5,6 +5,7 @@ import importlib
 import logging
 
 from drain import step, util, drake, serialize
+import drain
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Use this script to generate a Drakefile for grid search')
@@ -14,7 +15,7 @@ if __name__ == "__main__":
     parser.add_argument('-D', '--Drakeinput', type=str, default=None, help='dependent drakefile')
     parser.add_argument('-d', '--debug', action='store_true', help='run python -m pdb')
     parser.add_argument('-P', '--preview', action='store_true', help='Preview Drakefile')
-    parser.add_argument('--outputdir', type=str, help='output base directory')
+    parser.add_argument('--path', type=str, help='output base directory')
     
     parser.add_argument('steps', type=str, help='yaml file or reference to python collection of drain.Step objects or reference to python function returning same. can specify multiple using semi-colon separator.')
 
@@ -23,7 +24,12 @@ if __name__ == "__main__":
     if args.drakeoutput is None or args.drakeargsfile is None:
         args.preview = True
 
-    step.OUTPUTDIR = os.path.abspath(args.outputdir)
+    if args.path:
+        drain.PATH = os.path.abspath(args.path)
+    elif 'DRAINPATH' in os.environ:
+        drain.PATH = os.path.abspath(os.environ['DRAINPATH'])
+    else:
+        raise ValueError('Must pass path argument or set DRAINPATH environment variable')
 
     steps = []
     for s in args.steps.split(';'):

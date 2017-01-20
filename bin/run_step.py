@@ -9,7 +9,7 @@ if len(sys.argv) == 1:
 
 args = sys.argv[1:]
 
-drain.step.OUTPUTDIR = dirname(dirname(dirname(args[0])))
+drain.PATH = dirname(dirname(dirname(args[0])))
 
 if is_target_filename(args[0]):
     output = drain.serialize.load(args[0])

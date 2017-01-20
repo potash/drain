@@ -3,19 +3,20 @@ import pandas as pd
 import numpy as np
 import os
 import tempfile
+from datetime import date
 
+import drain
 from drain import step
 from drain.step import Step
 from drain.aggregation import SpacetimeAggregation
 from drain.aggregate import Count
-from datetime import date
 
 # this fixture sets up drain for testing
 @pytest.fixture(scope="session")
 def drain_setup(request):
     # use a temporary dir
     tmpdir = tempfile.mkdtemp()
-    step.OUTPUTDIR = tmpdir
+    drain.PATH = tmpdir
     # configure for yaml dumping/serialization
     def fin():
         print ("\nDoing teardown")

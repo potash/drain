@@ -24,8 +24,7 @@ import warnings
 from tables import NaturalNameWarning
 
 from drain import util
-
-OUTPUTDIR=None
+import drain
 
 def load(steps):
     """
@@ -238,10 +237,10 @@ class Step(object):
     
     @cached_property
     def _output_dirname(self):
-        if OUTPUTDIR is None:
-            raise ValueError('drain.step.OUTPUTDIR not set')
+        if drain.PATH is None:
+            raise ValueError('drain.PATH not set')
 
-        return os.path.join(OUTPUTDIR, self.__class__.__name__, self._digest[0:8])
+        return os.path.join(drain.PATH, self.__class__.__name__, self._digest[0:8])
 
     @cached_property
     def _yaml_filename(self):
@@ -283,7 +282,7 @@ class Step(object):
         Set up dump, creating directories and writing step.yaml file 
         containing yaml dump of this step.
 
-        {OUTPUTDIR}/{self._digest}/
+        {drain.PATH}/{self._digest}/
             step.yaml
             dump/
         """
