@@ -96,7 +96,7 @@ class FromSQL(Step):
         if to_str is None:
             to_str = []
 
-        if 'inputs' is None:
+        if inputs is None:
             self.inputs = [CreateEngine()]
 
         Step.__init__(self, query=query, 
@@ -110,7 +110,7 @@ class FromSQL(Step):
                         for table in tables]
  
     def run(self, engine):
-        df = pd.read_sql(self.query, engine, self.from_sql_kwargs)
+        df = pd.read_sql(self.query, engine, **self.read_sql_kwargs)
         for column in self.to_str:
             if column in df.columns:
                 df[column] = df[column].astype(str)
@@ -226,7 +226,7 @@ def expand_dates(df, columns=[]):
         df2[column + '_day'] = df[column].apply(lambda x: x.day)
     return df2
 
-def binarize(df, category_classes, all_classes=True, drop=True, astype=None, inplace=True):
+def binarize(df, category_classes, all_classes=True, drop=True, astype=None, inplace=True, min_freq=None):
     """
     Binarize specified categoricals. Works inplace!
     
@@ -248,7 +248,7 @@ def binarize(df, category_classes, all_classes=True, drop=True, astype=None, inp
         columns = set(category_classes)
         category_classes = {column : df[column].unique() for column in columns}
     else:
-        columns = set(category_classes.keys()).intersection(df.columns)
+        columns = category_classes.keys()
 
     df_new = df if inplace else df.drop(columns, axis=1)
 
@@ -256,32 +256,59 @@ def binarize(df, category_classes, all_classes=True, drop=True, astype=None, inp
         classes = category_classes[category]
         for i in range(len(classes)-1 if not all_classes else len(classes)):
             c = df[category] == classes[i]
-            if astype is not None:
-                c = c.astype(astype)
-            df_new['%s_%s' % (category, str(classes[i]).replace(' ', '_'))] = c
+            if not min_freq or c.sum() >= min_freq:
+                if astype is not None:
+                    c = c.astype(astype)
+                df_new['%s_%s' % (category, str(classes[i]).replace(' ', '_'))] = c
     
     if drop and inplace:
         df_new.drop(columns, axis=1, inplace=True)
 
     return df_new
 
-def binarize_set(df, column, values=None):
+class Binarize(Step):
+    def __init__(self, inputs=None, **binarize_kwargs):
+        Step.__init__(self, inputs=inputs, binarize_kwargs=binarize_kwargs)
+
+    def run(self, df):
+        return binarize(df, **self.binarize_kwargs)
+
+class BinarizeSets(Step):
+    def __init__(self, inputs=None, **binarize_kwargs):
+        Step.__init__(self, inputs=inputs, binarize_kwargs=binarize_kwargs)
+
+    def run(self, df):
+        return binarize_sets(df, **self.binarize_kwargs)
+
+def binarize_sets(df, columns, cast=False, drop=True, min_freq=None):
     """
     Create dummies for the elements of a set-valued column. Operates in place.
     Args:
         df: data frame
-        column: set-valued column
-        values: values for which to create dummies (defaults to union(df[column]))
+        columns: either a dictionary of column: values pairs or a collection of columns.
+        cast: whether or not ito cast values to set
+        drop: whether or not to drop the binarized columns
+    TODO: make interface same as binarize(). merge the two?
     """
-    d = df[column].dropna() # avoid nulls
-    if values is None:
-        values = util.union(d)
-    for value in values:
-        name = values[value] if type(values) is dict else str(value)
-        column_name = column + '_'+ name.replace(' ', '_')
-        df[column_name] = d.apply(lambda c: value in c)
-        df[column_name].fillna(0, inplace=True)
-    df.drop(column, axis=1, inplace=True)
+    for column in columns:
+        d = df[column].dropna() # avoid nulls
+        if cast:
+            d = d.apply(set)
+
+        values = columns[column] if isinstance(columns, dict) else util.union(d)
+        for value in values:
+            name = values[value] if type(values) is dict else str(value)
+            column_name = column + '_'+ name.replace(' ', '_')
+            series = d.apply(lambda c: value in c)
+            series.fillna(0, inplace=True)
+            if not min_freq or series.sum() >= min_freq:
+                df[column_name] = series
+
+    if drop:
+        # list(columns) will return keys if columns was dict
+        df.drop(list(columns), axis=1, inplace=True)
+
+    return df
 
 # convert (values, counts) as returned by aggregate.aggregate_counts() to dicts
 # makes expand_counts much faster
