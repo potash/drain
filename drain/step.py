@@ -102,6 +102,7 @@ class Step(object):
                 self.set_result(self.run(*args, **kwargs))
     
         if self == output:
+            logging.info('Dumping\n%s' % util.indent(str(self)))
             self.dump()
             util.touch(self._target_filename)
 
