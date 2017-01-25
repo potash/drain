@@ -385,9 +385,9 @@ def impute(X, train=None, dropna=True, inplace=True):
                 X = X.drop(null_columns, axis=1, inplace=False)
 
     if inplace:
-        X.fillna(Xfit.mean().dropna(), inplace=True)
+        X.fillna(mean.dropna(), inplace=True)
     else:
-        X = X.fillna(Xfit.mean().dropna(), inplace=False)
+        X = X.fillna(mean.dropna(), inplace=False)
 
     return X
 
