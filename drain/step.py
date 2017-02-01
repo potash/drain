@@ -90,7 +90,7 @@ class Step(object):
             inputs = []
     
         if not self.has_result():
-            if self in inputs or (load_targets and self.is_target()):
+            if self in inputs or (load_targets and self.target):
                 logging.info('Loading\n%s' % util.indent(str(self)))
                 self.load()
             else:
