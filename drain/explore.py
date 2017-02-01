@@ -38,7 +38,9 @@ def to_dataframe(steps):
     df.columns = [str.join('_', c[1:] if c[1:] in unique_args else c) 
             for c in df.columns]
 
+    columns = list(df.columns)
     df['step'] = steps
+    df.set_index(columns, inplace=True)
 
     return df
 
@@ -77,36 +79,32 @@ def apply(df, fn, **kwargs):
     returns a dataframe whose columns are indexed by the non-step columns of df,
         i.e. the differential arguments of the steps
     """
-    # make all arguments hashable so they can be column names for result
-    df = df.copy()
-    non_step = list(df.columns.difference({'step'}))
-    df.loc[:,non_step] = df.loc[:,non_step].applymap(
-        lambda d: d if isinstance(d, Hashable)
-                    else yaml.dump(d).replace('\n', ', ').rstrip(', '))
-    df.set_index(non_step, inplace=True)
-        
-    search = list(product(util.make_list(fn), util.dict_product(kwargs)))
-    results = [df['step'].apply(lambda step: fn(step, **kw)).T for fn,kw in search]
+    search_keys = [k for k,v in kwargs.items() if isinstance(v, list) and len(v) > 1]
+    functions = util.make_list(fn)
+    search = list(product(functions, util.dict_product(kwargs)))
     
-    # when function returns a scalar reshape it into a DataFrame
-    # so it can be concatted properly
-    dfs = []
-    for r in results:
-        if not isinstance(r, pd.DataFrame):
-            r = pd.DataFrame(r).T
-            r.index = [0]
-        dfs.append(r)
+    results = []
+    for fn,kw in search:
+        r = df.step.apply(lambda step: fn(step, **kw))
         
-    result = pd.concat(dfs, axis=1)
+        name = [] if len(functions) == 1 else [fn.__name__]
+        name += util.dict_subset(kw, search_keys).values()
+            
+        if isinstance(r, pd.DataFrame):
+            columns = pd.MultiIndex.from_tuples([tuple(name + util.make_list(c)) for c in r.columns])
+            r.columns = columns
+        else:
+            r.name = tuple(name)
+        results.append(r)
+
+    result = pd.concat(results, axis=1)
     
     # get subset of parameters that were searched over
-    tuples = [[fn.__name__] + kw.values() + util.make_list(c) for (fn,kw),c in product(search, df.index)]
-    names = [None]+search[0][1].keys() + df.index.names
-
-    index = pd.MultiIndex.from_tuples(tuples, names=names)
-    result.columns = index
-    util.drop_constant_column_levels(result)
-
+    column_names = [] if len(functions) == 1 else [None]
+    column_names += search_keys
+    column_names += [None]*(len(result.columns.names)-len(column_names))
+    result.columns.names = column_names
+    
     return result
 
 def apply_y(df, fn, **kwargs):
