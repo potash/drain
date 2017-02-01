@@ -26,9 +26,7 @@ if __name__ == "__main__":
 
     if args.path:
         drain.PATH = os.path.abspath(args.path)
-    elif 'DRAINPATH' in os.environ:
-        drain.PATH = os.path.abspath(os.environ['DRAINPATH'])
-    else:
+    elif drain.PATH is None:
         raise ValueError('Must pass path argument or set DRAINPATH environment variable')
 
     steps = []

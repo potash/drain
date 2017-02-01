@@ -1,7 +1,12 @@
 import logging
+import os
+from . import serialize
+
 logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=0)
 
-from . import serialize
 serialize.configure()
 
-PATH = None
+if 'DRAINPATH' in os.environ:
+    PATH = os.path.abspath(os.environ['DRAINPATH'])
+else:
+    PATH = None
