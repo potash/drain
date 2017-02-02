@@ -13,7 +13,7 @@ from matplotlib import cm
 
 from drain import model, util, metrics, step
 
-def expand(self, prefix=False, index=True, diff=True, existence=False):
+def expand(self, prefix=False, index=True, diff=True, existence=True):
     """
     Args: 
         prefix: whether to always use step name prefix for kwarg name.
@@ -30,36 +30,41 @@ def expand(self, prefix=False, index=True, diff=True, existence=False):
     # collect kwargs resulting in a list of {name: kwargs} dicts
     dicts = [step._collect_kwargs(s) for s in self.index]
     # if any of the kwargs are themselves dicts, expand them
-    #dicts = [{k: util.dict_expand(v) for k,v in s.items()} for s in dicts]
+    dicts = [{k: util.dict_expand(v) for k,v in s.items()} for s in dicts]
 
     if diff:
-        if existence:
-            merged_dicts = [{} for d in dicts] # the desired list of dicts
+        diff_dicts = [{} for d in dicts] # the desired list of dicts
 
-            names = util.union([set(d.keys()) for d in dicts]) # all names among these steps
-            for name in names:
+        names = util.union([set(d.keys()) for d in dicts]) # all names among these steps
+        for name in names:
+            if existence:
                 ndicts = [d[name] for d in dicts if name in d.keys()] # all dicts for this name
-                ndiffs = util.dict_diff(nd) # diffs for this name
-                # if they were all the same
-                if sum(map(len, ndiffs)) == 0: 
-                    if len(ndicts) == len(self): # and every step had the name
-                        continue # don't use this dict
-                    else: # not every step had the name
-                        exists = [name in d.keys() for d in dicts] # does the 
-        else:
-            merged_dicts = []
-            for dd in dicts:
-                merged = {}
-                for name,d in dd.items():
-                    merged.update({(name, k):v for k,v in d.items()})
-                merged_dicts.append(merged)
-            dicts = util.dict_diff(merged_dicts)
-    else:
-        if existence:
-            raise ValueError("Cannot use existence=True when diff=False")
+            else:
+                ndicts = [d[name] if name in d.keys() else {} for d in dicts]
+
+            ndiffs = util.dict_diff(ndicts) # diffs for this name
+          
+            if sum(map(len, ndiffs)) == 0: # if they're all the same 
+                # but not all had the key and existence=True
+                if existence and len(ndicts) < len(self): 
+                    for m, d in zip(diff_dicts, dicts):
+                        m[name] = {[]: name in d.keys()}
+            else: # if there was a diff
+                diff_iter = iter(ndiffs)
+                for m, d in zip(diff_dicts, dicts):
+                    if name in d.keys() or not existence:
+                        m[name] = diff_iter.next() # get the corresponding diff
+
+        dicts = diff_dicts
+
+    # restructure so name is in the key
+    merged_dicts = []
+    for dd in dicts:
+        merged_dicts.append(util.dict_merge(*({tuple([name] + list(util.make_tuple(k))) : v 
+                            for k,v in d.items()} for name, d in dd.items())))
 
     # prefix_keys are the keys that will keep their prefix
-    keys = list(chain(*(d.keys() for d in dicts)))
+    keys = list(chain(*(d.keys() for d in merged_dicts)))
     if not prefix:
         key_count = Counter((k[1:] for k  in keys))
         prefix_keys = {a for a in key_count if key_count[a] > 1}
@@ -68,14 +73,13 @@ def expand(self, prefix=False, index=True, diff=True, existence=False):
 
     # prefix non-unique arguments with step name
     # otherwise use argument alone
-    dicts = [{str.join('_', k if k[1:] in prefix_keys else k[1:]):v 
-              for k,v in d.items()} for d in dicts]
+    merged_dicts = [{str.join('_', map(str, k if k[1:] in prefix_keys else k[1:])):v 
+              for k,v in d.items()} for d in merged_dicts]
 
-    df2 = pd.DataFrame(dicts, index=self.index)
-    return df2
+    df2 = pd.DataFrame(merged_dicts, index=self.index)
     columns = list(df2.columns) # remember columns for index below
 
-    expanded = df2.join(self)
+    expanded = pd.concat((df2, self), axis=1)
 
     if index:
         try:
@@ -164,7 +168,7 @@ def _print_unhashable(df, columns=None):
             try:
                 df[c].apply(hash)
             except TypeError:
-                df[c] = df[c].dropna().apply(pformat)
+                df[c] = df[c].dropna().apply(pformat).ix[df.index]
 
     return df
 
