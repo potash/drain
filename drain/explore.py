@@ -19,7 +19,96 @@ from matplotlib import cm
 
 from drain import model, util, metrics, step
 
+def expand(self, prefix=False, index=True, diff=True):
+    """
+    Args: 
+        prefix: whether to always use step name prefix for kwarg name.
+            Default False, which uses prefixes when necessary, i.e. for 
+            keywords that are shared by multiple step names.
+        index: If True expand args into index. Otherwise expand into
+            columns
+        diff: whether to only expand keywords whose values that are 
+            non-constant
+    Returns: a DataFrame indexing the steps by their arguments
+    """
+    dicts = [step._collect_kwargs(s) for s in self.index]
+    dicts = map(util.dict_expand, dicts)
+    if diff:
+        dicts = util.dict_diff(dicts)
+
+    # prefix_keys are the keys that will keep their prefix
+    keys = list(chain(*(d.keys() for d in dicts)))
+    if not prefix:
+        key_count = Counter((k[1:] for k  in keys))
+        prefix_keys = {a for a in key_count if key_count[a] > 1}
+    else:
+        prefix_keys = set(keys)
+
+    # prefix non-unique arguments with step name
+    # otherwise use argument alone
+    dicts = [{str.join('_', k if k[1:] in prefix_keys else k[1:]):v 
+              for k,v in d.items()} for d in dicts]
+
+    df2 = pd.DataFrame(dicts, index=self.index)
+    columns = list(df2.columns) # remember columns for index below
+
+    expanded = df2.join(self)
+
+    if index:
+        try:
+            expanded.set_index(columns, inplace=True)
+        except TypeError:
+            _print_unhashable(expanded, columns)
+            expanded.set_index(columns, inplace=True)
+
+    return expanded
+
+def dapply(self, fn, **kwargs):
+    """
+    apply function to each step object, passing all kwargs
+    if any kwarg or function is iterable it gets grid-searched
+    returns a dataframe whose columns are indexed by the non-step columns of df,
+        i.e. the differential arguments of the steps
+    """
+    search_keys = [k for k,v in kwargs.items() if isinstance(v, list) and len(v) > 1]
+    functions = util.make_list(fn)
+    search = list(product(functions, util.dict_product(kwargs)))
+    
+    results = []
+    for fn,kw in search:
+        r = self.index.to_series().apply(lambda step: fn(step, **kw))
+        
+        name = [] if len(functions) == 1 else [fn.__name__]
+        name += util.dict_subset(kw, search_keys).values()
+            
+        if isinstance(r, pd.DataFrame):
+            columns = pd.MultiIndex.from_tuples([tuple(name + util.make_list(c)) for c in r.columns])
+            r.columns = columns
+        else:
+            r.name = tuple(name)
+        results.append(r)
+
+    if len(results) > 1:
+        result = pd.concat(results, axis=1)
+        # get subset of parameters that were searched over
+        column_names = [] if len(functions) == 1 else [None]
+        column_names += search_keys
+        column_names += [None]*(len(result.columns.names)-len(column_names))
+        result.columns.names = column_names
+
+        return StepFrame(result)
+    else:
+        result = results[0]
+        if isinstance(result, pd.DataFrame):
+            return StepFrame(result)
+        else:
+            result.name = functions[0].__name__
+            return StepSeries(result)
+
 class StepFrame(pd.DataFrame):
+    expand = expand
+    dapply = dapply
+
     @property
     def _constructor(self):
         return StepFrame
@@ -28,87 +117,17 @@ class StepFrame(pd.DataFrame):
     def _contructor_sliced(self):
         return pd.Series
 
-    def expand(self, prefix=False, index=True, diff=True):
-        """
-        Args: 
-            prefix: whether to always use step name prefix for kwarg name.
-                Default False, which uses prefixes when necessary, i.e. for 
-                keywords that are shared by multiple step names.
-            index: If True expand args into index. Otherwise expand into
-                columns
-            diff: whether to only expand keywords whose values that are 
-                non-constant
-        Returns: a DataFrame indexing the steps by their arguments
-        """
-        dicts = [step._collect_kwargs(s) for s in self.index]
-        dicts = map(util.dict_expand, dicts)
-        if diff:
-            dicts = util.dict_diff(dicts)
+class StepSeries(pd.Series):
+    expand = expand
+    dapply = dapply
 
-        # prefix_keys are the keys that will keep their prefix
-        keys = list(chain(*(d.keys() for d in dicts)))
-        if not prefix:
-            key_count = Counter((k[1:] for k  in keys))
-            prefix_keys = {a for a in key_count if key_count[a] > 1}
-        else:
-            prefix_keys = set(keys)
+    @property
+    def _constructor(self):
+        return StepSeries
 
-        # prefix non-unique arguments with step name
-        # otherwise use argument alone
-        dicts = [{str.join('_', k if k[1:] in prefix_keys else k[1:]):v 
-                  for k,v in d.items()} for d in dicts]
-
-        df2 = pd.DataFrame(dicts, index=self.index)
-        columns = list(df2.columns) # remember columns for index below
-
-        expanded = self.join(df2)
-
-        if index:
-            try:
-                expanded.set_index(columns, inplace=True)
-            except TypeError:
-                _print_unhashable(expanded, columns)
-                expanded.set_index(columns, inplace=True)
-
-        return expanded
-
-    def dapply(self, fn, **kwargs):
-        """
-        apply function to each step object, passing all kwargs
-        if any kwarg or function is iterable it gets grid-searched
-        returns a dataframe whose columns are indexed by the non-step columns of df,
-            i.e. the differential arguments of the steps
-        """
-        search_keys = [k for k,v in kwargs.items() if isinstance(v, list) and len(v) > 1]
-        functions = util.make_list(fn)
-        search = list(product(functions, util.dict_product(kwargs)))
-        
-        results = []
-        for fn,kw in search:
-            r = self.index.to_series().apply(lambda step: fn(step, **kw))
-            
-            name = [] if len(functions) == 1 else [fn.__name__]
-            name += util.dict_subset(kw, search_keys).values()
-                
-            if isinstance(r, pd.DataFrame):
-                columns = pd.MultiIndex.from_tuples([tuple(name + util.make_list(c)) for c in r.columns])
-                r.columns = columns
-            else:
-                r.name = tuple(name)
-            results.append(r)
-
-        if len(results) > 1:
-            result = pd.concat(results, axis=1)
-            # get subset of parameters that were searched over
-            column_names = [] if len(functions) == 1 else [None]
-            column_names += search_keys
-            column_names += [None]*(len(result.columns.names)-len(column_names))
-            result.columns.names = column_names
-        else:
-            result = results[0].to_frame()
-            result.columns = [functions[0].__name__]
-        
-        return StepFrame(result)
+    @property
+    def _contructor_expanddim(self):
+        return StepFrame
 
 def _print_unhashable(df, columns=None):
     """
