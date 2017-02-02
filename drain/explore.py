@@ -19,9 +19,13 @@ from matplotlib import cm
 
 from drain import model, util, metrics, step
 
-def to_dataframe(steps):
+def to_dataframe(steps, prefix=False):
     """
-    Args: a collection of Step objects
+    Args: 
+        steps: a collection of Step objects
+        prefix: whether to always use step name prefix for kwarg name.
+            Default False, which only uses prefixes for keywords that 
+            are shared by multiple step.
     Returns: a DataFrame indexing the steps by their arguments
     """
     dicts = [step._collect_kwargs(s) for s in steps]
@@ -29,14 +33,17 @@ def to_dataframe(steps):
 
     df = pd.DataFrame(diffs)
 
-    # find unique arguments
-    arg_count = Counter((c[1:] for c in df.columns))
-    unique_args = {a for a in arg_count if arg_count[a] == 1}
+    # prefix_args are the args that will keep their prefix
+    if not prefix:
+        arg_count = Counter((c[1:] for c in df.columns))
+        prefix_args = {a for a in arg_count if arg_count[a] > 1}
+    else:
+        prefix_args = [c[1:] for c in df.columns]
 
     # prefix non-unique arguments with step name
     # otherwise use argument alone
-    df.columns = [str.join('_', c[1:] if c[1:] in unique_args else c) 
-            for c in df.columns]
+    df.columns = [str.join('_', c if c[1:] in prefix_args else c[1:]) 
+                  for c in df.columns]
 
     columns = list(df.columns)
     df['step'] = steps
