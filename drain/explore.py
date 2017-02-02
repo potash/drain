@@ -6,7 +6,7 @@ from collections import Hashable
 from copy import deepcopy
 from tempfile import NamedTemporaryFile
 from pprint import pformat
-from itertools import product
+from itertools import product, chain
 
 from sklearn.externals import joblib
 from sklearn import tree
@@ -19,35 +19,64 @@ from matplotlib import cm
 
 from drain import model, util, metrics, step
 
-def to_dataframe(steps, prefix=False):
+def expand(df, prefix=False, index=True, diff=True):
     """
     Args: 
-        steps: a collection of Step objects
+        df: a dataframe whose index is a collection of steps
         prefix: whether to always use step name prefix for kwarg name.
-            Default False, which only uses prefixes for keywords that 
-            are shared by multiple step.
+            Default False, which uses prefixes when necessary, i.e. for 
+            keywords that are shared by multiple step names.
+        index: If True expand args into index. Otherwise expand into
+            columns
+        diff: whether to only expand keywords whose values that are 
+            non-constant
     Returns: a DataFrame indexing the steps by their arguments
     """
-    dicts = [step._collect_kwargs(s) for s in steps]
-    diffs = map(util.dict_expand, util.dict_diff(dicts))
+    dicts = [step._collect_kwargs(s) for s in df.index]
+    dicts = map(util.dict_expand, dicts)
+    if diff:
+        dicts = util.dict_diff(dicts)
 
-    df = pd.DataFrame(diffs)
-
-    # prefix_args are the args that will keep their prefix
+    # prefix_keys are the keys that will keep their prefix
+    keys = list(chain(*(d.keys() for d in dicts)))
     if not prefix:
-        arg_count = Counter((c[1:] for c in df.columns))
-        prefix_args = {a for a in arg_count if arg_count[a] > 1}
+        key_count = Counter((k[1:] for k  in keys))
+        prefix_keys = {a for a in key_count if key_count[a] > 1}
     else:
-        prefix_args = [c[1:] for c in df.columns]
+        prefix_keys = set(keys)
 
     # prefix non-unique arguments with step name
     # otherwise use argument alone
-    df.columns = [str.join('_', c if c[1:] in prefix_args else c[1:]) 
-                  for c in df.columns]
+    dicts = [{str.join('_', k if k[1:] in prefix_keys else k[1:]):v 
+              for k,v in d.items()} for d in dicts]
 
-    columns = list(df.columns)
-    df['step'] = steps
-    df.set_index(columns, inplace=True)
+    df2 = pd.DataFrame(dicts, index=df.index)
+    columns = list(df2.columns) # remember columns for index below
+
+    expanded = df.join(df2)
+
+    if index:
+        try:
+            expanded.set_index(columns, inplace=True)
+        except TypeError:
+            _print_unhashable(expanded, columns)
+            expanded.set_index(columns, inplace=True)
+
+    return expanded
+
+def _print_unhashable(df, columns=None):
+    """
+    Replace unhashable values in a DataFrame with their string repr
+    Args:
+        df: DataFrame
+        columns: columns to replace, if necessary. Default None replaces all columns.
+    """
+    for c in df.columns if columns is None else columns:
+        if df.dtypes[c] == object:
+            try:
+                df[c].apply(hash)
+            except TypeError:
+                df[c] = df[c].dropna().apply(pformat)
 
     return df
 
@@ -92,7 +121,7 @@ def apply(df, fn, **kwargs):
     
     results = []
     for fn,kw in search:
-        r = df.step.apply(lambda step: fn(step, **kw))
+        r = df.index.to_series().apply(lambda step: fn(step, **kw))
         
         name = [] if len(functions) == 1 else [fn.__name__]
         name += util.dict_subset(kw, search_keys).values()
