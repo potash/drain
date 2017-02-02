@@ -13,29 +13,6 @@ def test_run_inputs_mapping():
     s.execute()
     assert s.get_result() == 2
 
-def test_get_named_inputs():
-    step1 = Step(a=1)
-    step1.name = 'Step1'
-
-    step2 = Step(b=1, inputs=[Step(c=1, inputs=[step1, Step(d=1)])])
-    assert step2.named_steps == {'Step1': step1}
-
-def test_get_named_inputs2():
-    step1 = Step(a=1)
-    step1.name = 'Step1'
-
-    step2 = Step(b=1, inputs=[Step(c=1, inputs=[step1, Step(d=1)])])
-    step2.name = 'Step2'
-
-    assert step2.named_steps == {'Step2': step2, 'Step1': step1}
-
-def test_get_named_arguments():
-    step1 = Step(a=1)
-    step1.name = 'Step1'
-
-    step2 = Step(b=1, inputs=[Step(c=1, inputs=[step1, Step(d=1)])])
-    assert step2.named_arguments == {('Step1', 'a'): 1}
-
 class DumpStep(Step):
     def __init__(self, n, n_df, return_list):
         # number of objects to return and number of them to be dataframes

@@ -17,15 +17,15 @@ from collections import Counter
 import matplotlib.colors
 from matplotlib import cm
 
-from drain import model, util, metrics
+from drain import model, util, metrics, step
 
 def to_dataframe(steps):
     """
     Args: a collection of Step objects
     Returns: a DataFrame indexing the steps by their arguments
     """
-    args = [s.named_arguments for s in steps]
-    diffs = map(util.dict_expand, util.diff_dicts(args, multilevel=True))
+    dicts = [step._collect_kwargs(s) for s in steps]
+    diffs = map(util.dict_expand, util.dict_diff(dicts))
 
     df = pd.DataFrame(diffs)
 

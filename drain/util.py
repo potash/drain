@@ -224,40 +224,32 @@ def nunique(iterable):
     try:
         return len(set(iterable))
     except TypeError:
-        logging.info('unhashable!')
+        # use equals to count unhashable objects
         unique = []
         for i in iterable:
             if i not in unique:
                 unique.append(i)
         return len(unique)
 
-# When multilevel is true, only look for diffs within subkeys
-# TODO add tests to clarify this
-def diff_dicts(dicts, multilevel=True):
-    diffs = [{} for d in dicts]
+def dict_diff(dicts):
+    """
+    Subset dictionaries to keys which map to multiple values
+    """
+    diff_keys = set()
 
-    if multilevel:
-        keys = dict()
-        for d in union(set(d.keys()) for d in dicts):
-            if d[0] in keys:
-                keys[d[0]].add(d)
+    for k in union(set(d.keys()) for d in dicts):
+        values = []
+        for d in dicts:
+            if k not in d:
+                diff_keys.add(k)
+                break
             else:
-                keys[d[0]] = {d}
+                values.append(d[k])
+                if nunique(values) > 1:
+                    diff_keys.add(k)
+                    break
 
-        intersection = dict()
-        for k0 in keys:
-            intersection.update({k: nunique(d[k] for d in dicts if k in d) for k in keys[k0]})
-
-    else:
-        keys = map(lambda d: set(d.keys()), dicts)
-        intersection = {k: nunique(d[k] for d in dicts) for k in intersect(keys)}
-
-    for diff, d in zip(diffs, dicts):
-        for k in d:
-            if k not in intersection or intersection[k] > 1:
-                diff[k] = d[k]
-
-    return diffs
+    return [dict_subset(d, diff_keys) for d in dicts]
 
 def make_list(a):
     return [a] if not type(a) in (list, tuple) else list(a)

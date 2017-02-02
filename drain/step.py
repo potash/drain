@@ -116,27 +116,6 @@ class Step(object):
         Step's dump on disk. Depends on the constructor's kwargs. """
         return base64.urlsafe_b64encode(self._hasher.digest())
 
-    @cached_property
-    def named_steps(self):
-        """ 
-        returns a dictionary of name: step pairs
-        recursively searches self and inputs
-        """
-        named = {}
-
-        for i in self.inputs:
-            for name,step in i.named_steps.iteritems():
-                if name in named and step != named[name]:
-                    raise NameError('Multiple steps with the same name: %s' % name)
-                named[name] = step
-        
-        if self.name is not None:
-            if self.name in named and named[self.name] != self:
-                raise NameError('Multiple steps with the same name: %s' % name)
-            named[self.name] = self
-
-        return named
-
     def get_input(self, name):
         """
         Searches the inputs tree for a step of the given name
@@ -148,23 +127,6 @@ class Step(object):
 
         if self.name == name:
             return self
-
-    @cached_property
-    def named_arguments(self):
-        """
-        Returns a dictionary of (name, kwarg): value pairs where
-            name is the name of a step
-            kwarg is an argument name
-            value is the value of the argument
-        """
-        d = dict()
-        named = self.named_steps
-
-        for name, step in named.iteritems():
-            for k,v in step.get_arguments(inputs=False).iteritems():
-                d[(name, k)] = v
-
-        return d
 
     # returns a shallow copy of _kwargs
     # any argument specified is excluded if False
@@ -400,3 +362,38 @@ class Divide(Step):
     def run(self, numerator, denominator):
         return numerator / denominator
 
+def _expand_inputs(step, steps=None):
+    """
+    Returns a list of this step and all inputs (recursively)
+    """
+    if steps is None:
+        steps = []
+
+    if 'inputs' in step._kwargs.keys():
+        for i in step._kwargs['inputs']:
+            steps += _expand_inputs(i)
+        
+    return steps + [step]
+
+def _collect_kwargs(step):
+    """
+    Collect the kwargs of this step and its inputs
+    Returns: dictionary of (name, key): value pairs where name is the name of
+        a step and key:value is a pair in its kwargs. If the step doesn't have 
+        a name it's __class__.__name__ is used.
+    """
+    names = set()
+    dd = []
+    for s in _expand_inputs(step):
+        d = dict(s._kwargs)
+        d.pop('inputs', None)
+        
+        name = s.name if s.name is not None else s.__class__.__name__
+        if name in names:
+            raise ValueError("Duplicate step names: %s" % name)
+        names.add(name)
+        
+        d = {(name, k):v for k,v in d.items()}
+        dd.append(d)
+        
+    return util.merge_dicts(*dd)
