@@ -162,7 +162,7 @@ def cross_join(left, right, lsuffix='_left', rsuffix='_right'):
     right.index = np.zeros(len(right))
     return left.join(right, lsuffix=lsuffix, rsuffix=rsuffix)
 
-def merge_dicts(*dict_args):
+def dict_merge(*dict_args):
     '''
     Given any number of dicts, shallow copy and merge into a new dict,
     precedence goes to key value pairs in latter dicts.
