@@ -48,7 +48,7 @@ def expand(self, prefix=False, index=True, diff=True, existence=True):
                 # but not all had the key and existence=True
                 if existence and len(ndicts) < len(self): 
                     for m, d in zip(diff_dicts, dicts):
-                        m[name] = {[]: name in d.keys()}
+                        m[name] = {tuple(): name in d.keys()}
             else: # if there was a diff
                 diff_iter = iter(ndiffs)
                 for m, d in zip(diff_dicts, dicts):
