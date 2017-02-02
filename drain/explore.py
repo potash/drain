@@ -97,13 +97,16 @@ def apply(df, fn, **kwargs):
             r.name = tuple(name)
         results.append(r)
 
-    result = pd.concat(results, axis=1)
-    
-    # get subset of parameters that were searched over
-    column_names = [] if len(functions) == 1 else [None]
-    column_names += search_keys
-    column_names += [None]*(len(result.columns.names)-len(column_names))
-    result.columns.names = column_names
+    if len(results) > 1:
+        result = pd.concat(results, axis=1)
+        # get subset of parameters that were searched over
+        column_names = [] if len(functions) == 1 else [None]
+        column_names += search_keys
+        column_names += [None]*(len(result.columns.names)-len(column_names))
+        result.columns.names = column_names
+    else:
+        result = results[0].to_frame()
+        result.columns = [functions[0].__name__]
     
     return result
 
