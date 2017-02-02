@@ -20,9 +20,11 @@ def test_dict_expand():
 def test_dict_expand_deep():
     assert dict_expand({1:2, 3:{4:{5:6}}}) == {1:2, (3,4,5):6}
 
-def test_dict_diff():
-    assert dict_diff([{}, {}]) == [{}, {}]
+def test_dict_diff_empty():
+    assert dict_diff([{}]) == [{}]
 
-def test_dict_diff():
-    assert dict_diff([{}, {1:2}]) == [{}, {1:2}]
+def test_dict_diff_single():
+    assert dict_diff([{0:1}, {0:1, 2:3}]) == [{}, {2:3}]
 
+def test_dict_diff_double():
+    assert dict_diff([{}, {1:2, 3:4}, {3:4}]) == [{}, {1:2, 3:4}, {3:4}]
