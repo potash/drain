@@ -12,7 +12,6 @@ from sklearn.externals import joblib
 from sklearn.base import _pprint
 
 from drain import util, metrics
-from drain.util import merge_dicts
 from drain.step import Step, Construct
 
 class FitPredict(Step):
