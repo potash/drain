@@ -1,9 +1,3 @@
-import yaml
-
-import os
-import sys
-from collections import Hashable
-from copy import deepcopy
 from tempfile import NamedTemporaryFile
 from pprint import pformat
 from itertools import product, chain
@@ -19,7 +13,7 @@ from matplotlib import cm
 
 from drain import model, util, metrics, step
 
-def expand(self, prefix=False, index=True, diff=True):
+def expand(self, prefix=False, index=True, diff=True, existence=False):
     """
     Args: 
         prefix: whether to always use step name prefix for kwarg name.
@@ -29,12 +23,40 @@ def expand(self, prefix=False, index=True, diff=True):
             columns
         diff: whether to only expand keywords whose values that are 
             non-constant
+        existence: whether to check for existence of a step in the tree
+            instead of a diff. Only applicable when diff=True
     Returns: a DataFrame indexing the steps by their arguments
     """
+    # collect kwargs resulting in a list of {name: kwargs} dicts
     dicts = [step._collect_kwargs(s) for s in self.index]
-    dicts = map(util.dict_expand, dicts)
+    # if any of the kwargs are themselves dicts, expand them
+    #dicts = [{k: util.dict_expand(v) for k,v in s.items()} for s in dicts]
+
     if diff:
-        dicts = util.dict_diff(dicts)
+        if existence:
+            merged_dicts = [{} for d in dicts] # the desired list of dicts
+
+            names = util.union([set(d.keys()) for d in dicts]) # all names among these steps
+            for name in names:
+                ndicts = [d[name] for d in dicts if name in d.keys()] # all dicts for this name
+                ndiffs = util.dict_diff(nd) # diffs for this name
+                # if they were all the same
+                if sum(map(len, ndiffs)) == 0: 
+                    if len(ndicts) == len(self): # and every step had the name
+                        continue # don't use this dict
+                    else: # not every step had the name
+                        exists = [name in d.keys() for d in dicts] # does the 
+        else:
+            merged_dicts = []
+            for dd in dicts:
+                merged = {}
+                for name,d in dd.items():
+                    merged.update({(name, k):v for k,v in d.items()})
+                merged_dicts.append(merged)
+            dicts = util.dict_diff(merged_dicts)
+    else:
+        if existence:
+            raise ValueError("Cannot use existence=True when diff=False")
 
     # prefix_keys are the keys that will keep their prefix
     keys = list(chain(*(d.keys() for d in dicts)))
@@ -50,6 +72,7 @@ def expand(self, prefix=False, index=True, diff=True):
               for k,v in d.items()} for d in dicts]
 
     df2 = pd.DataFrame(dicts, index=self.index)
+    return df2
     columns = list(df2.columns) # remember columns for index below
 
     expanded = df2.join(self)

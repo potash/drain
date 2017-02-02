@@ -378,12 +378,12 @@ def _expand_inputs(step, steps=None):
 def _collect_kwargs(step):
     """
     Collect the kwargs of this step and its inputs
-    Returns: dictionary of (name, key): value pairs where name is the name of
-        a step and key:value is a pair in its kwargs. If the step doesn't have 
-        a name it's __class__.__name__ is used.
+    Returns: dictionary of name: kwargs pairs where name is the name of
+        a step and kwargs is its kwargs minus inputs. If the step doesn't have 
+        a name __class__.__name__ is used.
     """
     names = set()
-    dd = []
+    dicts = {}
     for s in _expand_inputs(step):
         d = dict(s._kwargs)
         d.pop('inputs', None)
@@ -393,7 +393,6 @@ def _collect_kwargs(step):
             raise ValueError("Duplicate step names: %s" % name)
         names.add(name)
         
-        d = {(name, k):v for k,v in d.items()}
-        dd.append(d)
+        dicts[name] = d
         
-    return util.merge_dicts(*dd)
+    return dicts
