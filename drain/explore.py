@@ -115,10 +115,14 @@ def expand(self, prefix=False, index=True, diff=True, existence=True):
 
 def dapply(self, fn, **kwargs):
     """
-    apply function to each step object, passing all kwargs
-    if any kwarg or function is iterable it gets grid-searched
-    returns a dataframe whose columns are indexed by the non-step columns of df,
-        i.e. the differential arguments of the steps
+    Apply function to each step object in the index
+
+    Args:
+        fn: function to apply. If a list then each function is applied
+        kwargs: a keyword arguments to pass to each function. Arguments
+            with list value are grid searched using util.dict_product.
+    
+    Returns: a StepFrame or StepSeries 
     """
     search_keys = [k for k,v in kwargs.items() if isinstance(v, list) and len(v) > 1]
     functions = util.make_list(fn)
