@@ -15,6 +15,27 @@ from drain import model, util, metrics, step
 
 def expand(self, prefix=False, index=True, diff=True, existence=True):
     """
+    This function is a member of StepFrame and StepSeries. It is used to 
+    expand the kwargs of the steps either into the index (index=True) or 
+    as columns (index=False). By default (diff=True) only the kwargs which 
+    differ among steps are expanded.
+
+    Note that index objects in pandas must be hashable so any unhashable 
+    argument values are converted to string representations (using pprint) 
+    when index=True.
+
+    If "inputs" is an argument those steps' kwargs are also expanded (and 
+    their inputs recursively). If there are multiple steps with the same 
+    argument names they are prefixed by their names or if those are not set 
+    then by their class names. To enable prefixing for all args set
+    prefix=True.
+
+    Sometimes the difference between pipelines is that a step exists or it
+    doesn't. When diff=True and existence=True, instead of expanding all 
+    the kwargs for that step, we expand a single column whose name is the
+    step name and whose value is a boolean indicating whether the step exists
+    in the given tree.
+
     Args: 
         prefix: whether to always use step name prefix for kwarg name.
             Default False, which uses prefixes when necessary, i.e. for 
@@ -24,8 +45,10 @@ def expand(self, prefix=False, index=True, diff=True, existence=True):
         diff: whether to only expand keywords whose values that are 
             non-constant
         existence: whether to check for existence of a step in the tree
-            instead of a diff. Only applicable when diff=True
-    Returns: a DataFrame indexing the steps by their arguments
+            instead of a full diff. Only applicable when diff=True. See
+            note above.
+
+    Returns: a DatFrame with the arguments of the steps expanded.
     """
     # collect kwargs resulting in a list of {name: kwargs} dicts
     dicts = [step._collect_kwargs(s) for s in self.index]
