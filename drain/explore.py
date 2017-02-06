@@ -100,18 +100,20 @@ def expand(self, prefix=False, index=True, diff=True, existence=True):
               for k,v in d.items()} for d in merged_dicts]
 
     expanded = pd.DataFrame(merged_dicts, index=self.index)
+    columns = list(expanded.columns)
+
+    expanded = pd.concat((expanded, self), axis=1)
 
     if index:
-        columns = expanded.columns
         try:
             expanded.set_index(columns, inplace=True)
         except TypeError:
             _print_unhashable(expanded, columns)
             expanded.set_index(columns, inplace=True)
 
-        expanded = self.set_index(expanded.index)
+        if isinstance(self, pd.Series):
+            expanded = expanded.ix[:,0]
     else:
-        expanded = pd.concat((df2, self), axis=1)
         # When index=False, the index is still a Step collection
         # so return a StepFrame
         expanded = StepFrame(expanded)
@@ -188,6 +190,10 @@ class StepFrame(pd.DataFrame):
 class StepSeries(pd.Series):
     expand = expand
     dapply = dapply
+
+    def __init__(self, *args, **kwargs):
+        pd.Series.__init__(self, *args, **kwargs)
+        _assert_step_collection(self.index.values)
 
     @property
     def _constructor(self):
