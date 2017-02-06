@@ -110,10 +110,14 @@ def expand(self, prefix=False, index=True, diff=True, existence=True):
         except TypeError:
             _print_unhashable(expanded, columns)
             expanded.set_index(columns, inplace=True)
+
+        if isinstance(expanded, StepFrame) and expanded.shape[1] == 1:
+            expanded = expanded.ix[:,0]
     else:
         # When index=False, the index is still a Step collection
         # so return a StepFrame
         expanded = StepFrame(expanded)
+
 
     return expanded
 
