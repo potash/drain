@@ -110,6 +110,10 @@ def expand(self, prefix=False, index=True, diff=True, existence=True):
         except TypeError:
             _print_unhashable(expanded, columns)
             expanded.set_index(columns, inplace=True)
+    else:
+        # When index=False, the index is still a Step collection
+        # so return a StepFrame
+        expanded = StepFrame(expanded)
 
     return expanded
 
@@ -159,9 +163,18 @@ def dapply(self, fn, **kwargs):
             result.name = functions[0].__name__
             return StepSeries(result)
 
+def _assert_step_collection(steps):
+    for s in steps:
+        if not isinstance(s, step.Step):
+            raise ValueError("StepFrame index must consist of drain.step.Step objects")
+
 class StepFrame(pd.DataFrame):
     expand = expand
     dapply = dapply
+
+    def __init__(self, *args, **kwargs):
+        pd.DataFrame.__init__(self, *args, **kwargs)
+        _assert_step_collection(self.index.values)
 
     @property
     def _constructor(self):
