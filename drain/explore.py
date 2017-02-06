@@ -99,25 +99,22 @@ def expand(self, prefix=False, index=True, diff=True, existence=True):
     merged_dicts = [{str.join('_', map(str, k if k[1:] in prefix_keys else k[1:])):v 
               for k,v in d.items()} for d in merged_dicts]
 
-    df2 = pd.DataFrame(merged_dicts, index=self.index)
-    columns = list(df2.columns) # remember columns for index below
-
-    expanded = pd.concat((df2, self), axis=1)
+    expanded = pd.DataFrame(merged_dicts, index=self.index)
 
     if index:
+        columns = expanded.columns
         try:
             expanded.set_index(columns, inplace=True)
         except TypeError:
             _print_unhashable(expanded, columns)
             expanded.set_index(columns, inplace=True)
 
-        if isinstance(expanded, StepFrame) and expanded.shape[1] == 1:
-            expanded = expanded.ix[:,0]
+        expanded = self.set_index(expanded.index)
     else:
+        expanded = pd.concat((df2, self), axis=1)
         # When index=False, the index is still a Step collection
         # so return a StepFrame
         expanded = StepFrame(expanded)
-
 
     return expanded
 
