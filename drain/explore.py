@@ -87,15 +87,13 @@ def expand(self, prefix=False, index=True, diff=True, existence=True):
                             for k,v in d.items()} for name, d in dd.items())))
 
     # prefix_keys are the keys that will keep their prefix
-    keys = [list(chain(*(k[1:] for k in d.keys()))) for d in merged_dicts]
+    keys = [list((k[1:] for k in d.keys())) for d in merged_dicts]
     if not prefix:
         key_count = [Counter(kk) for kk in keys]
         prefix_keys = util.union({k for k in c if c[k] > 1} for c in key_count)
     else:
-        prefix_keys = set(keys)
+        prefix_keys = util.union((set(kk) for kk in keys))
 
-    # prefix non-unique arguments with step name
-    # otherwise use argument alone
     merged_dicts = [{str.join('_', map(str, k if k[1:] in prefix_keys else k[1:])):v 
               for k,v in d.items()} for d in merged_dicts]
 
