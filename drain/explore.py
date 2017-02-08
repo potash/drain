@@ -100,8 +100,6 @@ def expand(self, prefix=False, index=True, diff=True, existence=True):
     expanded = pd.DataFrame(merged_dicts, index=self.index)
     columns = list(expanded.columns)
 
-    expanded = pd.concat((expanded, self), axis=1)
-
     if index:
         try:
             expanded.set_index(columns, inplace=True)
@@ -109,9 +107,13 @@ def expand(self, prefix=False, index=True, diff=True, existence=True):
             _print_unhashable(expanded, columns)
             expanded.set_index(columns, inplace=True)
 
+        self = self.__class__(self)
+        self.index = expanded.index
+
         if isinstance(self, pd.Series):
-            expanded = expanded.ix[:,0]
+            expanded = self.ix[:,0]
     else:
+        expanded = pd.concat((expanded, self), axis=1)
         # When index=False, the index is still a Step collection
         # so return a StepFrame
         expanded = StepFrame(expanded)
