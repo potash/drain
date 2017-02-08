@@ -63,6 +63,10 @@ class FitPredict(Step):
             logging.info('Predicting %s examples' % len(X_test))
             y = pd.DataFrame({'true': y_test})
             y['score'] = y_score(estimator, X_test)
+
+            if self.predict_train:
+                y['train'] = train
+
             if aux is not None:
                 y = y.join(aux, how='left')
 

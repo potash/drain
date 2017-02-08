@@ -87,31 +87,31 @@ def expand(self, prefix=False, index=True, diff=True, existence=True):
                             for k,v in d.items()} for name, d in dd.items())))
 
     # prefix_keys are the keys that will keep their prefix
-    keys = [list(chain(*(k[1:] for k in d.keys()))) for d in merged_dicts]
+    keys = [list((k[1:] for k in d.keys())) for d in merged_dicts]
     if not prefix:
         key_count = [Counter(kk) for kk in keys]
         prefix_keys = util.union({k for k in c if c[k] > 1} for c in key_count)
     else:
-        prefix_keys = set(keys)
+        prefix_keys = util.union((set(kk) for kk in keys))
 
-    # prefix non-unique arguments with step name
-    # otherwise use argument alone
     merged_dicts = [{str.join('_', map(str, k if k[1:] in prefix_keys else k[1:])):v 
               for k,v in d.items()} for d in merged_dicts]
 
     expanded = pd.DataFrame(merged_dicts, index=self.index)
+    columns = list(expanded.columns)
+
+    expanded = pd.concat((expanded, self), axis=1)
 
     if index:
-        columns = expanded.columns
         try:
             expanded.set_index(columns, inplace=True)
         except TypeError:
             _print_unhashable(expanded, columns)
             expanded.set_index(columns, inplace=True)
 
-        expanded = self.set_index(expanded.index)
+        if isinstance(self, pd.Series):
+            expanded = expanded.ix[:,0]
     else:
-        expanded = pd.concat((expanded, self), axis=1)
         # When index=False, the index is still a Step collection
         # so return a StepFrame
         expanded = StepFrame(expanded)
@@ -188,6 +188,10 @@ class StepFrame(pd.DataFrame):
 class StepSeries(pd.Series):
     expand = expand
     dapply = dapply
+
+    def __init__(self, *args, **kwargs):
+        pd.Series.__init__(self, *args, **kwargs)
+        _assert_step_collection(self.index.values)
 
     @property
     def _constructor(self):

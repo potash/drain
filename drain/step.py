@@ -364,35 +364,33 @@ class Divide(Step):
 
 def _expand_inputs(step, steps=None):
     """
-    Returns a list of this step and all inputs (recursively)
+    Returns the set of this step and all inputs passed to the constructor (recursively).
     """
     if steps is None:
-        steps = []
+        steps = set() 
 
     if 'inputs' in step._kwargs.keys():
         for i in step._kwargs['inputs']:
-            steps += _expand_inputs(i)
+            steps.update(_expand_inputs(i))
         
-    return steps + [step]
+    steps.add(step)
+    return steps
 
 def _collect_kwargs(step):
     """
-    Collect the kwargs of this step and its inputs
+    Collect the kwargs of this step and inputs passed to the constructor (recursively)
     Returns: dictionary of name: kwargs pairs where name is the name of
         a step and kwargs is its kwargs minus inputs. If the step doesn't have 
         a name __class__.__name__ is used.
     """
-    names = set()
     dicts = {}
     for s in _expand_inputs(step):
+        name = s.name if s.name is not None else s.__class__.__name__
+        if name in dicts.keys():
+            raise ValueError("Duplicate step names: %s" % name)
+
         d = dict(s._kwargs)
         d.pop('inputs', None)
-        
-        name = s.name if s.name is not None else s.__class__.__name__
-        if name in names:
-            raise ValueError("Duplicate step names: %s" % name)
-        names.add(name)
-        
         dicts[name] = d
-        
+            
     return dicts
