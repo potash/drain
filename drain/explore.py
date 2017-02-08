@@ -111,7 +111,7 @@ def expand(self, prefix=False, index=True, diff=True, existence=True):
 
         expanded = self.set_index(expanded.index)
     else:
-        expanded = pd.concat((df2, self), axis=1)
+        expanded = pd.concat((expanded, self), axis=1)
         # When index=False, the index is still a Step collection
         # so return a StepFrame
         expanded = StepFrame(expanded)
