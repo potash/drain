@@ -98,27 +98,24 @@ def expand(self, prefix=False, index=True, diff=True, existence=True):
               for k,v in d.items()} for d in merged_dicts]
 
     expanded = pd.DataFrame(merged_dicts, index=self.index)
-    columns = list(expanded.columns)
 
     if index:
+        columns = list(expanded.columns)
         try:
             expanded.set_index(columns, inplace=True)
         except TypeError:
             _print_unhashable(expanded, columns)
             expanded.set_index(columns, inplace=True)
 
-        self = self.__class__(self)
-        self.index = expanded.index
+        df = self.__class__.__bases__[0](self, copy=True)
+        df.index = expanded.index
 
-        if isinstance(self, pd.Series):
-            expanded = self.ix[:,0]
     else:
-        expanded = pd.concat((expanded, self), axis=1)
+        df = pd.concat((expanded, self), axis=1)
         # When index=False, the index is still a Step collection
-        # so return a StepFrame
-        expanded = StepFrame(expanded)
+        df = StepFrame(expanded)
 
-    return expanded
+    return df
 
 def dapply(self, fn, **kwargs):
     """
