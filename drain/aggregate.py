@@ -59,7 +59,6 @@ class ColumnReduction(object):
         self.column = column
         self.agg_func = agg_func
 
-        import pdb; pdb.set_trace()
         # use float32 by default for string agg functions except 'nunique', e.g. 'min', 'median', 'max', etc.
         if isinstance(agg_func, basestring) and agg_func != 'nunique' and self.column.astype is None:
             self.column.astype = np.float32
