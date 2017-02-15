@@ -291,7 +291,7 @@ def overlap(self, other, **kwargs):
 def rank(self, **kwargs):
     y0 = self.get_result()['y']
     y0 =  y_subset(y0, **kwargs)
-    return y0.score.rank()
+    return y0.score.rank(ascending=False)
 
 class PrintMetrics(Step):
     def __init__(self, metrics, **kwargs):
