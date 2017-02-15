@@ -288,6 +288,17 @@ def overlap(self, other, **kwargs):
     
     return len(y0.index & y1.index)
 
+def similarity(self, other, **kwargs):
+    y0 = self.get_result()['y']
+    y0 =  y_subset(y0, **kwargs)
+    
+    y1 = other.get_result()['y']
+    y1 = y_subset(y1, **kwargs)
+    
+    return np.float32(len(y0.index & y1.index))/\
+           len(y0.index | y1.index)
+
+
 def rank(self, **kwargs):
     y0 = self.get_result()['y']
     y0 =  y_subset(y0, **kwargs)
