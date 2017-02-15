@@ -130,11 +130,21 @@ class InverseProbabilityWeights(Step):
         return {'sample_weight':y.score**-1}
 
 def y_score(estimator, X):
-    if hasattr(estimator, 'decision_function'):
-        return estimator.decision_function(X)
-    else:
+    """
+    Score examples from a new matrix X
+    Args:
+        estimator: an sklearn estimator object
+        X: design matrix with the same features that the estimator was trained on
+
+    Returns: a vector of scores of the same length as X
+
+    Note that estimator.predict_proba is preferred but when unavailable (e.g. SVM without probability calibration) decision_function is used.
+    """
+    try:
         y = estimator.predict_proba(X)
         return y[:,1]
+    except:
+        return estimator.decision_function(X)
 
 def feature_importance(estimator, X):
     if hasattr(estimator, 'coef_'):
@@ -267,7 +277,21 @@ def lift_series(predict_step, **kwargs):
     b_kwargs = {k:v for k,v in kwargs.items() if k not in ('k', 'p')}
     b = baseline(predict_step, **b_kwargs)
 
-    return p/b 
+    return p/b
+
+def overlap(self, other, **kwargs):
+    y0 = self.get_result()['y']
+    y0 =  y_subset(y0, **kwargs)
+    
+    y1 = other.get_result()['y']
+    y1 = y_subset(y1, **kwargs)
+    
+    return len(y0.index & y1.index)
+
+def rank(self, **kwargs):
+    y0 = self.get_result()['y']
+    y0 =  y_subset(y0, **kwargs)
+    return y0.score.rank()
 
 class PrintMetrics(Step):
     def __init__(self, metrics, **kwargs):
