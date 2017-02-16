@@ -117,13 +117,14 @@ def expand(self, prefix=False, index=True, diff=True, existence=True):
 
     return df
 
-def dapply(self, fn, pairwise=False, symmetric=True, diagonal=False, **kwargs):
+def dapply(self, fn, pairwise=False, symmetric=True, diagonal=False, block=None, **kwargs):
     """
     Apply function to each step object in the index
 
     Args:
         fn: function to apply. If a list then each function is applied
         pairwise: whether to apply the function to pairs of steps
+        symmetric, diagonal, block: passed to apply_pairwise when pairwise=True
         kwargs: a keyword arguments to pass to each function. Arguments
             with list value are grid searched using util.dict_product.
     
@@ -138,7 +139,9 @@ def dapply(self, fn, pairwise=False, symmetric=True, diagonal=False, **kwargs):
         if not pairwise:
             r = self.index.to_series().apply(lambda step: fn(step, **kw))
         else:
-            r = apply_pairwise(self.index, fn, symmetric=symmetric, diagonal=diagonal, **kw)
+            r = apply_pairwise(self, fn, 
+                               symmetric=symmetric, diagonal=diagonal, block=block, 
+                               **kw)
             
         name = [] if len(functions) == 1 else [fn.__name__]
         name += util.dict_subset(kw, search_keys).values()
@@ -167,7 +170,7 @@ def dapply(self, fn, pairwise=False, symmetric=True, diagonal=False, **kwargs):
             result.name = functions[0].__name__
             return StepSeries(result)
 
-def apply_pairwise(steps, function, symmetric=True, diagonal=False, **kwargs):
+def apply_pairwise(self, function, symmetric=True, diagonal=False, block=None, **kwargs):
     """
     Helper function for pairwise apply.
     Args:
@@ -175,16 +178,24 @@ def apply_pairwise(steps, function, symmetric=True, diagonal=False, **kwargs):
         function: function to apply, first two positional arguments are steps
         symmetric: whether function is symmetric in the two steps
         diagonal: whether to apply on the diagonal
+        block: apply only when the given columns match
         kwargs: keyword arguments to pass to the function
 
     Returns:
         DataFrame with index and columns equal to the steps argument
     """
+    steps = self.index
     r = pd.DataFrame(index=steps, columns=steps)
     for i,s1 in enumerate(steps):
         j = range(i+1 if symmetric else len(steps))
         if not diagonal: j.remove(i)
-        for s2 in steps[j]:
+        other = set(steps[j])
+        if block is not None:
+            df = pd.DataFrame(self).reset_index()
+            df = df.merge(df, on=block)
+            other &= set(df[df.index_x == s1].index_y)
+
+        for s2 in other:
             r.ix[s1, s2] = function(s1, s2, **kwargs)
     return r
 
