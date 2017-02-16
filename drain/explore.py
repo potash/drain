@@ -117,7 +117,7 @@ def expand(self, prefix=False, index=True, diff=True, existence=True):
 
     return df
 
-def dapply(self, fn, pairwise=False, symmetric=False, diagonal=False, **kwargs):
+def dapply(self, fn, pairwise=False, symmetric=True, diagonal=False, **kwargs):
     """
     Apply function to each step object in the index
 
