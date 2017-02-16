@@ -89,7 +89,13 @@ def to_drakefile(steps, preview=True, debug=False, input_drakefile=None):
         drakefile.write('%context {}\n\n'.format(input_drakefile))
 
     bindir = os.path.join(os.path.dirname(__file__), '..', 'bin')
-    drakefile.write("drain()\n\tpython %s %s/run_step.py $OUTPUT $INPUTS 2>&1\n\n" % ('-m pdb' if debug else '', bindir))
+    # if the step has a $OUTPUT, write drain.log to its directory
+    drakefile.write("""drain()
+    LOGFILE=$([ -z ${OUTPUT+x} ] || echo $(dirname $OUTPUT)/drain.log)
+    python %s %s/run_step.py $OUTPUT $INPUTS 2>&1 | tee $LOGFILE
+
+
+""" % ('-m pdb' if debug else '', bindir))
     for output, inputs in data.iteritems():
         if not preview:
             output.setup_dump()
