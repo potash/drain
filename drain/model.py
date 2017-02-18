@@ -256,9 +256,9 @@ def make_metric(function):
 
     return metric
 
-metrics = [o for o in inspect.getmembers(metrics) if inspect.isfunction(o[1]) and not o[0].startswith('_')]
+metric_functions = [o for o in inspect.getmembers(metrics) if inspect.isfunction(o[1]) and not o[0].startswith('_')]
 
-for name,function in metrics:
+for name,function in metric_functions:
     function = make_metric(function)
     function.__name__ = name
     setattr(sys.modules[__name__], name, function)
@@ -278,6 +278,18 @@ def lift_series(predict_step, **kwargs):
     b = baseline(predict_step, **b_kwargs)
 
     return p/b
+
+def recall(predict_step, prop=True, **kwargs):
+    r = make_metric(metrics.recall)(predict_step, **kwargs)
+    if prop:
+        kwargs.pop('k', None)
+        kwargs.pop('p', None)
+        c = count(predict_step, **kwargs)
+        return r/c
+    else:
+        return r
+
+
 
 def overlap(self, other, **kwargs):
     y0 = self.get_result()['y']
