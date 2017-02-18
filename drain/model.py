@@ -284,12 +284,20 @@ def recall(predict_step, prop=True, **kwargs):
     if prop:
         kwargs.pop('k', None)
         kwargs.pop('p', None)
-        c = count(predict_step, **kwargs)
+        c = make_metric(metrics.recall)(predict_step, **kwargs)
         return r/c
     else:
         return r
 
-
+def recall_series(predict_step, prop=True, **kwargs):
+    r = make_metric(metrics.recall_series)(predict_step, **kwargs)
+    if prop:
+        kwargs.pop('k', None)
+        kwargs.pop('p', None)
+        c = make_metric(metrics.recall)(predict_step, **kwargs)
+        return r/c
+    else:
+        return r
 
 def overlap(self, other, **kwargs):
     y0 = self.get_result()['y']
