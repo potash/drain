@@ -191,7 +191,7 @@ def apply_pairwise(self, function, symmetric=True, diagonal=False, block=None, *
         if not diagonal: j.remove(i)
         other = set(steps[j])
         if block is not None:
-            df = pd.DataFrame(self).reset_index()
+            df = self.reset_index()
             df = df.merge(df, on=block)
             other &= set(df[df.index_x == s1].index_y)
 
@@ -220,6 +220,10 @@ class StepFrame(pd.DataFrame):
     def _contructor_sliced(self):
         return pd.Series
 
+    # resetting index makes it no longer a StepFrame
+    def reset_index(self, *args, **kwargs):
+        return pd.DataFrame(self).reset_index(*args, **kwargs)
+
 class StepSeries(pd.Series):
     expand = expand
     dapply = dapply
@@ -235,6 +239,10 @@ class StepSeries(pd.Series):
     @property
     def _contructor_expanddim(self):
         return StepFrame
+
+    def reset_index(self, *args, **kwargs):
+        return pd.Series(self).reset_index(*args, **kwargs)
+
 
 def _print_unhashable(df, columns=None):
     """
