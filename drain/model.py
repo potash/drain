@@ -126,7 +126,15 @@ class PredictProduct(Step):
         return {'y':y}
 
 class InverseProbabilityWeights(Step):
-    def run(self, y, **kwargs):
+    def run(self, y, train=None, **kwargs):
+        if train is not None:
+            logging.info("Using training mask")
+            train = train[train].index
+            intersection = y.index.intersection(train)
+            if len(intersection) != len(train):
+                raise ValueError("Must provide scores for every training example.")
+            y = y.ix[intersection]
+
         return {'sample_weight':y.score**-1}
 
 def y_score(estimator, X):
