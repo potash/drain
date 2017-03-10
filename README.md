@@ -3,23 +3,10 @@ drain
 ===============================
 
 
-.. image:: https://img.shields.io/pypi/v/drain.svg
-        :target: https://pypi.python.org/pypi/drain
-
-.. image:: https://img.shields.io/travis/potash/drain.svg
-        :target: https://travis-ci.org/potash/drain
-
-.. image:: https://readthedocs.org/projects/drain/badge/?version=latest
-        :target: https://drain.readthedocs.io/en/latest/?badge=latest
-        :alt: Documentation Status
-
-.. image:: https://pyup.io/repos/github/potash/drain/shield.svg
-     :target: https://pyup.io/repos/github/potash/drain/
-     :alt: Updates
-
-
-pipeline library
-
+[![](https://img.shields.io/pypi/v/drain.svg)](https://pypi.python.org/pypi/drain)
+[![](https://img.shields.io/travis/potash/drain.svg)](https://travis-ci.org/potash/drain)
+[![](https://readthedocs.org/projects/drain/badge/?version=latest)](https://drain.readthedocs.io/en/latest/?badge=latest)
+[![](https://pyup.io/repos/github/potash/drain/shield.svg)](https://pyup.io/repos/github/potash/drain/)
 
 * Free software: MIT license
 * Documentation: https://drain.readthedocs.io.
