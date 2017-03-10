@@ -1,3 +1,9 @@
+## Design Principles
+
+#### Reproducibility
+#### Simplicity
+#### Efficiency
+
 ## Definitions
 
 ### High level
