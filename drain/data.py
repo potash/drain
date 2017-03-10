@@ -286,7 +286,7 @@ def binarize_sets(df, columns, cast=False, drop=True, min_freq=None):
     Args:
         df: data frame
         columns: either a dictionary of column: values pairs or a collection of columns.
-        cast: whether or not ito cast values to set
+        cast: whether or not to cast values to set
         drop: whether or not to drop the binarized columns
     TODO: make interface same as binarize(). merge the two?
     """

@@ -126,15 +126,33 @@ class PredictProduct(Step):
         return {'y':y}
 
 class InverseProbabilityWeights(Step):
-    def run(self, y, **kwargs):
+    def run(self, y, train=None, **kwargs):
+        if train is not None:
+            logging.info("Using training mask")
+            train = train[train].index
+            intersection = y.index.intersection(train)
+            if len(intersection) != len(train):
+                raise ValueError("Must provide scores for every training example.")
+            y = y.ix[intersection]
+
         return {'sample_weight':y.score**-1}
 
 def y_score(estimator, X):
-    if hasattr(estimator, 'decision_function'):
-        return estimator.decision_function(X)
-    else:
+    """
+    Score examples from a new matrix X
+    Args:
+        estimator: an sklearn estimator object
+        X: design matrix with the same features that the estimator was trained on
+
+    Returns: a vector of scores of the same length as X
+
+    Note that estimator.predict_proba is preferred but when unavailable (e.g. SVM without probability calibration) decision_function is used.
+    """
+    try:
         y = estimator.predict_proba(X)
         return y[:,1]
+    except:
+        return estimator.decision_function(X)
 
 def feature_importance(estimator, X):
     if hasattr(estimator, 'coef_'):
@@ -188,19 +206,33 @@ def proximity(run, ix, k):
     neighbors = [neighbors[k*i:k*(i+1)] for i in range(len(ix))]
     return distance, neighbors
 
-# subset a model "y" dataframe
-# dropna means drop missing outcomes
-# return top k (count) or p (proportion) if specified
-# p_of specifies what the proportion is relative to:
-# p_of='notnull' means proportion is relative to labeled count
-# p_of='true' means proportion is relative to positive count
-# p_of='all' means proportion is relative to total count
-
-def y_subset(y, query=None, dropna=False, outcome='true',
+def y_subset(y, query=None, aux=None, subset=None, dropna=False, outcome='true',
         k=None, p=None, ascending=False, score='score', p_of='notnull'):
-
+    """
+    Subset a model "y" dataframe
+    Args:
+        query: operates on y, or aux if present
+        subset: takes a dataframe or index thereof and subsets to that
+        dropna: means drop missing outcomes
+        return: top k (count) or p (proportion) if specified
+        p_of: specifies what the proportion is relative to
+            'notnull' means proportion is relative to labeled count
+            'true' means proportion is relative to positive count
+            'all' means proportion is relative to total count
+    """
     if query is not None:
-        y = y.query(query)
+        if aux is None:
+            y = y.query(query)
+        else:
+            s = aux.ix[y.index]
+            if len(s) != len(y):
+                logging.warning('y not a subset of aux')
+            y = y.ix[s.query(query).index]
+    
+    if subset is not None:
+        if hasattr(subset, 'index'):
+            subset = subset.index
+        y = y.ix[y.index.intersection(subset)]
 
     if dropna:
         y = y.dropna(subset=[outcome])
@@ -246,9 +278,9 @@ def make_metric(function):
 
     return metric
 
-metrics = [o for o in inspect.getmembers(metrics) if inspect.isfunction(o[1]) and not o[0].startswith('_')]
+metric_functions = [o for o in inspect.getmembers(metrics) if inspect.isfunction(o[1]) and not o[0].startswith('_')]
 
-for name,function in metrics:
+for name,function in metric_functions:
     function = make_metric(function)
     function.__name__ = name
     setattr(sys.modules[__name__], name, function)
@@ -267,8 +299,52 @@ def lift_series(predict_step, **kwargs):
     b_kwargs = {k:v for k,v in kwargs.items() if k not in ('k', 'p')}
     b = baseline(predict_step, **b_kwargs)
 
-    return p/b 
+    return p/b
 
+def recall(predict_step, prop=True, **kwargs):
+    r = make_metric(metrics.recall)(predict_step, **kwargs)
+    if prop:
+        kwargs.pop('k', None)
+        kwargs.pop('p', None)
+        c = make_metric(metrics.recall)(predict_step, **kwargs)
+        return r/c
+    else:
+        return r
+
+def recall_series(predict_step, prop=True, **kwargs):
+    r = make_metric(metrics.recall_series)(predict_step, **kwargs)
+    if prop:
+        kwargs.pop('k', None)
+        kwargs.pop('p', None)
+        c = make_metric(metrics.recall)(predict_step, **kwargs)
+        return r/c
+    else:
+        return r
+
+def overlap(self, other, **kwargs):
+    y0 = self.get_result()['y']
+    y0 =  y_subset(y0, **kwargs)
+    
+    y1 = other.get_result()['y']
+    y1 = y_subset(y1, **kwargs)
+    
+    return len(y0.index & y1.index)
+
+def similarity(self, other, **kwargs):
+    y0 = self.get_result()['y']
+    y0 =  y_subset(y0, **kwargs)
+    
+    y1 = other.get_result()['y']
+    y1 = y_subset(y1, **kwargs)
+    
+    return np.float32(len(y0.index & y1.index))/\
+           len(y0.index | y1.index)
+
+
+def rank(self, **kwargs):
+    y0 = self.get_result()['y']
+    y0 =  y_subset(y0, **kwargs)
+    return y0.score.rank(ascending=False)
 
 class PrintMetrics(Step):
     def __init__(self, metrics, **kwargs):

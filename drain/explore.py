@@ -98,32 +98,33 @@ def expand(self, prefix=False, index=True, diff=True, existence=True):
               for k,v in d.items()} for d in merged_dicts]
 
     expanded = pd.DataFrame(merged_dicts, index=self.index)
-    columns = list(expanded.columns)
-
-    expanded = pd.concat((expanded, self), axis=1)
 
     if index:
+        columns = list(expanded.columns)
         try:
             expanded.set_index(columns, inplace=True)
         except TypeError:
             _print_unhashable(expanded, columns)
             expanded.set_index(columns, inplace=True)
 
-        if isinstance(self, pd.Series):
-            expanded = expanded.ix[:,0]
+        df = self.__class__.__bases__[0](self, copy=True)
+        df.index = expanded.index
+
     else:
+        df = pd.concat((expanded, self), axis=1)
         # When index=False, the index is still a Step collection
-        # so return a StepFrame
-        expanded = StepFrame(expanded)
+        df = StepFrame(expanded)
 
-    return expanded
+    return df
 
-def dapply(self, fn, **kwargs):
+def dapply(self, fn, pairwise=False, symmetric=True, diagonal=False, block=None, **kwargs):
     """
     Apply function to each step object in the index
 
     Args:
         fn: function to apply. If a list then each function is applied
+        pairwise: whether to apply the function to pairs of steps
+        symmetric, diagonal, block: passed to apply_pairwise when pairwise=True
         kwargs: a keyword arguments to pass to each function. Arguments
             with list value are grid searched using util.dict_product.
     
@@ -135,8 +136,13 @@ def dapply(self, fn, **kwargs):
     
     results = []
     for fn,kw in search:
-        r = self.index.to_series().apply(lambda step: fn(step, **kw))
-        
+        if not pairwise:
+            r = self.index.to_series().apply(lambda step: fn(step, **kw))
+        else:
+            r = apply_pairwise(self, fn, 
+                               symmetric=symmetric, diagonal=diagonal, block=block, 
+                               **kw)
+            
         name = [] if len(functions) == 1 else [fn.__name__]
         name += util.dict_subset(kw, search_keys).values()
             
@@ -164,6 +170,35 @@ def dapply(self, fn, **kwargs):
             result.name = functions[0].__name__
             return StepSeries(result)
 
+def apply_pairwise(self, function, symmetric=True, diagonal=False, block=None, **kwargs):
+    """
+    Helper function for pairwise apply.
+    Args:
+        steps: an ordered collection of steps
+        function: function to apply, first two positional arguments are steps
+        symmetric: whether function is symmetric in the two steps
+        diagonal: whether to apply on the diagonal
+        block: apply only when the given columns match
+        kwargs: keyword arguments to pass to the function
+
+    Returns:
+        DataFrame with index and columns equal to the steps argument
+    """
+    steps = self.index
+    r = pd.DataFrame(index=steps, columns=steps)
+    for i,s1 in enumerate(steps):
+        j = range(i+1 if symmetric else len(steps))
+        if not diagonal: j.remove(i)
+        other = set(steps[j])
+        if block is not None:
+            df = self.reset_index()
+            df = df.merge(df, on=block)
+            other &= set(df[df.index_x == s1].index_y)
+
+        for s2 in other:
+            r.ix[s1, s2] = function(s1, s2, **kwargs)
+    return r
+
 def _assert_step_collection(steps):
     for s in steps:
         if not isinstance(s, step.Step):
@@ -185,6 +220,10 @@ class StepFrame(pd.DataFrame):
     def _contructor_sliced(self):
         return pd.Series
 
+    # resetting index makes it no longer a StepFrame
+    def reset_index(self, *args, **kwargs):
+        return pd.DataFrame(self).reset_index(*args, **kwargs)
+
 class StepSeries(pd.Series):
     expand = expand
     dapply = dapply
@@ -200,6 +239,10 @@ class StepSeries(pd.Series):
     @property
     def _contructor_expanddim(self):
         return StepFrame
+
+    def reset_index(self, *args, **kwargs):
+        return pd.Series(self).reset_index(*args, **kwargs)
+
 
 def _print_unhashable(df, columns=None):
     """
@@ -217,37 +260,6 @@ def _print_unhashable(df, columns=None):
 
     return df
 
-def intersection(df, pairwise=False, **subset_args):
-    """
-    Counts the size of intersections of subsets of predicted examples.
-    E.g. count the overlap between the top k of two different models
-    Args:
-        df: the result of to_dataframe(), Predict steps of length n_steps
-        pairwise: when False, returns the mutual intersection between 
-            all subsets. Otherwise returns an n_steps x n_steps matrix 
-            whose i,j entry is the number of examples in the 
-            intersection between the i and j step subsets.
-        **subset_args: arguments to be passed to model.y_subset()
-            for each predict step
-    Returns: the intersection, either an integer, if pairwise is False, 
-        or a DataFrame, otherwise.
-    """
-    indexes = map(lambda row: set(model.y_subset(row[1].step.get_result()['y'], **subset_args).index), df.iterrows())
-
-    if not pairwise:
-        return len(util.intersect(indexes))
-    else:
-        r = pd.DataFrame(index=df.index, columns=xrange(len(df)))
-
-        for i in xrange(len(df)):
-            r.values[i][i] = len(indexes[i])
-            for j in xrange(i+1, len(df)):
-                r.values[i][j] = len(indexes[i] & indexes[j])
-        return r
-
-def apply_y(df, fn, **kwargs):
-    return apply(df, lambda s: fn(model.y_subset(s.get_result()['y'], **kwargs)))
-
 def show_tree(tree, feature_names,max_depth=None):
     import wand.image
 
@@ -262,5 +274,5 @@ def export_tree(clf, filename, feature_names=None, max_depth=None):
 
     dot_data = StringIO()
     tree.export_graphviz(clf, out_file=dot_data, feature_names=feature_names, max_depth=max_depth)
-    graph = pydot.graph_from_dot_data(dot_data.getvalue())
+    graph = pydot.graph_from_dot_data(dot_data.getvalue())[0]
     graph.write_pdf(filename)

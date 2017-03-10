@@ -59,7 +59,8 @@ class ColumnReduction(object):
         self.column = column
         self.agg_func = agg_func
 
-        if isinstance(agg_func, basestring) and self.column.astype is None:
+        # use float32 by default for string agg functions except 'nunique', e.g. 'min', 'median', 'max', etc.
+        if isinstance(agg_func, basestring) and agg_func != 'nunique' and self.column.astype is None:
             self.column.astype = np.float32
     def __hash__(self):
         return hash((self.column, self.agg_func))
