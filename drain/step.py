@@ -330,17 +330,17 @@ def is_pandas_collection(l):
     return True
 
 class Construct(Step):
-    def __init__(self, _class_name, **kwargs):
-        Step.__init__(self, _class_name=_class_name, **kwargs)
+    def __init__(self, _class, **kwargs):
+        if isinstance(_class, str):
+            _class = util.get_attr(_class)
+        Step.__init__(self, _class=_class, **kwargs)
 
     def run(self, **update_kwargs):
-        cls = util.get_attr(self._class_name)
-
-        kwargs = self.get_arguments(_class_name=False, 
+        kwargs = self.get_arguments(_class=False, 
                 inputs=False, inputs_mapping=False)
         kwargs.update(update_kwargs)
 
-        return cls(**kwargs)
+        return self._class(**kwargs)
 
 class Call(Step):
     def __init__(self, _method_name, **kwargs):
