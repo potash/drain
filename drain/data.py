@@ -286,7 +286,7 @@ def binarize_sets(df, columns, cast=False, drop=True, min_freq=None):
     Args:
         df: data frame
         columns: either a dictionary of column: values pairs or a collection of columns.
-        cast: whether or not ito cast values to set
+        cast: whether or not to cast values to set
         drop: whether or not to drop the binarized columns
     TODO: make interface same as binarize(). merge the two?
     """
@@ -366,6 +366,10 @@ def normalize(X, train=None):
         
     return X
 
+class Normalize(Step):
+    def run(self, X, train=None):
+        return normalize(X, train=train)
+
 def impute(X, train=None, dropna=True, inplace=True):
     """
     impute using mean
@@ -415,6 +419,13 @@ def select_features(df, exclude, include=None, inplace=False):
     exclude = df.columns.difference(include)
     df2 = df.drop(exclude, axis=1, inplace=inplace)
     return df if inplace else df2
+
+class SelectFeatures(Step):
+    def __init__(self, exclude, include=None):
+        self.__init__(inputs=inputs, exclude=exclude, include=include)
+
+    def run(self, df):
+        return select_features(df, exclude, include)
 
 def null_columns(df, train=None):
     if train is not None:

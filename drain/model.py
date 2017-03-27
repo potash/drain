@@ -126,7 +126,15 @@ class PredictProduct(Step):
         return {'y':y}
 
 class InverseProbabilityWeights(Step):
-    def run(self, y, **kwargs):
+    def run(self, y, train=None, **kwargs):
+        if train is not None:
+            logging.info("Using training mask")
+            train = train[train].index
+            intersection = y.index.intersection(train)
+            if len(intersection) != len(train):
+                raise ValueError("Must provide scores for every training example.")
+            y = y.ix[intersection]
+
         return {'sample_weight':y.score**-1}
 
 def y_score(estimator, X):
@@ -198,19 +206,33 @@ def proximity(run, ix, k):
     neighbors = [neighbors[k*i:k*(i+1)] for i in range(len(ix))]
     return distance, neighbors
 
-# subset a model "y" dataframe
-# dropna means drop missing outcomes
-# return top k (count) or p (proportion) if specified
-# p_of specifies what the proportion is relative to:
-# p_of='notnull' means proportion is relative to labeled count
-# p_of='true' means proportion is relative to positive count
-# p_of='all' means proportion is relative to total count
-
-def y_subset(y, query=None, dropna=False, outcome='true',
+def y_subset(y, query=None, aux=None, subset=None, dropna=False, outcome='true',
         k=None, p=None, ascending=False, score='score', p_of='notnull'):
-
+    """
+    Subset a model "y" dataframe
+    Args:
+        query: operates on y, or aux if present
+        subset: takes a dataframe or index thereof and subsets to that
+        dropna: means drop missing outcomes
+        return: top k (count) or p (proportion) if specified
+        p_of: specifies what the proportion is relative to
+            'notnull' means proportion is relative to labeled count
+            'true' means proportion is relative to positive count
+            'all' means proportion is relative to total count
+    """
     if query is not None:
-        y = y.query(query)
+        if aux is None:
+            y = y.query(query)
+        else:
+            s = aux.ix[y.index]
+            if len(s) != len(y):
+                logging.warning('y not a subset of aux')
+            y = y.ix[s.query(query).index]
+    
+    if subset is not None:
+        if hasattr(subset, 'index'):
+            subset = subset.index
+        y = y.ix[y.index.intersection(subset)]
 
     if dropna:
         y = y.dropna(subset=[outcome])
