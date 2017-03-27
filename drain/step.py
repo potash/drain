@@ -342,6 +342,18 @@ class Construct(Step):
 
         return cls(**kwargs)
 
+class Call(Step):
+    def __init__(self, _method_name, **kwargs):
+        Step.__init__(self, _method_name=_method_name, **kwargs)
+
+    def run(self, obj, **update_kwargs):
+        kwargs = self.get_arguments(_method_name=False,
+                inputs=False, inputs_mapping=False)
+        kwargs.update(update_kwargs)
+
+        method = getattr(obj, self._method_name)
+        return method(**kwargs)
+
 class Echo(Step):
     def run(self, *args, **kwargs):
         for i in self.inputs:
