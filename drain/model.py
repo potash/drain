@@ -278,6 +278,7 @@ def y_subset(y, query=None, aux=None, subset=None, dropna=False, outcome='true',
 
     return y
 
+
 # list of arguments to y_subset() for Metric above
 Y_SUBSET_ARGS = inspect.getargspec(y_subset).args
 

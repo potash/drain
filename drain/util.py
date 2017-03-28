@@ -79,6 +79,7 @@ def timestamp(year, month, day):
     """
     return pd.Timestamp('%04d-%02d-%02d' % (year, month, day))
 
+
 epoch = np.datetime64(0, 'ns')
 
 
