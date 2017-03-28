@@ -1,9 +1,9 @@
 import yaml
 import os
 
-from cached_property import cached_property
 from drain import util
 from drain.step import Step
+
 
 def load(filename):
     """
@@ -15,16 +15,19 @@ def load(filename):
     with open(yaml_filename) as f:
         return yaml.load(f)
 
+
 def step_multi_representer(dumper, data):
     tag = '!step:%s.%s' % (data.__class__.__module__, data.__class__.__name__)
 
     return dumper.represent_mapping(tag, data.get_arguments())
+
 
 def step_multi_constructor(loader, tag_suffix, node):
     cls = util.get_attr(tag_suffix[1:])
     kwargs = loader.construct_mapping(node, deep=True)
 
     return cls(**kwargs)
+
 
 def configure():
     """
