@@ -3,6 +3,7 @@ import yaml
 import inspect
 import pandas as pd
 from cached_property import cached_property
+from six import string_types
 
 from sklearn.base import _pprint
 import joblib
@@ -162,7 +163,7 @@ class Step(object):
                         if mapping[k] is not None:
                             kwargs[mapping[k]] = result[k]
 
-                elif isinstance(mapping, basestring):
+                elif isinstance(mapping, string_types):
                     kwargs[mapping] = input.get_result()
                 elif mapping is None:  # drop Nones
                     pass
