@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """Classes that facilitate transformation and aggregation of dataframes.
 
 This module provides wrappers to simplify grouping and aggregation
@@ -36,6 +34,7 @@ index by which rows are being grouped).
 """
 
 from itertools import product
+from six import string_types
 
 import pandas as pd
 import numpy as np
@@ -61,7 +60,7 @@ class ColumnReduction(object):
 
         # use float32 by default for string agg functions except 'nunique',
         # e.g. 'min', 'median', 'max', etc.
-        if isinstance(agg_func, basestring) and\
+        if isinstance(agg_func, string_types) and\
                 agg_func != 'nunique' and\
                 self.column.astype is None:
             self.column.astype = np.float32
@@ -270,7 +269,7 @@ class Aggregator(object):
         """
 
         # deal with index as a string vs index as a index/MultiIndex
-        if isinstance(index, basestring):
+        if isinstance(index, string_types):
             col_df_grouped = self.col_df.groupby(self.df[index])
         else:
             self.col_df.index = pd.MultiIndex.from_arrays([self.df[i] for i in index])
@@ -326,7 +325,7 @@ class Fraction(ColumnFunction):
             if hasattr(name, '__iter__') and len(name) == \
                     len(numerator.names)*len(denominator.names):
                 names.extend(name)
-            elif isinstance(name, basestring):
+            elif isinstance(name, string_types):
                 names.extend([name.format(numerator=n, denominator=d)
                               for n, d in product(numerator.names, denominator.names)])
             else:
@@ -488,8 +487,8 @@ def _days(df, date1, date2):
     if len(df) == 0:
         return pd.Series(dtype=np.float64, index=df.index)
     else:
-        d1 = df[date1] if isinstance(date1, basestring) else date1
-        d2 = df[date2] if isinstance(date2, basestring) else date2
+        d1 = df[date1] if isinstance(date1, string_types) else date1
+        d2 = df[date2] if isinstance(date2, string_types) else date2
 
         return (d2 - d1) / util.day
 
