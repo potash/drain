@@ -1,8 +1,6 @@
 import yaml
 
 import inspect
-import sys
-import itertools
 import pandas as pd
 from cached_property import cached_property
 
@@ -12,7 +10,6 @@ import os
 import traceback
 import base64
 import hashlib
-import itertools
 import logging
 import shutil
 import warnings
@@ -20,6 +17,7 @@ from tables import NaturalNameWarning
 
 from drain import util
 import drain
+
 
 def load(steps):
     """
@@ -31,9 +29,11 @@ def load(steps):
             s.load()
             loaded.append(s)
         except:
-            logging.warn('Error during step load:\n%s' % util.indent(traceback.format_exc()))
+            logging.warn('Error during step load:\n%s' %
+                         util.indent(traceback.format_exc()))
             pass
     return loaded
+
 
 class Step(object):
     def __new__(cls, *args, **kwargs):
@@ -43,13 +43,13 @@ class Step(object):
         kwargs.update(nargs)
 
         obj = object.__new__(cls, **kwargs)
-        obj._kwargs =  kwargs
+        obj._kwargs = kwargs
 
         return obj
 
     def __init__(self, inputs=None, dependencies=None, **kwargs):
         """
-        initialize name and target attributes 
+        initialize name and target attributes
         and set all arguments as attributes
         """
         self.target = False
@@ -59,19 +59,19 @@ class Step(object):
             self.inputs = inputs if inputs is not None else []
         self.dependencies = dependencies if dependencies is not None else []
 
-        for k,v in kwargs.iteritems():
-            setattr(self,k,v)
+        for k, v in kwargs.iteritems():
+            setattr(self, k, v)
 
     def execute(self, inputs=None, output=None, load_targets=False):
-        """ 
-        Run this step, recursively running or loading inputs. 
+        """
+        Run this step, recursively running or loading inputs.
         Used in bin/run_step.py which is run by drake.
         Args:
             inputs: collection of steps that should be loaded
             output: step that should be dumped after it is run
             load_targets (boolean): load all steps which are targets.
-                This argument is not used by run_step.py because target 
-                does not get serialized. But it can be useful for 
+                This argument is not used by run_step.py because target
+                does not get serialized. But it can be useful for
                 running steps directly.
         """
         if self == output:
@@ -80,22 +80,23 @@ class Step(object):
             if os.path.exists(self._target_filename):
                 os.remove(self._target_filename)
             os.makedirs(self._dump_dirname)
-    
+
         if inputs is None:
             inputs = []
-    
+
         if not self.has_result():
             if self in inputs or (load_targets and self.target):
                 logging.info('Loading\n%s' % util.indent(str(self)))
                 self.load()
             else:
                 for i in self.inputs:
-                    i.execute(inputs=inputs, output=output, load_targets=load_targets)
-    
+                    i.execute(inputs=inputs, output=output,
+                              load_targets=load_targets)
+
                 args, kwargs = self.map_inputs()
                 logging.info('Running\n%s' % util.indent(str(self)))
                 self.set_result(self.run(*args, **kwargs))
-    
+
         if self == output:
             logging.info('Dumping\n%s' % util.indent(str(self)))
             self.dump()
@@ -107,7 +108,7 @@ class Step(object):
 
     @cached_property
     def _digest(self):
-        """ Returns this Step's unique hash, which identifies the 
+        """ Returns this Step's unique hash, which identifies the
         Step's dump on disk. Depends on the constructor's kwargs. """
         return base64.urlsafe_b64encode(self._hasher.digest())
 
@@ -144,7 +145,7 @@ class Step(object):
 
         if hasattr(self, 'inputs_mapping'):
             inputs_mapping = util.make_list(self.inputs_mapping)
-            
+
             if len(self.inputs) < len(inputs_mapping):
                 raise ValueError('Too many inputs_mappings')
 
@@ -153,7 +154,8 @@ class Step(object):
                 if isinstance(mapping, dict):
                     # pass through any missing keys, so {} is the identity
                     # do it first so that inputs_mapping overrides keys
-                    for k in set(result.keys()).difference(set(mapping.keys())):
+                    for k in set(result.keys()).\
+                            difference(set(mapping.keys())):
                         kwargs[k] = result[k]
 
                     for k in mapping:
@@ -162,7 +164,7 @@ class Step(object):
 
                 elif isinstance(mapping, basestring):
                     kwargs[mapping] = input.get_result()
-                elif mapping is None: # drop Nones
+                elif mapping is None:  # drop Nones
                     pass
                 else:
                     raise ValueError('Input mapping is neither dict nor str: %s' % mapping)
@@ -177,7 +179,7 @@ class Step(object):
             # when the result is a dict merge it with a global dict
             if isinstance(result, dict):
                 # but do not override
-                kwargs.update({k:v for k,v in result.iteritems() if k not in kwargs})
+                kwargs.update({k: v for k, v in result.iteritems() if k not in kwargs})
             # otherwise use it as a positional argument
             else:
                 args.append(result)
@@ -192,7 +194,7 @@ class Step(object):
 
     def has_result(self):
         return hasattr(self, '_result')
-    
+
     @cached_property
     def _output_dirname(self):
         if drain.PATH is None:
@@ -211,10 +213,10 @@ class Step(object):
     @cached_property
     def _target_filename(self):
         return os.path.join(self._output_dirname, 'target')
-        
+
     def run(self):
         raise NotImplementedError
-    
+
     def load(self):
         """
         Load this step's result from its dump directory
@@ -230,14 +232,15 @@ class Step(object):
                     # keys are not necessarily ordered
                     self.set_result([store[str(k)] for k in range(len(keys))])
                 else:
-                    self.set_result({k[1:]:store[k] for k in keys})
-                
+                    self.set_result({k[1:]: store[k] for k in keys})
+
         else:
-            self.set_result(joblib.load(os.path.join(self._output_dirname, 'dump', 'result.pkl')))
+            self.set_result(joblib.load(
+                    os.path.join(self._output_dirname, 'dump', 'result.pkl')))
 
     def setup_dump(self):
         """
-        Set up dump, creating directories and writing step.yaml file 
+        Set up dump, creating directories and writing step.yaml file
         containing yaml dump of this step.
 
         {drain.PATH}/{self._digest}/
@@ -247,10 +250,10 @@ class Step(object):
         dumpdir = self._dump_dirname
         if not os.path.isdir(dumpdir):
             os.makedirs(dumpdir)
-            
+
         dump = False
         yaml_filename = self._yaml_filename
-        
+
         if not os.path.isfile(yaml_filename):
             dump = True
         else:
@@ -258,7 +261,7 @@ class Step(object):
                 if f.read() != yaml.dump(self):
                     logging.warning('Existing step.yaml does not match hash, regenerating')
                     dump = True
-        
+
         if dump:
             with open(yaml_filename, 'w') as f:
                 yaml.dump(self, f)
@@ -289,12 +292,12 @@ class Step(object):
     def __repr__(self):
         class_name = self.__class__.__name__
 
-        return '%s(%s)' % (class_name, 
-                _pprint(self._kwargs, offset=len(class_name)),)
+        return '%s(%s)' % (class_name,
+                           _pprint(self._kwargs, offset=len(class_name)),)
 
     def __hash__(self):
         return int(self._hasher.hexdigest(), 16)
-    
+
     def __eq__(self, other):
         if not isinstance(other, Step):
             return False
@@ -304,14 +307,15 @@ class Step(object):
     def __ne__(self, other):
         return not self.__eq__(other)
 
+
 def is_pandas_collection(l):
     """
-    Checks if the argument is a non-empty collection of pandas objects, 
+    Checks if the argument is a non-empty collection of pandas objects,
         i.e. pd.DataFrame and pd.Series
     """
     if not (hasattr(l, '__iter__') and len(l) > 0):
         # make sure it's iterable
-        # don't include empty iterables because 
+        # don't include empty iterables because
         # that would include some sklearn estimator objects
         return False
 
@@ -324,6 +328,7 @@ def is_pandas_collection(l):
 
     return True
 
+
 class Construct(Step):
     def __init__(self, _class, **kwargs):
         if isinstance(_class, str):
@@ -331,28 +336,31 @@ class Construct(Step):
         Step.__init__(self, _class=_class, **kwargs)
 
     def run(self, **update_kwargs):
-        kwargs = self.get_arguments(_class=False, 
-                inputs=False, inputs_mapping=False)
+        kwargs = self.get_arguments(
+                _class=False, inputs=False, inputs_mapping=False)
         kwargs.update(update_kwargs)
 
         return self._class(**kwargs)
+
 
 class Call(Step):
     def __init__(self, _method_name, **kwargs):
         Step.__init__(self, _method_name=_method_name, **kwargs)
 
     def run(self, obj, **update_kwargs):
-        kwargs = self.get_arguments(_method_name=False,
-                inputs=False, inputs_mapping=False)
+        kwargs = self.get_arguments(
+                _method_name=False, inputs=False, inputs_mapping=False)
         kwargs.update(update_kwargs)
 
         method = getattr(obj, self._method_name)
         return method(**kwargs)
 
+
 class Echo(Step):
     def run(self, *args, **kwargs):
         for i in self.inputs:
             print('%s: %s' % (i, i.get_result()))
+
 
 class Scalar(Step):
     def __init__(self, value):
@@ -361,33 +369,37 @@ class Scalar(Step):
     def run(self):
         return self.value
 
+
 class Add(Step):
     def run(self, *values):
         return sum(values)
 
+
 class Divide(Step):
     def run(self, numerator, denominator):
         return numerator / denominator
+
 
 def _expand_inputs(step, steps=None):
     """
     Returns the set of this step and all inputs passed to the constructor (recursively).
     """
     if steps is None:
-        steps = set() 
+        steps = set()
 
     if 'inputs' in step._kwargs.keys():
         for i in step._kwargs['inputs']:
             steps.update(_expand_inputs(i))
-        
+
     steps.add(step)
     return steps
+
 
 def _collect_kwargs(step):
     """
     Collect the kwargs of this step and inputs passed to the constructor (recursively)
     Returns: dictionary of name: kwargs pairs where name is the name of
-        a step and kwargs is its kwargs minus inputs. If the step doesn't have 
+        a step and kwargs is its kwargs minus inputs. If the step doesn't have
         a name __class__.__name__ is used.
     """
     dicts = {}
@@ -399,5 +411,5 @@ def _collect_kwargs(step):
         d = dict(s._kwargs)
         d.pop('inputs', None)
         dicts[name] = d
-            
+
     return dicts
