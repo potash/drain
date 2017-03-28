@@ -11,7 +11,7 @@ def prediction():
     d.target = True
 
     # construct a random forest estimator
-    e = step.Construct(_class_name='sklearn.ensemble.RandomForestClassifier', n_estimators=1)
+    e = step.Construct(_class='sklearn.ensemble.RandomForestClassifier', n_estimators=1)
     e.target = False
 
     # fit the estimator
@@ -28,7 +28,7 @@ def n_estimators_search():
     
     predict = []
     for n_estimators in range(1, 4):
-        e = step.Construct(_class_name='sklearn.ensemble.RandomForestClassifier', 
+        e = step.Construct(_class='sklearn.ensemble.RandomForestClassifier', 
                 n_estimators=n_estimators)
         f = model.Fit(inputs=[e, d], return_estimator=True, return_feature_importances=True)
 
@@ -44,7 +44,7 @@ def calibration():
         d = data.ClassificationData(n_samples=1000, n_features=100)
         d.target = True
 
-        est = step.Construct(_class_name='sklearn.ensemble.RandomForestClassifier',
+        est = step.Construct(_class='sklearn.ensemble.RandomForestClassifier',
                 n_estimators=n_estimators) 
 
         fit = model.Fit(inputs=[est, d], return_estimator=True)
@@ -53,7 +53,7 @@ def calibration():
         predict = model.Predict(inputs=[fit,d])
         predict.target = True
 
-        cal = step.Construct(_class_name='sklearn.calibration.CalibratedClassifierCV', cv=k_folds,
+        cal = step.Construct(_class='sklearn.calibration.CalibratedClassifierCV', cv=k_folds,
                 inputs=[predict], inputs_mapping={'y':None})
 
         cal_est = model.FitPredict(inputs=[cal, d])
@@ -74,7 +74,7 @@ def product_model():
     d = data.ClassificationData(n_samples=1000, n_features=100)
     d.target = True
 
-    est = step.Construct(_class_name='sklearn.ensemble.RandomForestClassifier',
+    est = step.Construct(_class='sklearn.ensemble.RandomForestClassifier',
                 n_estimators=10)
     est.name = 'estimator'
 
