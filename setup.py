@@ -9,13 +9,11 @@ with open('README.md') as readme_file:
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
-requirements = [
-    # TODO: put package requirements here
-]
+with open('requirements.txt') as f:
+        requirements = f.read().splitlines()
 
-test_requirements = [
-    # TODO: put package test requirements here
-]
+with open('requirements_dev.txt') as f:
+        test_requirements = f.read().splitlines()
 
 setup(
     name='drain',
