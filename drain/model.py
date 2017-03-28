@@ -219,13 +219,15 @@ def proximity(run, ix, k):
     # look for nodes in training set proximal to the given nodes
     if 'nodes' not in run:
         apply_forest(run)
-    distance, neighbors = _proximity_helper(run['nodes'][run.y.train].values, run['nodes'].loc[ix].values, k)
+    distance, neighbors = _proximity_helper(run['nodes'][run.y.train].values,
+                                            run['nodes'].loc[ix].values, k)
     neighbors = run['nodes'][run.y.train].irow(neighbors.flatten()).index
     neighbors = [neighbors[k*i:k*(i+1)] for i in range(len(ix))]
     return distance, neighbors
 
+
 def y_subset(y, query=None, aux=None, subset=None, dropna=False, outcome='true',
-        k=None, p=None, ascending=False, score='score', p_of='notnull'):
+             k=None, p=None, ascending=False, score='score', p_of='notnull'):
     """
     Subset a model "y" dataframe
     Args:
@@ -279,9 +281,11 @@ def y_subset(y, query=None, aux=None, subset=None, dropna=False, outcome='true',
 # list of arguments to y_subset() for Metric above
 Y_SUBSET_ARGS = inspect.getargspec(y_subset).args
 
+
 def true_score(y, outcome='true', score='score', **subset_args):
     y = y_subset(y, outcome=outcome, score=score, **subset_args)
     return util.to_float(y[outcome], y[score])
+
 
 def make_metric(function):
     def metric(predict_step, **kwargs):
@@ -296,12 +300,14 @@ def make_metric(function):
 
     return metric
 
-metric_functions = [o for o in inspect.getmembers(metrics) if inspect.isfunction(o[1]) and not o[0].startswith('_')]
+metric_functions = [o for o in inspect.getmembers(metrics)
+                    if inspect.isfunction(o[1]) and not o[0].startswith('_')]
 
 for name, function in metric_functions:
     function = make_metric(function)
     function.__name__ = name
     setattr(sys.modules[__name__], name, function)
+
 
 def lift(predict_step, **kwargs):
     p = precision(predict_step, **kwargs)
@@ -309,6 +315,7 @@ def lift(predict_step, **kwargs):
     kwargs.pop('p', None)
     b = baseline(predict_step, **kwargs)
     return p/b
+
 
 def lift_series(predict_step, **kwargs):
     p = precision_series(predict_step, **kwargs)
@@ -318,6 +325,7 @@ def lift_series(predict_step, **kwargs):
     b = baseline(predict_step, **b_kwargs)
 
     return p/b
+
 
 def recall(predict_step, prop=True, **kwargs):
     r = make_metric(metrics.recall)(predict_step, **kwargs)
@@ -329,6 +337,7 @@ def recall(predict_step, prop=True, **kwargs):
     else:
         return r
 
+
 def recall_series(predict_step, prop=True, **kwargs):
     r = make_metric(metrics.recall_series)(predict_step, **kwargs)
     if prop:
@@ -339,29 +348,31 @@ def recall_series(predict_step, prop=True, **kwargs):
     else:
         return r
 
+
 def overlap(self, other, **kwargs):
     y0 = self.get_result()['y']
-    y0 =  y_subset(y0, **kwargs)
+    y0 = y_subset(y0, **kwargs)
 
     y1 = other.get_result()['y']
     y1 = y_subset(y1, **kwargs)
 
     return len(y0.index & y1.index)
 
+
 def similarity(self, other, **kwargs):
     y0 = self.get_result()['y']
-    y0 =  y_subset(y0, **kwargs)
+    y0 = y_subset(y0, **kwargs)
 
     y1 = other.get_result()['y']
     y1 = y_subset(y1, **kwargs)
 
-    return np.float32(len(y0.index & y1.index))/\
-           len(y0.index | y1.index)
+    return np.float32(len(y0.index & y1.index)) / \
+        len(y0.index | y1.index)
 
 
 def rank(self, **kwargs):
     y0 = self.get_result()['y']
-    y0 =  y_subset(y0, **kwargs)
+    y0 = y_subset(y0, **kwargs)
     return y0.score.rank(ascending=False)
 
 
@@ -373,10 +384,11 @@ class PrintMetrics(Step):
         for metric in self.metrics:
             kwargs = dict(metric)
             metric_name = kwargs.pop('metric')
-            metric_fn = getattr(sys.modules[__name__], metric_name) # TODO allow external metrics
-
+            # TODO: allow external metrics
+            metric_fn = getattr(sys.modules[__name__], metric_name)
             r = metric_fn(self.inputs[0], **kwargs)
             print('%s(%s): %s' % (metric_name, _pprint(kwargs, offset=len(metric_name)), r))
+
 
 def perturb(estimator, X, bins, columns=None):
     """
@@ -404,7 +416,7 @@ def perturb(estimator, X, bins, columns=None):
             r['value'].values[s] = bins[i]
             r['feature'].values[s] = c
             r['index'].values[s] = [index]*(n[i+1]-n[i])
-            X_test[s, (X.columns==c).argmax()] = bins[i]
+            X_test[s, (X.columns == c).argmax()] = bins[i]
 
     y = estimator.predict_proba(X_test)[:, 1]
     r['y'] = y
@@ -413,23 +425,26 @@ def perturb(estimator, X, bins, columns=None):
 
 def forests(**kwargs):
     steps = []
-    d = dict(criterion=['entropy', 'gini'], max_features=['sqrt', 'log2'], n_jobs=[-1], **kwargs)
+    d = dict(criterion=['entropy', 'gini'], max_features=['sqrt', 'log2'],
+             n_jobs=[-1], **kwargs)
     for estimator_args in util.dict_product(d):
         steps.append(Construct(name='estimator',
-                 __class_name__='sklearn.ensemble.RandomForestClassifier',
-                **estimator_args))
+                     _class='sklearn.ensemble.RandomForestClassifier',
+                     **estimator_args))
 
     return steps
+
 
 def logits(**kwargs):
     steps = []
     for estimator_args in util.dict_product(dict(
             penalty=['l1', 'l2'], C=[.001, .01, .1, 1], **kwargs)):
         steps.append(Construct(name='estimator',
-                __class_name__='sklearn.linear_model.LogisticRegression',
-                **estimator_args))
+                               _class='sklearn.linear_model.LogisticRegression',
+                               **estimator_args))
 
     return steps
+
 
 def svms(**kwargs):
     steps = []
@@ -439,7 +454,7 @@ def svms(**kwargs):
             util.dict_product(dict(
                     penalty=['l1'], dual=[False], C=[.001, .01, .1, 1])):
         steps.append(Construct(name='estimator',
-                               __class_name__='sklearn.svm.LinearSVC',
+                               _class='sklearn.svm.LinearSVC',
                                **estimator_args))
 
     return steps
