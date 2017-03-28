@@ -2,8 +2,8 @@
 
 """Classes that facilitate transformation and aggregation of dataframes.
 
-This module provides wrappers to simplify grouping and aggregation 
-of dataframes by index, and to consequently perform arithmetics on 
+This module provides wrappers to simplify grouping and aggregation
+of dataframes by index, and to consequently perform arithmetics on
 the aggregated dataframes.
 
 Examples:
@@ -11,8 +11,8 @@ Examples:
     The following code would take a Pandas dataframe ``df``, and produce
     a dataframe ``res_df`` that is indexed by ``name``. The result would have
     a column ``count`` that gives the number of rows per ``name``; a column
-    that gives the sum of ``score`` per ``name``, divided by the sum of 
-    ``arrests`` per ``name``; and finally two columns that give the sum 
+    that gives the sum of ``score`` per ``name``, divided by the sum of
+    ``arrests`` per ``name``; and finally two columns that give the sum
     of ``score`` per ``name``, and the sum of squared ``score`` per ``name``::
 
         aggregates = [Count(),
@@ -25,25 +25,25 @@ Examples:
     aggregation, and how ``Aggregator.aggregate()`` then takes an
     ``index`` to group by.
 
-Aggregator also caches individual transformations of columns, as to 
+Aggregator also caches individual transformations of columns, as to
 reduce redundant calculations.
 
-Classes that endusers interface with are Aggregate, Fraction, 
-Count, and Proportion (all of which specify outcome columns and row-wise 
+Classes that endusers interface with are Aggregate, Fraction,
+Count, and Proportion (all of which specify outcome columns and row-wise
 aggregation functions), and Aggregator (which takes an input dataframe and an
 index by which rows are being grouped).
 
 """
 
-from itertools import product, chain
-from collections import defaultdict
+from itertools import product
 
 import pandas as pd
 import numpy as np
 
-from . import util, data
+from . import util
 from .data import Column
-      
+
+
 class ColumnReduction(object):
     """Wraps and hashes a `Column` together with a function that aggregates across rows.
     """
@@ -59,14 +59,20 @@ class ColumnReduction(object):
         self.column = column
         self.agg_func = agg_func
 
-        # use float32 by default for string agg functions except 'nunique', e.g. 'min', 'median', 'max', etc.
-        if isinstance(agg_func, basestring) and agg_func != 'nunique' and self.column.astype is None:
+        # use float32 by default for string agg functions except 'nunique',
+        # e.g. 'min', 'median', 'max', etc.
+        if isinstance(agg_func, basestring) and\
+                agg_func != 'nunique' and\
+                self.column.astype is None:
             self.column.astype = np.float32
+
     def __hash__(self):
         return hash((self.column, self.agg_func))
+
     def __eq__(self, other):
         return hash(self) == hash(other)
-        
+
+
 class ColumnFunction(object):
     """Abstract base class for functions on reduced Columns; names the outcomes.
 
@@ -75,10 +81,10 @@ class ColumnFunction(object):
     arithmetics on these ColumnReductions, such as element-wise division of one by the other.
     These transformations are handled by ColumnFunctions.
 
-    Note: ColumnFunction guarantees an `apply_and_name(aggregator)`. This is the 
-        lowest-level function in this module that actually returns 'populated' 
+    Note: ColumnFunction guarantees an `apply_and_name(aggregator)`. This is the
+        lowest-level function in this module that actually returns 'populated'
         DataFrames (as provided by the aggregator). Children of this class
-        thus include functions on pairs of popoulated dataframes, such as 
+        thus include functions on pairs of popoulated dataframes, such as
         division and addition.
     """
 
@@ -91,7 +97,9 @@ class ColumnFunction(object):
 
         for cr in column_reductions:
             if not isinstance(cr, ColumnReduction):
-                raise ValueError("ColumnFunction requires a list of ColumnReductions; %s is not one."%repr(cr))
+                raise ValueError(
+                        "ColumnFunction requires a list of ColumnReductions; %s is not one."
+                        % repr(cr))
 
         self.column_reductions = column_reductions
         self.names = names
@@ -105,15 +113,15 @@ class ColumnFunction(object):
         Returns:
             pd.DataFrame: The dataframe has columns with names self.names
                 that were created by this ColumnFunction,
-                and is indexed by the index that was passed to 
+                and is indexed by the index that was passed to
                 aggregator.aggregate(index).
         """
         reduced_df = self._apply(aggregator)
         if len(self.names) != len(reduced_df.columns):
-            raise IndexError("The ColumnFunction creates more dataframe columns than it has names for them!")
+            raise IndexError("ColumnFunction creates more columns than it has names for.")
         reduced_df.columns = self.names
         return reduced_df
-    
+
     def _apply(self, aggregator):
         """Abstract function for the actual transformation.
 
@@ -129,6 +137,7 @@ class ColumnFunction(object):
     def __div__(self, other):
         return Fraction(numerator=self, denominator=other)
 
+
 class ColumnIdentity(ColumnFunction):
     """The simplest non-abstract ColumnFunction.
     """
@@ -142,6 +151,7 @@ class ColumnIdentity(ColumnFunction):
                 as columns, where the column names are self.names.
         """
         return aggregator.get_reduced(self.column_reductions)
+
 
 class Aggregate(ColumnIdentity):
     """A highly convenient wrapper around ColumnReductions.
@@ -158,20 +168,21 @@ class Aggregate(ColumnIdentity):
             column_def: List of (or a single) column definitions, as accepted by Column.
             agg_func: List of (or a single) row-wise aggregation function (will be passed to
                 Panda's groupby.agg())
-            name: List of strings of names for the column_defintions. Must be of 
+            name: List of strings of names for the column_defintions. Must be of
                 same length as column_def, or be None, in which case the names
                 default to the string representation of the each column definition.
-            fname: List of strings of names for the aggregation functions. Must be of 
+            fname: List of strings of names for the aggregation functions. Must be of
                 same length as agg_func or be None, in which case the names
                 default to the string representation of the each aggregation function.
             astype: List of pandas dtypes, which gets passed to Column together with the
-                column definitions. Must be of same length as column_def or be None, 
+                column definitions. Must be of same length as column_def or be None,
                 in which case no casting will be performed.
 
         Names for the resulting column reductions are of the format `columnname_functionname`.
         """
 
-        # make list of column reductions from arguments  --> each ColumnReduction  needs a Column(definition) and an agg_func
+        # make list of column reductions from arguments
+        # each ColumnReduction  needs a Column(definition) and an agg_func
         column_def = util.make_list(column_def)
         agg_func = util.make_list(agg_func)
         astype = util.make_list(astype)
@@ -180,16 +191,17 @@ class Aggregate(ColumnIdentity):
             astype = astype*len(column_def)
 
         if len(astype) != len(column_def):
-            raise ValueError("astype must be a datatype, or a list of datatypes of same length as column_def")
+            raise ValueError("astype must be a datatype, or a list of datatypes")
 
-        column_reductions = [ColumnReduction(Column(defn,at), func) 
+        column_reductions = [ColumnReduction(Column(defn, at), func)
                              for (defn, at), func in product(zip(column_def, astype), agg_func)]
 
-        # make list of names from the arguments --> same length as the list of column reductions above!
+        # make list of names from the arguments
+        # same length as the list of column reductions above!
         name = [str(c) for c in column_def] if name is None else util.make_list(name)
         if len(name) != len(column_def):
             raise ValueError("name and column_def must be same length, or name must be None.")
-        
+
         fname = [str(a) for a in agg_func] if fname is None else util.make_list(fname)
         if len(fname) != len(agg_func):
             raise ValueError("fname and agg_func must be same length, or fname must be None.")
@@ -199,9 +211,10 @@ class Aggregate(ColumnIdentity):
         if len(agg_func) == 1 and fname == [False]:
             column_names = name
         else:
-            column_names = ['%s_%s'%(cn, fn) for cn, fn in product(name, fname)]
+            column_names = ['%s_%s' % (cn, fn) for cn, fn in product(name, fname)]
 
         ColumnFunction.__init__(self, column_reductions, column_names)
+
 
 class Aggregator(object):
     """Binds column functions to a dataframe and allows for aggregation by a given index.
@@ -210,7 +223,7 @@ class Aggregator(object):
     def __init__(self, df, column_functions):
         """
         Args:
-            df (pd.DataFrame): A dataframe to apply column functions to, and 
+            df (pd.DataFrame): A dataframe to apply column functions to, and
                 which will be aggregated.
             column_functions (list[ColumnFunction]): ColumnFunctions that will
                 be applied to the dataframe.
@@ -219,12 +232,14 @@ class Aggregator(object):
         self.column_functions = column_functions
 
         # unique column reductions from all the column functions
-        self.column_reductions = set([cr for cf in column_functions for cr in cf.column_reductions])
+        self.column_reductions = set([cr for cf in column_functions
+                                      for cr in cf.column_reductions])
 
         # unique columns across all the column reductions
         self.columns = set([c.column for c in self.column_reductions])
 
-        # dataframe of the unique, populated columns, with the column objects as the dataframe's column names
+        # dataframe of the unique, populated columns
+        # with the column objects as the dataframe's column names
         self.col_df = pd.DataFrame({col: col.apply(df) for col in self.columns})
 
     def get_reduced(self, column_reductions):
@@ -239,8 +254,8 @@ class Aggregator(object):
             pd.DataFrame: A dataframe, where the column names are ColumnReductions.
         """
         for cr in column_reductions:
-            if not cr in self.column_reductions:
-                raise ValueError("Column reduction %r is not known to this Aggregator!"%cr)
+            if cr not in self.column_reductions:
+                raise ValueError("Column reduction %r is not known to this Aggregator!" % cr)
         return self.reduced_df[column_reductions]
 
     def aggregate(self, index):
@@ -250,7 +265,7 @@ class Aggregator(object):
             index (str, or pd.Index): Index or column name of self.df.
 
         Returns:
-            pd.DataFrame: A dataframe, aggregated by index, that contains the result 
+            pd.DataFrame: A dataframe, aggregated by index, that contains the result
                 of the various ColumnFunctions, and named accordingly.
         """
 
@@ -287,24 +302,24 @@ class Fraction(ColumnFunction):
     """
 
     def __init__(self, numerator, denominator, name='{numerator}_per_{denominator}',
-            include_numerator=False, include_denominator=False, include_fraction=True):
+                 include_numerator=False, include_denominator=False, include_fraction=True):
         """
         Args:
             numerator (ColumnFunction)
             denominator (ColumnFunction)
-            name (list[str] or str): A list of strings of length 
+            name (list[str] or str): A list of strings of length
                 denominator.names*numerator.names. Output columns will be named by
                 this. Defaults to `numerator.name_per_denominator.name`.
-            include_numerator (bool): If the unmodified numerator will be part of the output.
-            include_denominator (bool): If the unmodified denominator will be part of the output.
-            include_fraction (bool): If the division of all pairs of columns (pd.Series) from the 
-                numerator and denominator will be included in the output.
+            include_numerator (bool): If the unmodified numerator will be part of the output
+            include_denominator (bool): If the unmodified denominator will be part of the output
+            include_fraction (bool): If the division of all pairs of columns (pd.Series) from
+                the numerator and denominator will be included in the output.
         """
         self.numerator = numerator
         self.denominator = denominator
-        self.include_numerator=include_numerator
-        self.include_denominator=include_denominator
-        self.include_fraction=include_fraction
+        self.include_numerator = include_numerator
+        self.include_denominator = include_denominator
+        self.include_fraction = include_fraction
 
         names = []
         if include_fraction:
@@ -313,9 +328,9 @@ class Fraction(ColumnFunction):
                 names.extend(name)
             elif isinstance(name, basestring):
                 names.extend([name.format(numerator=n, denominator=d)
-                    for n,d in product(numerator.names, denominator.names)])
+                              for n, d in product(numerator.names, denominator.names)])
             else:
-                raise ValueError('Name must either be a list of names of the correct length or a format string')
+                raise ValueError('Name must either be a list of names or a format string')
         if include_numerator:
             names.extend(numerator.names)
         if include_denominator:
@@ -341,8 +356,8 @@ class Fraction(ColumnFunction):
         if self.include_fraction:
             n_df = self.numerator.apply_and_name(aggregator)
             d_df = self.denominator.apply_and_name(aggregator)
-            reduced_dfs.extend( [n_df[cn]/d_df[cd] for cn,cd in product(
-                                            n_df.columns, d_df.columns)] )
+            reduced_dfs.extend([n_df[cn]/d_df[cd]
+                                for cn, cd in product(n_df.columns, d_df.columns)])
 
         if self.include_numerator:
             reduced_dfs.append(self.numerator.apply_and_name(aggregator))
@@ -350,7 +365,8 @@ class Fraction(ColumnFunction):
         if self.include_denominator:
             reduced_dfs.append(self.denominator.apply_and_name(aggregator))
 
-        return pd.concat(reduced_dfs,axis=1)
+        return pd.concat(reduced_dfs, axis=1)
+
 
 class Count(Fraction):
     """Define various counts, sums, and proportions of Columns.
@@ -361,49 +377,52 @@ class Count(Fraction):
         Count('Arrests',prop=True) # as above, but also add a column that is normalized,
             i.e. where each group's sum is divided by the size of that group
         Count('Arrests',prop=True, prop_only=True) # as above, but exclude the raw sum
-        Count('Arrests', prop=lambda x: x.score**2) # create a column with the sum of `Arrests` 
-            per grouped index, and also create a column with the sum of `Arrests` per grouped index
-            divided by the sum of `score**2` per grouped index.
+        Count('Arrests', prop=lambda x: x.score**2) # create a column with the sum of `Arrests`
+            per grouped index, and also create a column with the sum of `Arrests`
+            per grouped index divided by the sum of `score**2` per grouped index.
         Count(['Arrests','Stops']) # create both Count('Arrests') and Count('Stops')
 
     By default names are set similar to this example: 'count', 'Arrests_count', 'Arrests_prop',
     'Arrests_prop_score', etc.
     """
 
-    def __init__(self, definition=None, name=None, prop=None, prop_only=False, prop_name=None, astype=None, prop_astype=None):
+    def __init__(self, definition=None, name=None, prop=None, prop_only=False, prop_name=None,
+                 astype=None, prop_astype=None):
         """
         Args:
-            definition: List of (or single) column definition, as accepted by Column. `Count` will
-                create ColumnFunctions corresponding to these definitions, using `sum` as the 
-                row-wise aggregation function.
-            name: List of (or single) string for naming above definitions. If `None`, then the 
+            definition: List of (or single) column definition, as accepted by Column. `Count`
+                will create ColumnFunctions corresponding to these definitions, using `sum`
+                as the row-wise aggregation function.
+            name: List of (or single) string for naming above definitions. If `None`, then the
                 definitions' string representation will be used.
-            prop: List of (or single) column definition, as accepted by Column. Defaults to None,
-                in which case `Count` only creates the columns as defined in `definition`. If `prop=1` or
-                `prop=True`, then `Count` also creates a column in which the sums from the column 
-                definitions are divided by the length of each group. `prop` can also be any column
-                definition as accepted by `Column`. In that case, `Count` will divide the results of
-                `definition` by the result `prop`.
-            prop_name: List of strings (or single string) for naming the column definition from `prop`.
-                Defaults to `None`, in which case the string representation of `prop` is used.
-            astype: Pandas dtypes, or list thereof. If list, needs to be of same length as `definition`.
-                `astype` will be passed to `ColumnDefinition` along with `definition`.
+            prop: List of (or single) column definition, as accepted by Column. Defaults to
+                None, in which case `Count` only creates the columns as defined in
+                `definition`. If `prop=1` or `prop=True`, then `Count` also creates a column
+                in which the sums from the column definitions are divided by the length of each
+                group. `prop` can also be any column definition as accepted by `Column`. In that
+                case, `Count` will divide the results of `definition` by the result `prop`.
+            prop_name: List of strings (or single string) for naming the column definition from
+                `prop`.  Defaults to `None`, in which case the string representation of `prop`
+                is used.
+            astype: Pandas dtypes, or list thereof. If list, needs to be of same length as
+                `definition`. `astype` will be passed to `ColumnDefinition` along with
+                `definition`.
             prop_astype: Like `astype`, but for the `prop` definition.
 
-        If no name is given and `definition` is `None` or 1, then the resulting column will 
-        simply be called 'count'. Otherwise, columns are named similar to 'Arrests_count', 
+        If no name is given and `definition` is `None` or 1, then the resulting column will
+        simply be called 'count'. Otherwise, columns are named similar to 'Arrests_count',
         'Arrests_prop', 'Arrests_prop_score', etc.
 
         """
 
-        if prop==None and prop_only==True:
-            raise ValueError("Cannot calculate only the proportion when no proportion requested!")
+        if prop is None and prop_only:
+            raise ValueError("Cannot calculate only the proportion when no prop")
 
         definition = np.float32(1) if definition is None else definition
-        prop = np.float32(1) if prop==True else prop
+        prop = np.float32(1) if prop is True else prop
 
         # if we do a vanilla count, just call it 'count'
-        if definition==1 and name is None:
+        if definition == 1 and name is None:
             name = 'count'
             fname = False
         else:
@@ -412,30 +431,38 @@ class Count(Fraction):
         denominator = Aggregate(prop, 'sum', prop_name, astype=prop_astype) if prop else None
         numerator = Aggregate(definition, 'sum', name, fname, astype=astype)
         if prop not in [None, 1]:
-            fracnames = [n[:-5]+'per_'+d[:-4] for n,d in product(numerator.names, denominator.names)]
+            fracnames = [n[:-5]+'per_'+d[:-4]
+                         for n, d in product(numerator.names, denominator.names)]
         else:
             fracnames = [n[:-5]+'prop' for n in numerator.names]
-        Fraction.__init__(self, numerator=numerator, denominator=denominator, include_numerator=not prop_only,
+        Fraction.__init__(self, numerator=numerator, denominator=denominator,
+                          include_numerator=not prop_only,
                           include_denominator=False, include_fraction=prop is not None,
                           name=fracnames)
+
 
 class Proportion(Count):
     """Convenience wrapper for count.
 
     Example::
         Proportion('Arrests','Inspections')
-    Creates a column 'Arrests_prop_Inspections', which divides the sum of 'Arrests' per group by the 
-    sum of 'Inspections' per group.
+    Creates a column 'Arrests_prop_Inspections', which divides the sum of 'Arrests' per group
+    by the sum of 'Inspections' per group.
     """
-    def __init__(self, definition, denom_def=True, name=None, denom_name=None, astype=None, denom_astype=None):
-        Count.__init__(self, definition=definition, name=name, prop=denom_def, 
-                        prop_only=True, prop_name=denom_name, astype=astype, prop_astype=denom_astype)
+    def __init__(self, definition, denom_def=True, name=None,
+                 denom_name=None, astype=None, denom_astype=None):
+        Count.__init__(self, definition=definition, name=name, prop=denom_def,
+                       prop_only=True, prop_name=denom_name, astype=astype,
+                       prop_astype=denom_astype)
+
 
 def aggregate_list(l):
     return list(np.concatenate(l.values))
 
+
 def aggregate_set(l):
     return set(np.concatenate(l.values))
+
 
 def aggregate_counts(l):
     lists = [list(i) for i in l.values if len(i) > 0]
@@ -444,6 +471,7 @@ def aggregate_counts(l):
     else:
         l = np.concatenate(lists)
         return np.unique(l, return_counts=True)
+
 
 def days(date1, date2):
     """
@@ -454,15 +482,17 @@ def days(date1, date2):
     """
     return lambda df, date1=date1, date2=date2: _days(df, date1, date2)
 
+
 def _days(df, date1, date2):
-    # when df is empty the subtraction below is broken 
+    # when df is empty the subtraction below is broken
     if len(df) == 0:
         return pd.Series(dtype=np.float64, index=df.index)
     else:
         d1 = df[date1] if isinstance(date1, basestring) else date1
         d2 = df[date2] if isinstance(date2, basestring) else date2
-        
+
         return (d2 - d1) / util.day
+
 
 def date_min(d):
     """
@@ -470,6 +500,7 @@ def date_min(d):
     convert it back to a timestamp
     """
     return pd.to_datetime(d.min())
+
 
 def date_max(d):
     return pd.to_datetime(d.max())
