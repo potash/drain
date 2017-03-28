@@ -4,6 +4,7 @@ import inspect
 
 from six import StringIO
 
+
 def get_inputs_helper(step, ignore, target):
     """
     Recursion helper used by get_inputs()
@@ -18,16 +19,19 @@ def get_inputs_helper(step, ignore, target):
 
     return outputs
 
+
 def get_inputs(step, target):
     """
-    Traverse input parents tree returning all steps which are targets or not targets (depending on argument target). Stop traversing at parent targets
+    Traverse input parents tree returning all steps which are targets or not targets
+    (depending on argument target). Stop traversing at parent targets
     """
     return get_inputs_helper(step, ignore=True, target=target)
+
 
 def get_drake_data(steps):
     """
     Returns: a dictionary of outputs mapped to inputs
-    Note that an output is either a target or a leaf node in the 
+    Note that an output is either a target or a leaf node in the
         step tree
     """
     output_inputs = {}
@@ -44,6 +48,7 @@ def get_drake_data(steps):
 
     return output_inputs
 
+
 def to_drake_step(inputs, output):
     """
     Args:
@@ -56,7 +61,7 @@ def to_drake_step(inputs, output):
     i.extend(map(lambda i: i._target_filename, list(inputs)))
     i.extend(output.dependencies)
 
-    # add source file of output and its non-target inputs 
+    # add source file of output and its non-target inputs
     # if they're not in the drain library
     objects = get_inputs(output, target=False)
     objects.add(output)
@@ -68,14 +73,16 @@ def to_drake_step(inputs, output):
         output_str += ', %' + output.name
     if output.target:
         output_str += ', ' + os.path.join(output._target_filename)
-    return '{output} <- {inputs} [method:drain]\n\n'.format(output=output_str, inputs=str.join(', ', i))
+    return '{output} <- {inputs} [method:drain]\n\n'.format(
+            output=output_str, inputs=str.join(', ', i))
+
 
 def to_drakefile(steps, preview=True, debug=False, input_drakefile=None):
     """
     Args:
-        steps: collection of drain.step.Step objects for which to 
-            generate a drakefile 
-        preview: boolean, when False will create directories for output 
+        steps: collection of drain.step.Step objects for which to
+            generate a drakefile
+        preview: boolean, when False will create directories for output
             steps.  When True do not touch filesystem.
         debug: run python with '-m pdb'
         drakefile: path to drakefile to include
@@ -104,8 +111,10 @@ def to_drakefile(steps, preview=True, debug=False, input_drakefile=None):
 
     return drakefile.getvalue()
 
+
 def is_target_filename(filename):
     return filename.endswith('/target')
+
 
 def is_step_filename(filename):
     return filename.endswith('/step.yaml')
