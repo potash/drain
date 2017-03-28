@@ -6,6 +6,7 @@ import logging
 from copy import deepcopy
 import pandas as pd
 from scipy import stats
+from six import string_types
 
 import numpy as np
 from numpy import random
@@ -49,7 +50,7 @@ class Column(object):
             r = self.definition(df)
         elif self.definition in df.columns:
             r = df[self.definition]
-        elif not isinstance(self.definition, basestring):
+        elif not isinstance(self.definition, string_types):
             r = pd.Series(self.definition, index=df.index)
         else:
             raise ValueError("Invalid column definition: %s" % str(self.definition))
