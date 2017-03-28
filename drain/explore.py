@@ -1,49 +1,46 @@
 from tempfile import NamedTemporaryFile
 from pprint import pformat
-from itertools import product, chain
+from itertools import product
 
-from sklearn.externals import joblib
 from sklearn import tree
 import pandas as pd
-import numpy as np
 from collections import Counter
 from six import StringIO
 
-import matplotlib.colors
-from matplotlib import cm
 
-from drain import model, util, metrics, step
+from drain import util, step
+
 
 def expand(self, prefix=False, index=True, diff=True, existence=True):
     """
-    This function is a member of StepFrame and StepSeries. It is used to 
-    expand the kwargs of the steps either into the index (index=True) or 
-    as columns (index=False). By default (diff=True) only the kwargs which 
+    This function is a member of StepFrame and StepSeries. It is used to
+    expand the kwargs of the steps either into the index (index=True) or
+    as columns (index=False). By default (diff=True) only the kwargs which
     differ among steps are expanded.
 
-    Note that index objects in pandas must be hashable so any unhashable 
-    argument values are converted to string representations (using pprint) 
+    Note that index objects in pandas must be hashable so any unhashable
+    argument values are converted to string representations (using pprint)
     when index=True.
 
-    If "inputs" is an argument those steps' kwargs are also expanded (and 
-    their inputs recursively). If there are multiple steps with the same 
-    argument names they are prefixed by their names or if those are not set 
+    If "inputs" is an argument those steps' kwargs are also expanded (and
+    their inputs recursively). If there are multiple steps with the same
+    argument names they are prefixed by their names or if those are not set
     then by their class names. To enable prefixing for all args set
     prefix=True.
 
     Sometimes the difference between pipelines is that a step exists or it
-    doesn't. When diff=True and existence=True, instead of expanding all 
+    doesn't. When diff=True and existence=True, instead of expanding all
     the kwargs for that step, we expand a single column whose name is the
     step name and whose value is a boolean indicating whether the step exists
     in the given tree.
 
-    Args: 
+    Args:
         prefix: whether to always use step name prefix for kwarg name.
-            Default False, which uses prefixes when necessary, i.e. for 
+            Default False, which uses prefixes when necessary, i.e. for
             keywords that are shared by multiple step names.
         index: If True expand args into index. Otherwise expand into
             columns
-        diff: whether to only expand keywords whose values that are 
+        diff: whether to only expand keywords whose values that are
             non-constant
         existence: whether to check for existence of a step in the tree
             instead of a full diff. Only applicable when diff=True. See
@@ -54,38 +51,38 @@ def expand(self, prefix=False, index=True, diff=True, existence=True):
     # collect kwargs resulting in a list of {name: kwargs} dicts
     dicts = [step._collect_kwargs(s) for s in self.index]
     # if any of the kwargs are themselves dicts, expand them
-    dicts = [{k: util.dict_expand(v) for k,v in s.items()} for s in dicts]
+    dicts = [{k: util.dict_expand(v) for k, v in s.items()} for s in dicts]
 
     if diff:
-        diff_dicts = [{} for d in dicts] # the desired list of dicts
+        diff_dicts = [{} for d in dicts]  # the desired list of dicts
 
-        names = util.union([set(d.keys()) for d in dicts]) # all names among these steps
+        names = util.union([set(d.keys()) for d in dicts])  # all names among these steps
         for name in names:
             if existence:
-                ndicts = [d[name] for d in dicts if name in d.keys()] # all dicts for this name
+                ndicts = [d[name] for d in dicts if name in d.keys()]  # all dicts for this name
             else:
                 ndicts = [d[name] if name in d.keys() else {} for d in dicts]
 
-            ndiffs = util.dict_diff(ndicts) # diffs for this name
-          
-            if sum(map(len, ndiffs)) == 0: # if they're all the same 
+            ndiffs = util.dict_diff(ndicts)  # diffs for this name
+
+            if sum(map(len, ndiffs)) == 0:  # if they're all the same
                 # but not all had the key and existence=True
-                if existence and len(ndicts) < len(self): 
+                if existence and len(ndicts) < len(self):
                     for m, d in zip(diff_dicts, dicts):
                         m[name] = {tuple(): name in d.keys()}
-            else: # if there was a diff
+            else:  # if there was a diff
                 diff_iter = iter(ndiffs)
                 for m, d in zip(diff_dicts, dicts):
                     if name in d.keys() or not existence:
-                        m[name] = diff_iter.next() # get the corresponding diff
+                        m[name] = diff_iter.next()  # get the corresponding diff
 
         dicts = diff_dicts
 
     # restructure so name is in the key
     merged_dicts = []
     for dd in dicts:
-        merged_dicts.append(util.dict_merge(*({tuple([name] + list(util.make_tuple(k))) : v 
-                            for k,v in d.items()} for name, d in dd.items())))
+        merged_dicts.append(util.dict_merge(*({tuple([name] + list(util.make_tuple(k))): v
+                            for k, v in d.items()} for name, d in dd.items())))
 
     # prefix_keys are the keys that will keep their prefix
     keys = [list((k[1:] for k in d.keys())) for d in merged_dicts]
@@ -95,8 +92,8 @@ def expand(self, prefix=False, index=True, diff=True, existence=True):
     else:
         prefix_keys = util.union((set(kk) for kk in keys))
 
-    merged_dicts = [{str.join('_', map(str, k if k[1:] in prefix_keys else k[1:])):v 
-              for k,v in d.items()} for d in merged_dicts]
+    merged_dicts = [{str.join('_', map(str, k if k[1:] in prefix_keys else k[1:])): v
+                    for k, v in d.items()} for d in merged_dicts]
 
     expanded = pd.DataFrame(merged_dicts, index=self.index)
 
@@ -118,6 +115,7 @@ def expand(self, prefix=False, index=True, diff=True, existence=True):
 
     return df
 
+
 def dapply(self, fn, pairwise=False, symmetric=True, diagonal=False, block=None, **kwargs):
     """
     Apply function to each step object in the index
@@ -128,27 +126,28 @@ def dapply(self, fn, pairwise=False, symmetric=True, diagonal=False, block=None,
         symmetric, diagonal, block: passed to apply_pairwise when pairwise=True
         kwargs: a keyword arguments to pass to each function. Arguments
             with list value are grid searched using util.dict_product.
-    
-    Returns: a StepFrame or StepSeries 
+
+    Returns: a StepFrame or StepSeries
     """
-    search_keys = [k for k,v in kwargs.items() if isinstance(v, list) and len(v) > 1]
+    search_keys = [k for k, v in kwargs.items() if isinstance(v, list) and len(v) > 1]
     functions = util.make_list(fn)
     search = list(product(functions, util.dict_product(kwargs)))
-    
+
     results = []
-    for fn,kw in search:
+    for fn, kw in search:
         if not pairwise:
             r = self.index.to_series().apply(lambda step: fn(step, **kw))
         else:
-            r = apply_pairwise(self, fn, 
-                               symmetric=symmetric, diagonal=diagonal, block=block, 
+            r = apply_pairwise(self, fn,
+                               symmetric=symmetric, diagonal=diagonal, block=block,
                                **kw)
-            
+
         name = [] if len(functions) == 1 else [fn.__name__]
         name += util.dict_subset(kw, search_keys).values()
-            
+
         if isinstance(r, pd.DataFrame):
-            columns = pd.MultiIndex.from_tuples([tuple(name + util.make_list(c)) for c in r.columns])
+            columns = pd.MultiIndex.from_tuples(
+                    [tuple(name + util.make_list(c)) for c in r.columns])
             r.columns = columns
         else:
             r.name = tuple(name)
@@ -171,6 +170,7 @@ def dapply(self, fn, pairwise=False, symmetric=True, diagonal=False, block=None,
             result.name = functions[0].__name__
             return StepSeries(result)
 
+
 def apply_pairwise(self, function, symmetric=True, diagonal=False, block=None, **kwargs):
     """
     Helper function for pairwise apply.
@@ -187,9 +187,10 @@ def apply_pairwise(self, function, symmetric=True, diagonal=False, block=None, *
     """
     steps = self.index
     r = pd.DataFrame(index=steps, columns=steps)
-    for i,s1 in enumerate(steps):
+    for i, s1 in enumerate(steps):
         j = range(i+1 if symmetric else len(steps))
-        if not diagonal: j.remove(i)
+        if not diagonal:
+            j.remove(i)
         other = set(steps[j])
         if block is not None:
             df = self.reset_index()
@@ -200,10 +201,12 @@ def apply_pairwise(self, function, symmetric=True, diagonal=False, block=None, *
             r.ix[s1, s2] = function(s1, s2, **kwargs)
     return r
 
+
 def _assert_step_collection(steps):
     for s in steps:
         if not isinstance(s, step.Step):
             raise ValueError("StepFrame index must consist of drain.step.Step objects")
+
 
 class StepFrame(pd.DataFrame):
     expand = expand
@@ -224,6 +227,7 @@ class StepFrame(pd.DataFrame):
     # resetting index makes it no longer a StepFrame
     def reset_index(self, *args, **kwargs):
         return pd.DataFrame(self).reset_index(*args, **kwargs)
+
 
 class StepSeries(pd.Series):
     expand = expand
@@ -261,18 +265,21 @@ def _print_unhashable(df, columns=None):
 
     return df
 
-def show_tree(tree, feature_names,max_depth=None):
+
+def show_tree(tree, feature_names, max_depth=None):
     import wand.image
 
     filename = NamedTemporaryFile(delete=False).name
-    export_tree(tree, filename, [c.encode('ascii') for c in feature_names],max_depth)
+    export_tree(tree, filename, [c.encode('ascii') for c in feature_names], max_depth)
     img = wand.image.Image(filename=filename)
     return img
+
 
 def export_tree(clf, filename, feature_names=None, max_depth=None):
     import pydot
 
     dot_data = StringIO()
-    tree.export_graphviz(clf, out_file=dot_data, feature_names=feature_names, max_depth=max_depth)
+    tree.export_graphviz(clf, out_file=dot_data,
+                         feature_names=feature_names, max_depth=max_depth)
     graph = pydot.graph_from_dot_data(dot_data.getvalue())[0]
     graph.write_pdf(filename)
