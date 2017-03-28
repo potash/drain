@@ -1,7 +1,5 @@
 import os
 import sys
-import datetime
-import math
 import logging
 import inspect
 
@@ -14,23 +12,30 @@ from sklearn.base import _pprint
 from drain import util, metrics
 from drain.step import Step, Construct
 
+
 class FitPredict(Step):
     """
     Step which can fit a scikit-learn estimator and make predictions.
     """
-    def __init__(self, inputs, return_estimator=False, return_feature_importances=True, return_predictions=True, prefit=False, predict_train=False):
+    def __init__(self, inputs,
+                 return_estimator=False,
+                 return_feature_importances=True,
+                 return_predictions=True,
+                 prefit=False,
+                 predict_train=False):
         """
         Args:
-            return_estimator: whether or not to return the fitted estimator object
-            return_feature_importances: whether or not to return a DataFrame of feature names and their importances
+            return_estimator: whether to return the fitted estimator object
+            return_feature_importances: whether to return a DataFrame of feature importances
             prefit: whether the estimator input is already fitted
             predict_train: whether to make predictions on training set
         """
         Step.__init__(self, inputs=inputs, return_estimator=return_estimator,
-                return_feature_importances=return_feature_importances,
-                return_predictions=return_predictions, prefit=prefit, predict_train=predict_train)
+                      return_feature_importances=return_feature_importances,
+                      return_predictions=return_predictions, prefit=prefit,
+                      predict_train=predict_train)
 
-    def run(self, estimator, X, y, train=None, test=None, aux=None, sample_weight=None, 
+    def run(self, estimator, X, y, train=None, test=None, aux=None, sample_weight=None,
             feature_importances=None):
         if not self.prefit:
             if train is not None:
@@ -41,7 +46,8 @@ class FitPredict(Step):
             y_train = y_train.astype(bool)
 
             logging.info('Fitting with %s examples, %s features' % X_train.shape)
-            if 'sample_weight' in inspect.getargspec(estimator.fit).args and sample_weight is not None:
+            if 'sample_weight' in inspect.getargspec(estimator.fit).args and\
+                    sample_weight is not None:
                 logging.info('Using sample weight')
                 sample_weight = sample_weight.ix[train.index][train].values
                 estimator.fit(X_train, y_train, sample_weight=sample_weight)
@@ -100,30 +106,34 @@ class FitPredict(Step):
 
         self.set_result(result)
 
+
 class Fit(FitPredict):
     def __init__(self, inputs, return_estimator=True, return_feature_importances=False):
-        FitPredict.__init__(self, inputs=inputs, prefit=False, 
-                            return_estimator=return_estimator, 
-                            return_feature_importances=return_feature_importances, 
+        FitPredict.__init__(self, inputs=inputs, prefit=False,
+                            return_estimator=return_estimator,
+                            return_feature_importances=return_feature_importances,
                             return_predictions=False)
+
 
 class Predict(FitPredict):
     def __init__(self, inputs, return_estimator=False, return_feature_importances=False):
-        FitPredict.__init__(self, inputs=inputs, 
-                            return_feature_importances=return_feature_importances, 
-                            return_estimator=return_estimator, 
+        FitPredict.__init__(self, inputs=inputs,
+                            return_feature_importances=return_feature_importances,
+                            return_estimator=return_estimator,
                             return_predictions=True, prefit=True)
-       
+
+
 class PredictProduct(Step):
     def run(self, **kwargs):
         keys = kwargs.keys()
         ys = [kwargs[k]['y'] for k in keys]
         y = ys[0].copy()
-        y.rename(columns={'score':'score_%s' % keys[0]}, inplace=True)
+        y.rename(columns={'score': 'score_%s' % keys[0]}, inplace=True)
         y['score_%s' % keys[1]] = ys[1].score
         y['score'] = ys[0].score * ys[1].score
 
-        return {'y':y}
+        return {'y': y}
+
 
 class InverseProbabilityWeights(Step):
     def run(self, y, train=None, **kwargs):
@@ -135,7 +145,8 @@ class InverseProbabilityWeights(Step):
                 raise ValueError("Must provide scores for every training example.")
             y = y.ix[intersection]
 
-        return {'sample_weight':y.score**-1}
+        return {'sample_weight': y.score**-1}
+
 
 def y_score(estimator, X):
     """
@@ -146,13 +157,15 @@ def y_score(estimator, X):
 
     Returns: a vector of scores of the same length as X
 
-    Note that estimator.predict_proba is preferred but when unavailable (e.g. SVM without probability calibration) decision_function is used.
+    Note that estimator.predict_proba is preferred but when unavailable
+    (e.g. SVM without probability calibration) decision_function is used.
     """
     try:
         y = estimator.predict_proba(X)
-        return y[:,1]
+        return y[:, 1]
     except:
         return estimator.decision_function(X)
+
 
 def feature_importance(estimator, X):
     if hasattr(estimator, 'coef_'):
@@ -164,7 +177,9 @@ def feature_importance(estimator, X):
 
     features = X.columns if hasattr(X, 'columns') else range(X.shape[1])
 
-    return pd.DataFrame({'feature': features, 'importance': i}).sort_values('importance', ascending=False)
+    return pd.DataFrame({'feature': features, 'importance': i}).\
+        sort_values('importance', ascending=False)
+
 
 class LogisticRegression(object):
     def __init__(self):
@@ -174,7 +189,7 @@ class LogisticRegression(object):
         from statsmodels.discrete.discrete_model import Logit
         self.model = Logit(y, X)
         self.result = self.model.fit()
-    
+
     def predict_proba(self, X):
         return self.result.predict(X)
 
@@ -182,23 +197,26 @@ class LogisticRegression(object):
 def _proximity_parallel_helper(train_nodes, t, k):
     d = (train_nodes == t).sum(axis=1)
     n = d.argsort()[::-1][:k]
-    
-    return d[n], n #distance, neighbors
+
+    return d[n], n  # distance, neighbors
+
 
 def _proximity_helper(train_nodes, test_nodes, k):
-    from sklearn.ensemble.forest import _parallel_helper
     from sklearn.externals.joblib import Parallel, delayed
 
-    results = Parallel(n_jobs=16, backend='threading')(delayed(_proximity_parallel_helper)(train_nodes, t, k) for t in test_nodes)
+    results = Parallel(n_jobs=16, backend='threading')(
+        delayed(_proximity_parallel_helper)(train_nodes, t, k) for t in test_nodes)
     distance, neighbors = zip(*results)
     return np.array(distance), np.array(neighbors)
 
-# store nodes in run
+
 def apply_forest(run):
+    # store nodes in run
     run['nodes'] = pd.DataFrame(run.estimator.apply(run['data'].X), index=run['data'].X.index)
-    
-# look for nodes in training set proximal to the given nodes
+
+
 def proximity(run, ix, k):
+    # look for nodes in training set proximal to the given nodes
     if 'nodes' not in run:
         apply_forest(run)
     distance, neighbors = _proximity_helper(run['nodes'][run.y.train].values, run['nodes'].loc[ix].values, k)
@@ -228,7 +246,7 @@ def y_subset(y, query=None, aux=None, subset=None, dropna=False, outcome='true',
             if len(s) != len(y):
                 logging.warning('y not a subset of aux')
             y = y.ix[s.query(query).index]
-    
+
     if subset is not None:
         if hasattr(subset, 'index'):
             subset = subset.index
@@ -259,20 +277,20 @@ def y_subset(y, query=None, aux=None, subset=None, dropna=False, outcome='true',
     return y
 
 # list of arguments to y_subset() for Metric above
-Y_SUBSET_ARGS = inspect.getargspec(y_subset).args 
+Y_SUBSET_ARGS = inspect.getargspec(y_subset).args
 
 def true_score(y, outcome='true', score='score', **subset_args):
-    y = y_subset(y, outcome=outcome, score=score, **subset_args) 
+    y = y_subset(y, outcome=outcome, score=score, **subset_args)
     return util.to_float(y[outcome], y[score])
 
 def make_metric(function):
     def metric(predict_step, **kwargs):
         y = predict_step.get_result()['y']
         subset_args = [k for k in Y_SUBSET_ARGS if k in kwargs]
-        kwargs_subset = {k:kwargs[k] for k in subset_args}
-        y_true,y_score = true_score(y, **kwargs_subset)
+        kwargs_subset = {k: kwargs[k] for k in subset_args}
+        y_true, y_score = true_score(y, **kwargs_subset)
 
-        kwargs_metric = {k:kwargs[k] for k in kwargs if k not in Y_SUBSET_ARGS}
+        kwargs_metric = {k: kwargs[k] for k in kwargs if k not in Y_SUBSET_ARGS}
         r = function(y_true, y_score, **kwargs_metric)
         return r
 
@@ -280,7 +298,7 @@ def make_metric(function):
 
 metric_functions = [o for o in inspect.getmembers(metrics) if inspect.isfunction(o[1]) and not o[0].startswith('_')]
 
-for name,function in metric_functions:
+for name, function in metric_functions:
     function = make_metric(function)
     function.__name__ = name
     setattr(sys.modules[__name__], name, function)
@@ -296,7 +314,7 @@ def lift_series(predict_step, **kwargs):
     p = precision_series(predict_step, **kwargs)
 
     # pass everything except k or p to baseline
-    b_kwargs = {k:v for k,v in kwargs.items() if k not in ('k', 'p')}
+    b_kwargs = {k: v for k, v in kwargs.items() if k not in ('k', 'p')}
     b = baseline(predict_step, **b_kwargs)
 
     return p/b
@@ -324,19 +342,19 @@ def recall_series(predict_step, prop=True, **kwargs):
 def overlap(self, other, **kwargs):
     y0 = self.get_result()['y']
     y0 =  y_subset(y0, **kwargs)
-    
+
     y1 = other.get_result()['y']
     y1 = y_subset(y1, **kwargs)
-    
+
     return len(y0.index & y1.index)
 
 def similarity(self, other, **kwargs):
     y0 = self.get_result()['y']
     y0 =  y_subset(y0, **kwargs)
-    
+
     y1 = other.get_result()['y']
     y1 = y_subset(y1, **kwargs)
-    
+
     return np.float32(len(y0.index & y1.index))/\
            len(y0.index | y1.index)
 
@@ -345,6 +363,7 @@ def rank(self, **kwargs):
     y0 = self.get_result()['y']
     y0 =  y_subset(y0, **kwargs)
     return y0.score.rank(ascending=False)
+
 
 class PrintMetrics(Step):
     def __init__(self, metrics, **kwargs):
@@ -374,28 +393,29 @@ def perturb(estimator, X, bins, columns=None):
         else:
             columns = X.columns
 
-    n = np.concatenate(([0],np.cumsum([len(b) for b in bins])))
-    
+    n = np.concatenate(([0], np.cumsum([len(b) for b in bins])))
+
     X_test = np.empty((n[-1]*X.shape[0], X.shape[1]))
     r = pd.DataFrame(columns=['value', 'feature', 'index'], index=np.arange(n[-1]*X.shape[0]))
-    for j,index in enumerate(X.index):
-        X_test[j*n[-1]:(j+1)*n[-1], :] = X.values[j,:]
-        for i,c in enumerate(columns):
+    for j, index in enumerate(X.index):
+        X_test[j*n[-1]:(j+1)*n[-1], :] = X.values[j, :]
+        for i, c in enumerate(columns):
             s = slice(j*n[-1] + n[i], j*n[-1] + n[i+1])
             r['value'].values[s] = bins[i]
             r['feature'].values[s] = c
             r['index'].values[s] = [index]*(n[i+1]-n[i])
             X_test[s, (X.columns==c).argmax()] = bins[i]
-            
-    y = estimator.predict_proba(X_test)[:,1]
+
+    y = estimator.predict_proba(X_test)[:, 1]
     r['y'] = y
     return r
+
 
 def forests(**kwargs):
     steps = []
     d = dict(criterion=['entropy', 'gini'], max_features=['sqrt', 'log2'], n_jobs=[-1], **kwargs)
     for estimator_args in util.dict_product(d):
-        steps.append(Construct(name='estimator', 
+        steps.append(Construct(name='estimator',
                  __class_name__='sklearn.ensemble.RandomForestClassifier',
                 **estimator_args))
 
@@ -404,21 +424,22 @@ def forests(**kwargs):
 def logits(**kwargs):
     steps = []
     for estimator_args in util.dict_product(dict(
-            penalty=['l1','l2'], C=[.001,.01,.1,1], **kwargs)):
-        steps.append(Construct(name='estimator', 
+            penalty=['l1', 'l2'], C=[.001, .01, .1, 1], **kwargs)):
+        steps.append(Construct(name='estimator',
                 __class_name__='sklearn.linear_model.LogisticRegression',
                 **estimator_args))
 
     return steps
-    
+
 def svms(**kwargs):
     steps = []
-    for estimator_args in util.dict_product(dict(penalty=['l2'], 
-            dual=[True, False], C=[.001,.01,.1,1])) + \
+    for estimator_args in util.dict_product(dict(
+                 penalty=['l2'],
+                 dual=[True, False], C=[.001, .01, .1, 1])) + \
             util.dict_product(dict(
-                    penalty=['l1'], dual=[False], C=[.001,.01,.1,1])):
+                    penalty=['l1'], dual=[False], C=[.001, .01, .1, 1])):
         steps.append(Construct(name='estimator',
-                __class_name__='sklearn.svm.LinearSVC', 
-                **estimator_args))
+                               __class_name__='sklearn.svm.LinearSVC',
+                               **estimator_args))
 
     return steps
