@@ -2,19 +2,13 @@ import sqlalchemy
 import logging
 import os
 import sys
-import types
-
-from six import StringIO
-import dis
 
 import numpy as np
 import pandas as pd
 import pandas.io.sql
 
 from itertools import chain, product
-from datetime import datetime, timedelta, date
-from sklearn import preprocessing
-from scipy import stats
+from datetime import datetime, timedelta
 
 try:
     from repoze.lru import lru_cache
@@ -24,13 +18,17 @@ except ImportError:
 # useful for finding number of days in an interval: (date1 - date2) /day
 day = np.timedelta64(1, 'D')
 
+
 def create_engine():
     return sqlalchemy.create_engine('postgresql://{user}:{pwd}@{host}:5432/{db}'.format(
-            host=os.environ['PGHOST'], db=os.environ['PGDATABASE'], user=os.environ['PGUSER'], pwd=os.environ['PGPASSWORD']))
+            host=os.environ['PGHOST'], db=os.environ['PGDATABASE'], user=os.environ['PGUSER'],
+            pwd=os.environ['PGPASSWORD']))
+
 
 def create_db():
     engine = create_engine()
     return PgSQLDatabase(engine)
+
 
 def execute_sql(sql, engine):
     conn = engine.connect()
@@ -38,52 +36,65 @@ def execute_sql(sql, engine):
     conn.execute(sql)
     trans.commit()
 
+
 def mtime(path):
     return datetime.fromtimestamp(os.stat(path).st_mtime)
+
 
 def touch(path):
     open(path, 'a').close()
     os.utime(path, None)
 
-def get_subdirs(directory): 
-    """ 
-    Returns: a list of subdirectories of the given directory 
-    """ 
+
+def get_subdirs(directory):
+    """
+    Returns: a list of subdirectories of the given directory
+    """
     return [os.path.join(directory, name)
-    		for name in os.listdir(directory)  
-             		if os.path.isdir(os.path.join(directory, name))] 
+            for name in os.listdir(directory)
+            if os.path.isdir(os.path.join(directory, name))]
+
 
 def intersect(sets):
-    return reduce(lambda a,b: a & b, sets)
+    return reduce(lambda a, b: a & b, sets)
+
 
 def union(sets):
-    return reduce(lambda a,b: a | b, sets)
+    return reduce(lambda a, b: a | b, sets)
 
-# cast numpy arrays to float32
-# if there's more than one, return an array
+
 def to_float(*args):
+    """
+    cast numpy arrays to float32
+    if there's more than one, return an array
+    """
     floats = [np.array(a, dtype=np.float32) for a in args]
     return floats[0] if len(floats) == 1 else floats
 
-def timestamp(year,month,day):
+
+def timestamp(year, month, day):
     """
     Convenient constructor for pandas Timestamp
     """
     return pd.Timestamp('%04d-%02d-%02d' % (year, month, day))
 
 epoch = np.datetime64(0, 'ns')
+
+
 def date_to_days(date):
     """
     Number of days since epoch
     """
     return (date - epoch)/day
 
-def date_ceil( month, day):
+
+def date_ceil(month, day):
     def ceil(t):
         c = timestamp(t.year, month, day)
         return c if c >= t else timestamp(t.year+1, month, day)
 
     return ceil
+
 
 def date_floor(month, day):
     def floor(t):
@@ -92,20 +103,28 @@ def date_floor(month, day):
 
     return floor
 
-def eqattr(object1, object2, attr):
-    return hasattr(object1, attr) and hasattr(object2, attr) and (getattr(object1, attr) == getattr(object2, attr))
 
-# get a class or function by name
+def eqattr(object1, object2, attr):
+    return hasattr(object1, attr) and\
+        hasattr(object2, attr) and\
+        (getattr(object1, attr) == getattr(object2, attr))
+
+
 def get_attr(name):
+    """
+    get a class or function by name
+    """
     i = name.rfind('.')
     cls = str(name[i+1:])
     module = str(name[:i])
-    
+
     mod = __import__(module, fromlist=[cls])
-    return getattr(mod,cls)
+    return getattr(mod, cls)
+
 
 def init_object(name, **kwargs):
     return get_attr(name)(**kwargs)
+
 
 def randtimedelta(low, high, size):
     d = np.empty(shape=size, dtype=timedelta)
@@ -114,29 +133,26 @@ def randtimedelta(low, high, size):
         d[i] = timedelta(r[i])
     return d
 
-def randdates(start,end, size):
+
+def randdates(start, end, size):
     d = np.empty(shape=size, dtype=datetime)
     r = randtimedelta(0, (end-start).days, size)
     for i in range(size):
         d[i] = start + r[i]
     return d
 
-# pandas mode is "empty if nothing has 2+ occurrences."
-# this method always returns something (nan if the series is empty/nan), breaking ties arbitrarily
+
 def mode(series):
+    """
+    pandas mode is "empty if nothing has 2+ occurrences."
+    this method always returns something:
+        nan if the series is empty/nan), breaking ties arbitrarily
+    """
     if series.notnull().sum() == 0:
         return np.nan
     else:
         return series.value_counts().idxmax()
 
-# normalize a dataframes columns
-# method = 'normalize': use standard score i.e. (X - \mu) / \sigma
-# method = 'percentile': replace with percentile. SLOW
-def normalize(df, method='standard'):
-    if method == 'standard':
-        return pd.DataFrame(preprocessing.scale(df), index=df.index, columns=df.columns)
-    elif method == 'percentile':
-        return df.rank(pct=True)
 
 def get_collinear(df, tol=.1, verbose=False):
     q, r = np.linalg.qr(df)
@@ -144,8 +160,9 @@ def get_collinear(df, tol=.1, verbose=False):
     if verbose:
         for i in range(len(diag)):
             if np.abs(diag[i]) < tol:
-                print(r[:,i]) # TODO print equation with column names!
+                print(r[:, i])  # TODO print equation with column names!
     return [df.columns[i] for i in range(len(diag)) if np.abs(diag[i]) < tol]
+
 
 def drop_collinear(df, tol=.1, verbose=True):
     columns = get_collinear(df, tol=tol)
@@ -154,10 +171,12 @@ def drop_collinear(df, tol=.1, verbose=True):
     df.drop(columns, axis=1, inplace=True)
     return df
 
+
 def cross_join(left, right, lsuffix='_left', rsuffix='_right'):
     left.index = np.zeros(len(left))
     right.index = np.zeros(len(right))
     return left.join(right, lsuffix=lsuffix, rsuffix=rsuffix)
+
 
 def dict_merge(*dict_args):
     '''
@@ -169,8 +188,10 @@ def dict_merge(*dict_args):
         result.update(dictionary)
     return result
 
+
 def dict_subset(d, keys):
-    return {k:d[k] for k in keys if k in d}
+    return {k: d[k] for k in keys if k in d}
+
 
 def drop_constant_column_levels(df):
     """
@@ -178,9 +199,9 @@ def drop_constant_column_levels(df):
     operates in place
     """
     columns = df.columns
-    constant_levels = [i for i,level in enumerate(columns.levels) if len(level) <= 1]
+    constant_levels = [i for i, level in enumerate(columns.levels) if len(level) <= 1]
     constant_levels.reverse()
-    
+
     for i in constant_levels:
         columns = columns.droplevel(i)
     df.columns = columns
@@ -200,22 +221,24 @@ def list_expand(d, prefix=None):
         else:
             yield tuple(chain(prefix, make_list(k)))
 
+
 def dict_expand(d, prefix=None):
     """
     Recursively expand subdictionaries returning dictionary
     dict_expand({1:{2:3}, 4:5}) = {(1,2):3, 4:5}
     """
     result = {}
-    for k,v in d.iteritems():
+    for k, v in d.iteritems():
         if isinstance(v, dict):
             result.update(dict_expand(v, prefix=k))
         else:
             result[k] = v
 
     if prefix is not None:
-        result = {make_tuple(prefix) + make_tuple(k): v 
-                for k,v in result.iteritems()}
+        result = {make_tuple(prefix) + make_tuple(k): v
+                  for k, v in result.iteritems()}
     return result
+
 
 def nunique(iterable):
     try:
@@ -227,6 +250,7 @@ def nunique(iterable):
             if i not in unique:
                 unique.append(i)
         return len(unique)
+
 
 def dict_diff(dicts):
     """
@@ -248,48 +272,64 @@ def dict_diff(dicts):
 
     return [dict_subset(d, diff_keys) for d in dicts]
 
+
 def make_list(a):
     return [a] if not type(a) in (list, tuple) else list(a)
+
 
 def make_tuple(a):
     return (a,) if not type(a) in (list, tuple) else tuple(a)
 
-# cartesian product of dict whose values are lists
-# if product_keys is not None then take product on those keys only
+
 def dict_product(d):
-    holdout = {k:d[k] for k in d if not isinstance(d[k], list)}
-    d = {k:d[k] for k in d if k not in holdout}
-        
+    """
+    cartesian product of dict whose values are lists
+    if product_keys is not None then take product on those keys only
+    """
+    holdout = {k: d[k] for k in d if not isinstance(d[k], list)}
+    d = {k: d[k] for k in d if k not in holdout}
+
     if not isinstance(d, dict):
         raise ValueError('Expected dictionary got %s' % type(d).__name__)
-        
+
     items = d.items()
     if len(items) == 0:
-        dicts =  [{}]
+        dicts = [{}]
     else:
         keys, values = zip(*items)
         dicts = [dict_filter_none(dict(zip(keys, v))) for v in product(*values)]
-    
+
     for d in dicts:
         d.update(holdout)
-            
+
     return dicts
 
-# filter none values from dict
+
 def dict_filter_none(d):
-    return {k:v for k,v in d.iteritems() if v is not None}
+    """
+    filter none values from dict
+    """
+    return {k: v for k, v in d.iteritems() if v is not None}
+
 
 def list_filter_none(l):
+    """
+    filter none values from a list
+    """
     return [v for v in l if v is not None]
 
-# update a set-valued dictionary
-# when key exists, union sets
+
 def dict_update_union(d1, d2):
+    """
+    update a set-valued dictionary
+    when key exists, union sets
+    """
     for k in d2:
         if k in d1:
             d1[k].update(d2[k])
         else:
             d1[k] = d2[k]
+
 
 def set_dtypes(df, dtypes):
     for column in df.columns:
@@ -299,50 +339,44 @@ def set_dtypes(df, dtypes):
                 dtype = dtypes[column]
         else:
             dtype = dtypes
-        
+
         if dtype is not None and df[column].dtype != dtype:
             df[column] = df[column].astype(dtype)
-    
+
+
 @lru_cache(maxsize=500)
 def read_file(filename):
     with open(filename) as f:
         return f.read()
 
-def conditional_join(left, right, left_on, right_on, condition, lsuffix='_left', rsuffix='_right'):
+
+def conditional_join(left, right, left_on, right_on, condition,
+                     lsuffix='_left', rsuffix='_right'):
     left_index = left[left_on].reset_index()
     right_index = right[right_on].reset_index()
-    
+
     join_table = cross_join(left_index, right_index, lsuffix=lsuffix, rsuffix=rsuffix)
     join_table = join_table[condition(join_table)]
-    
+
     lindex = left.index.name if left.index.name is not None else 'index'
     rindex = left.index.name if right.index.name is not None else 'index'
     if lindex == rindex:
         lindex = lindex + lsuffix
         rindex = rindex + rsuffix
-    
+
     df = left.merge(join_table[[lindex, rindex]], left_index=True, right_on=lindex)
     df = df.merge(right, left_on=rindex, right_index=True)
     df.drop(labels=[lindex, rindex], axis=1, inplace=True)
     df.reset_index(drop=True, inplace=True)
-    
+
     return df
 
-def join_years(left, years, period=None, column='year'):
-    years = pd.DataFrame({column:years})
-    if period is None:
-        cond = lambda df: (df[column + '_left'] <= df[column + '_right'])
-    else:
-        cond = lambda df: (df[column + '_left'] <= df[column + '_right']) & (df[column +'_left'] > df[column + '_right'] - period)
-        
-    df = conditional_join(left, years, left_on=[column], right_on=[column], condition=cond)
-    df.rename(columns={column + '_y': column}, inplace=True)
-    return df
 
 class PgSQLDatabase(pandas.io.sql.SQLDatabase):
     # FIXME Schema is pulled from Meta object, shouldn't actually be part of signature!
     def to_sql(self, frame, name, if_exists='fail', index=True,
-               index_label=None, schema=None, chunksize=None, dtype=None, pk=None, prefixes=None, raise_on_error=True):
+               index_label=None, schema=None, chunksize=None,
+               dtype=None, pk=None, prefixes=None, raise_on_error=True):
         """
         Write records stored in a DataFrame to a SQL database.
 
@@ -378,33 +412,34 @@ class PgSQLDatabase(pandas.io.sql.SQLDatabase):
                                        schema=schema, dtype=dtype)
         existed = table.exists()
         table.create()
-        replaced = existed and if_exists=='replace'
+        replaced = existed and if_exists == 'replace'
 
-        table_name=name
+        table_name = name
         if schema is not None:
             table_name = schema + '.' + table_name
 
-        if pk is not None and ( (not existed) or replaced):
+        if pk is not None and ((not existed) or replaced):
             if isinstance(pk, str):
                 pks = pk
             else:
                 pks = ", ".join(pk)
-            sql = "ALTER TABLE {table_name} ADD PRIMARY KEY ({pks})".format(table_name=table_name, pks=pks)
+            sql = "ALTER TABLE {table_name} ADD PRIMARY KEY ({pks})".format(
+                    table_name=table_name, pks=pks)
             self.execute(sql)
-
 
         from subprocess import Popen, PIPE, STDOUT
 
         columns = frame.index.names + list(frame.columns) if index else frame.columns
         columns = str.join(",", map(lambda c: '"' + c + '"', columns))
 
-        sql = "COPY {table_name} ({columns}) FROM STDIN WITH (FORMAT CSV, HEADER TRUE)".format(table_name=table_name, columns=columns)
+        sql = "COPY {table_name} ({columns}) FROM STDIN WITH (FORMAT CSV, HEADER TRUE)".format(
+                table_name=table_name, columns=columns)
         p = Popen(['psql', '-c', sql], stdout=PIPE, stdin=PIPE, stderr=STDOUT)
         frame.to_csv(p.stdin, index=index)
 
         psql_out = p.communicate()[0]
         logging.info(psql_out.decode()),
-        
+
         r = p.wait()
         if raise_on_error and (r > 0):
             sys.exit(r)
@@ -412,7 +447,7 @@ class PgSQLDatabase(pandas.io.sql.SQLDatabase):
         return r
 
     def read_table(self, name, schema=None):
-        table_name=name
+        table_name = name
         if schema is not None:
             table_name = schema + '.' + table_name
 
@@ -431,8 +466,9 @@ class PgSQLDatabase(pandas.io.sql.SQLDatabase):
         r = p.wait()
         if raise_on_error and (r > 0):
             sys.exit(r)
- 
+
         return df
+
 
 def indent(s, n_spaces=2, initial=True):
     """
@@ -442,7 +478,7 @@ def indent(s, n_spaces=2, initial=True):
         initial: whether or not to start with an indent
     """
     i = ' '*n_spaces
-    t = s.replace('\n','\n%s' % i)
+    t = s.replace('\n', '\n%s' % i)
     if initial:
         t = i + t
     return t
