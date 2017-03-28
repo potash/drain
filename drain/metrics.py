@@ -2,7 +2,6 @@ import numpy as np
 import pandas as pd
 import sklearn.metrics
 
-from drain import util
 from drain.util import to_float
 
 """Methods that calculate metrics for classification models.
@@ -12,6 +11,7 @@ All metrics are functions of two numpy arrays of floats of equal length:
     - y_score: the scores, which can take any non-NaN number.
 All metrics have been implemented to support missing labels.
 """
+
 
 def _argsort(y_score, k=None):
     """
@@ -25,6 +25,7 @@ def _argsort(y_score, k=None):
 
     return argsort
 
+
 def _argtop(y_score, k=None):
     """
     Returns the indexes of the top k scores (not necessarily sorted)
@@ -35,18 +36,21 @@ def _argtop(y_score, k=None):
     else:
         return _argsort(y_score, k)
 
+
 def count(y_true, y_score=None, countna=False):
     """
-    Counts the number of examples. If countna is False then only count labeled examples, i.e. those with y_true not NaN
+    Counts the number of examples. If countna is False then only count labeled examples,
+    i.e. those with y_true not NaN
     """
     if not countna:
         return (~np.isnan(to_float(y_true))).sum()
     else:
         return len(y_true)
 
+
 def count_series(y_true, y_score, countna=False):
     """
-    Returns series whose i-th entry is the number of examples in the top i 
+    Returns series whose i-th entry is the number of examples in the top i
     """
     y_true, y_score = to_float(y_true, y_score)
     top = _argsort(y_score)
@@ -54,20 +58,21 @@ def count_series(y_true, y_score, countna=False):
     if not countna:
         a = (~np.isnan(y_true[top])).cumsum()
     else:
-        a = range(1, len(y)+1)
+        a = range(1, len(y_true)+1)
 
     return pd.Series(a, index=range(1, len(a)+1))
 
 
 def baseline(y_true, y_score=None):
     """
-    Number of positive labels divided by number of labels, 
+    Number of positive labels divided by number of labels,
         or zero if there are no labels
     """
     if len(y_true) > 0:
         return np.nansum(y_true)/count(y_true, countna=False)
     else:
         return 0.0
+
 
 def roc_auc(y_true, y_score):
     """
@@ -77,16 +82,17 @@ def roc_auc(y_true, y_score):
     fpr, tpr, thresholds = sklearn.metrics.roc_curve(y_true[notnull], y_score[notnull])
     return sklearn.metrics.auc(fpr, tpr)
 
+
 def precision(y_true, y_score, k=None, return_bounds=False):
     """
-    If return_bounds is False then returns precision on the 
+    If return_bounds is False then returns precision on the
         labeled examples in the top k.
     If return_bounds is True the returns a tuple containing:
         - precision on the labeled examples in the top k
         - number of labeled examples in the top k
-        - lower bound of precision in the top k, assuming all 
+        - lower bound of precision in the top k, assuming all
             unlabaled examples are False
-        - upper bound of precision in the top k, assuming all 
+        - upper bound of precision in the top k, assuming all
             unlabaled examples are True
     """
     y_true, y_score = to_float(y_true, y_score)
@@ -103,6 +109,7 @@ def precision(y_true, y_score, k=None, return_bounds=False):
     else:
         return p
 
+
 def precision_series(y_true, y_score, k=None):
     """
     Returns series of length k whose i-th entry is the precision in the top i
@@ -111,9 +118,10 @@ def precision_series(y_true, y_score, k=None):
     y_true, y_score = to_float(y_true, y_score)
     top = _argsort(y_score, k)
 
-    n = np.nan_to_num(y_true[top]).cumsum() # fill missing labels with 0
-    d = (~np.isnan(y_true[top])).cumsum()   # count number of labels
-    return pd.Series(n/d, index=np.arange(1,len(n)+1))
+    n = np.nan_to_num(y_true[top]).cumsum()  # fill missing labels with 0
+    d = (~np.isnan(y_true[top])).cumsum()    # count number of labels
+    return pd.Series(n/d, index=np.arange(1, len(n)+1))
+
 
 def recall(y_true, y_score, k=None, value=True):
     """
@@ -131,6 +139,7 @@ def recall(y_true, y_score, k=None, value=True):
 
     return r
 
+
 def recall_series(y_true, y_score, k=None, value=True):
     """
     Returns series of length k whose i-th entry is the recall in the top i
@@ -142,4 +151,4 @@ def recall_series(y_true, y_score, k=None, value=True):
         y_true = 1-y_true
 
     a = np.nan_to_num(y_true[top]).cumsum()
-    return pd.Series(a, index=np.arange(1,len(a)+1))
+    return pd.Series(a, index=np.arange(1, len(a)+1))
