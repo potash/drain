@@ -1,0 +1,10 @@
+PyYAML
+cached_property
+repoze.lru
+sqlalchemy
+tables
+pandas
+sklearn
+scipy
+numpy
+joblib
