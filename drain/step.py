@@ -6,11 +6,6 @@ import itertools
 import pandas as pd
 from cached_property import cached_property
 
-try:
-    import StringIO
-except ImportError:
-    from io import StringIO
-
 from sklearn.base import _pprint
 import joblib
 import os

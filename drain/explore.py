@@ -7,6 +7,7 @@ from sklearn import tree
 import pandas as pd
 import numpy as np
 from collections import Counter
+from six import StringIO
 
 import matplotlib.colors
 from matplotlib import cm
@@ -269,7 +270,6 @@ def show_tree(tree, feature_names,max_depth=None):
     return img
 
 def export_tree(clf, filename, feature_names=None, max_depth=None):
-    from sklearn.externals.six import StringIO
     import pydot
 
     dot_data = StringIO()

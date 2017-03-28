@@ -4,11 +4,7 @@ import os
 import sys
 import types
 
-try:
-    import StringIO
-except ImportError:
-    from io import StringIO
-
+from six import StringIO
 import dis
 
 import numpy as np

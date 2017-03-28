@@ -2,7 +2,7 @@ import itertools
 import os
 import inspect
 
-from drain.util import StringIO
+from six import StringIO
 
 def get_inputs_helper(step, ignore, target):
     """
@@ -83,7 +83,7 @@ def to_drakefile(steps, preview=True, debug=False, input_drakefile=None):
         a string representation of the drakefile
     """
     data = get_drake_data(steps)
-    drakefile = StringIO.StringIO()
+    drakefile = StringIO()
 
     if input_drakefile:
         drakefile.write('%context {}\n\n'.format(input_drakefile))
