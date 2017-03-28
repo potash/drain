@@ -8,6 +8,7 @@ import pandas as pd
 import pandas.io.sql
 
 from itertools import chain, product
+from functools import reduce
 from datetime import datetime, timedelta
 
 try:
