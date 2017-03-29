@@ -43,7 +43,7 @@ class Step(object):
         nargs = zip(argspec.args[1:len(args)+1], args)
         kwargs.update(nargs)
 
-        obj = object.__new__(cls, **kwargs)
+        obj = object.__new__(cls)
         obj._kwargs = kwargs
 
         return obj
@@ -111,7 +111,7 @@ class Step(object):
     def _digest(self):
         """ Returns this Step's unique hash, which identifies the
         Step's dump on disk. Depends on the constructor's kwargs. """
-        return base64.urlsafe_b64encode(self._hasher.digest())
+        return self._hasher.hexdigest()
 
     def get_input(self, name):
         """
