@@ -301,6 +301,7 @@ def make_metric(function):
 
     return metric
 
+
 metric_functions = [o for o in inspect.getmembers(metrics)
                     if inspect.isfunction(o[1]) and not o[0].startswith('_')]
 
