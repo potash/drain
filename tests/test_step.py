@@ -1,5 +1,6 @@
 from drain.step import *
 from drain import step
+import numpy as np
 import tempfile
 
 def test_run(drain_setup):
@@ -24,7 +25,7 @@ class DumpStep(Step):
         self.target = True
 
     def run(self):
-        l = ['a']*self.n + [pd.DataFrame(range(5))]*self.n_df
+        l = ['a']*self.n + [pd.DataFrame(np.arange(5))]*self.n_df
         if len(l) == 1:
             return l[0]
 

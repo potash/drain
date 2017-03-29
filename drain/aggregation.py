@@ -327,7 +327,7 @@ class SpacetimeAggregation(AggregationBase):
 
     @property
     def arguments(self):
-        names = self.spacedeltas.keys()
+        names = list(self.spacedeltas.keys())
         names.sort()
 
         a = []
