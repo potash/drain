@@ -186,9 +186,9 @@ class ToHDF(Step):
     def run(self, **kwargs):
         store = pd.HDFStore(os.path.join(self._dump_dirname, 'result.h5'))
 
-        for key, df in kwargs.iteritems():
+        for key, df in kwargs.items():
             if self.objects_to_ascii:
-                for c, dtype in df.dtypes.iteritems():
+                for c, dtype in df.dtypes.items():
                     if dtype == object:
                         df[c] = df[c].str.encode("ascii", "ignore")
 
@@ -664,7 +664,7 @@ def date_censor(df, date_columns, date):
     censor the dependent columns when the date column is before the given end_date
     then censor the date column itself
     """
-    for date_column, censor_columns in date_columns.iteritems():
+    for date_column, censor_columns in date_columns.items():
         for censor_column in censor_columns:
             df[censor_column] = df[censor_column].where(df[date_column] < date)
 

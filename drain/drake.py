@@ -103,7 +103,7 @@ def to_drakefile(steps, preview=True, debug=False, input_drakefile=None):
 
 
 """ % ('-m pdb' if debug else '', bindir))
-    for output, inputs in data.iteritems():
+    for output, inputs in data.items():
         if not preview:
             output.setup_dump()
 

@@ -60,7 +60,7 @@ class Step(object):
             self.inputs = inputs if inputs is not None else []
         self.dependencies = dependencies if dependencies is not None else []
 
-        for k, v in kwargs.iteritems():
+        for k, v in kwargs.items():
             setattr(self, k, v)
 
     def execute(self, inputs=None, output=None, load_targets=False):
@@ -180,7 +180,7 @@ class Step(object):
             # when the result is a dict merge it with a global dict
             if isinstance(result, dict):
                 # but do not override
-                kwargs.update({k: v for k, v in result.iteritems() if k not in kwargs})
+                kwargs.update({k: v for k, v in result.items() if k not in kwargs})
             # otherwise use it as a positional argument
             else:
                 args.append(result)

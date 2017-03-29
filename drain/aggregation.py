@@ -78,7 +78,7 @@ class AggregationBase(Step):
         # TODO: is it more efficient to first collect indexes from concat
         # then outer join all of the dfs
         # then left join that to left?
-        for concat_args, df in concat_result.iteritems():
+        for concat_args, df in concat_result.items():
             # TODO: print warning if df.index.names is not a subset of left.columns
             # and skip this df
             logging.info('Joining %s %s' % (self.prefix, str(concat_args)))
@@ -169,7 +169,7 @@ class AggregationBase(Step):
             else:
                 to_concat[concat_args].append(df)
         dfs = {concat_args: pd.concat(dfs, copy=False)
-               for concat_args, dfs in to_concat.iteritems()}
+               for concat_args, dfs in to_concat.items()}
         return dfs
 
     def _get_aggregator(self, **kwargs):
@@ -259,7 +259,7 @@ class SimpleAggregation(AggregationBase):
         Returns: a list of kwargs for each parallel input
         """
         return [{'indexes': {name: index}}
-                for name, index in self.indexes.iteritems()]
+                for name, index in self.indexes.items()]
 
     @property
     def arguments(self):
@@ -311,7 +311,7 @@ class SpacetimeAggregation(AggregationBase):
 
     @property
     def indexes(self):
-        return {name: value[0] for name, value in self.spacedeltas.iteritems()}
+        return {name: value[0] for name, value in self.spacedeltas.items()}
 
     def fillna_value(self, df, left, **kwargs):
         """
