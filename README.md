@@ -94,7 +94,7 @@ This is a toy example, in which each `Step` produces a number.
 ## How does `drain` work?
 
 `drain` is a pretty lightweight wrapper around `drake`; its core functionality 
-are only a few hundred lines of code.
+is only a few hundred lines of code.
 
 
 ## Steps
