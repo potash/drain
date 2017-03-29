@@ -116,14 +116,14 @@ class Step(object):
         """
         Searches the tree for a step
         Args:
-            value: The value to search for. If value is a string then the search looks for 
-                a step of that name. If the value is a type, it looks for a step 
+            value: The value to search for. If value is a string then the search looks for
+                a step of that name. If the value is a type, it looks for a step
                 of that type.
         Returns: The first step found via a depth-first search.
         """
         if _search is None:
             if isinstance(value, string_types):
-                _search = lambda s: s.name
+                _search = lambda s: s.name  # noqa: E731
             elif isinstance(value, type):
                 _search = type
 
