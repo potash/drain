@@ -19,7 +19,7 @@ def drain_setup(request):
     drain.PATH = tmpdir
     # configure for yaml dumping/serialization
     def fin():
-        print ("\nDoing teardown")
+        print("\nDoing teardown")
     request.addfinalizer(fin)
 
 @pytest.fixture

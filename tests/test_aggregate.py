@@ -56,7 +56,7 @@ def test_fraction(small_df):
         f = Fraction(n,d, include_numerator=i_n, include_denominator=i_d, include_fraction=i_f)
         a = Aggregator(crime_df, [f])
         df = a.aggregate('District')
-        print df
+        print(df)
 
 def test_fraction(small_df):
     n = Aggregate('arrests', 'sum')

@@ -60,4 +60,4 @@ def test_drakefile(drain_setup):
     inputs[0].target = True
     steps = [Step(a=1, inputs=inputs),
              Step(a=2, inputs=inputs)]
-    print to_drakefile(steps, preview=True)
+    print(to_drakefile(steps, preview=True))
