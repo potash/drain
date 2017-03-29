@@ -9,7 +9,6 @@ from sklearn.base import _pprint
 import joblib
 import os
 import traceback
-import base64
 import hashlib
 import logging
 import shutil
