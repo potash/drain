@@ -230,7 +230,7 @@ def dict_expand(d, prefix=None):
     dict_expand({1:{2:3}, 4:5}) = {(1,2):3, 4:5}
     """
     result = {}
-    for k, v in d.iteritems():
+    for k, v in d.items():
         if isinstance(v, dict):
             result.update(dict_expand(v, prefix=k))
         else:
@@ -238,7 +238,7 @@ def dict_expand(d, prefix=None):
 
     if prefix is not None:
         result = {make_tuple(prefix) + make_tuple(k): v
-                  for k, v in result.iteritems()}
+                  for k, v in result.items()}
     return result
 
 
@@ -311,7 +311,7 @@ def dict_filter_none(d):
     """
     filter none values from dict
     """
-    return {k: v for k, v in d.iteritems() if v is not None}
+    return {k: v for k, v in d.items() if v is not None}
 
 
 def list_filter_none(l):
