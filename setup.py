@@ -44,5 +44,6 @@ setup(
         'Programming Language :: Python :: 3.5',
     ],
     test_suite='tests',
-    tests_require=test_requirements
+    tests_require=test_requirements,
+    scripts=['bin/drain', 'bin/to_drakefile.py', 'bin/run_step.py']
 )
