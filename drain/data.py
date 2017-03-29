@@ -70,7 +70,7 @@ class ClassificationData(Step):
         X, y = pd.DataFrame(X), pd.Series(y)
 
         train = np.zeros(len(X), dtype=bool)
-        train[random.choice(len(X), len(X)/2)] = True
+        train[random.choice(len(X), int(len(X)/2))] = True
         train = pd.Series(train)
 
         return {'X': X, 'y': y, 'train': train, 'test': ~train}
