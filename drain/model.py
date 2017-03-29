@@ -125,7 +125,7 @@ class Predict(FitPredict):
 
 class PredictProduct(Step):
     def run(self, **kwargs):
-        keys = kwargs.keys()
+        keys = list(kwargs.keys())
         ys = [kwargs[k]['y'] for k in keys]
         y = ys[0].copy()
         y.rename(columns={'score': 'score_%s' % keys[0]}, inplace=True)
