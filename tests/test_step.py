@@ -23,6 +23,23 @@ def test_inputs_mapping():
 
     assert Step(inputs=[a,b], inputs_mapping=['a','b']).map_inputs() == ([], {'a':1, 'b':2})
 
+def test_inputs_mapping_dict():
+    a = Scalar(1)
+    b = Scalar(2)
+
+    a.execute()
+    b.execute()
+
+    assert Step(inputs=[a,b], inputs_mapping=['a','b']).map_inputs() == ([], {'a':1, 'b':2})
+
+def test_inputs_mapping_list():
+    a = Scalar([1,2])
+    a.execute()
+
+    assert Step(inputs=[a], inputs_mapping=[['a','b']]).map_inputs() == ([], {'a':1, 'b':2})
+
+
+
 class DumpStep(Step):
     def __init__(self, n, n_df, return_list):
         # number of objects to return and number of them to be dataframes

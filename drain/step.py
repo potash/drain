@@ -161,7 +161,11 @@ class Step(object):
                     for k in mapping:
                         if mapping[k] is not None:
                             kwargs[mapping[k]] = result[k]
-
+                elif isinstance(mapping, list):
+                    if len(mapping) > len(result):
+                        raise ValueError("More keywords than results")
+                    for kw, r in zip(mapping, result):
+                        kwargs[kw] = r
                 elif isinstance(mapping, string_types):
                     kwargs[mapping] = input.get_result()
                 elif mapping is None:  # drop Nones
@@ -335,12 +339,12 @@ class Construct(Step):
             _class = util.get_attr(_class)
         Step.__init__(self, _class=_class, **kwargs)
 
-    def run(self, **update_kwargs):
+    def run(self, *args, **update_kwargs):
         kwargs = self.get_arguments(
                 _class=False, inputs=False, inputs_mapping=False)
         kwargs.update(update_kwargs)
 
-        return self._class(**kwargs)
+        return self._class(*args, **kwargs)
 
 
 class Call(Step):
