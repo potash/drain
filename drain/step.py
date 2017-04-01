@@ -165,7 +165,8 @@ class Step(object):
                     if len(mapping) > len(result):
                         raise ValueError("More keywords than results")
                     for kw, r in zip(mapping, result):
-                        kwargs[kw] = r
+                        if kw is not None:
+                            kwargs[kw] = r
                 elif isinstance(mapping, string_types):
                     kwargs[mapping] = input.get_result()
                 elif mapping is None:  # drop Nones
