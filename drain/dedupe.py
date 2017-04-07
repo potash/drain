@@ -5,15 +5,15 @@ from itertools import chain
 from drain.util import execute_sql
 
 
-def follow(id, edges, weak=True, _visited=None):
+def follow(id, edges, directed=False, _visited=None):
     """
     Follow the a graph to find the nodes connected to a given node.
     Args:
         id: the id of the starting node
         edges: a pandas DataFrame of edges. Each row is an edge with two columns containing
             the ids of the vertices.
-        weak: If True, edges are undirected.
-              Otherwise edges are directed from the first column to the second column.
+        directed: If True, edges are directed from first column to second column.
+              Otherwise edges are undirected.
         _visited: used internally for recursion
     Returns: the set of all nodes connected to the starting node.
 
@@ -24,12 +24,12 @@ def follow(id, edges, weak=True, _visited=None):
 
     for row in edges[edges.ix[:, 0] == id].values:
         if(row[1] not in _visited):
-            follow(row[1], edges, weak, _visited)
+            follow(row[1], edges, directed, _visited)
 
-    if weak:
+    if not directed:
         for row in edges[edges.ix[:, 1] == id].values:
             if(row[0] not in _visited):
-                follow(row[0], edges, weak, _visited)
+                follow(row[0], edges, directed, _visited)
 
     return _visited
 

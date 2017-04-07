@@ -1,9 +1,12 @@
 from drain.dedupe import *
 
-edges = pd.DataFrame([[1,2],[4,5], [2,3]])
+edges = pd.DataFrame([[1,2],[4,5], [3,2]])
 
 def test_follow():
-    assert follow(1, edges) == {1,2,3}
+    assert follow(1, edges, directed=False) == {1,2,3}
+
+def test_follow_directed():
+    assert follow(1, edges, directed=True) == {1,2}
 
 def test_get_components():
     assert get_components(edges) == [{1,2,3}, {4,5}]
