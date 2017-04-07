@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+from itertools import chain
+
 from drain.util import execute_sql
 
 
@@ -8,7 +10,8 @@ def follow(id, edges, weak=True, _visited=None):
     Follow the a graph to find the nodes connected to a given node.
     Args:
         id: the id of the starting node
-        edges: a pandas DataFrame of edges. Each row is an edge with two columns containing the ids of the vertices.
+        edges: a pandas DataFrame of edges. Each row is an edge with two columns containing
+            the ids of the vertices.
         weak: If True, edges are undirected.
               Otherwise edges are directed from the first column to the second column.
         _visited: used internally for recursion
@@ -19,12 +22,12 @@ def follow(id, edges, weak=True, _visited=None):
         _visited = set()
     _visited.add(id)
 
-    for row in edges[edges.ix[:,0] == id].values:
+    for row in edges[edges.ix[:, 0] == id].values:
         if(row[1] not in _visited):
             follow(row[1], edges, weak, _visited)
 
     if weak:
-        for row in edges[edges.ix[:,1] == id].values:
+        for row in edges[edges.ix[:, 1] == id].values:
             if(row[0] not in _visited):
                 follow(row[0], edges, weak, _visited)
 
@@ -33,28 +36,59 @@ def follow(id, edges, weak=True, _visited=None):
 
 def get_components(edges, vertices=None):
     """
-    if sparse (a lot of disconnected vertices) find those separately (faster)
+    Return connected components from graph determined by edges matrix
+    Args:
+        edges: DataFrame of (undirected) edges.
+        vertices: set of vertices in graph. Defaults to union of all vertices in edges.
+
+    Returns:
+        set of connected components, each of which is a set of vertices.
+
     """
     if vertices is None:
-        vertices = pd.DataFrame({'id': pd.concat((edges['id1'], edges['id2'])).unique()})
+        vertices = set(chain(edges.ix[:, 0], edges.ix[:, 1]))
 
     visited = set()
-    components = {}
+    components = []
 
-    for id1 in vertices.values[:, 0]:
-        if id1 not in visited:
-            c = follow(id1, edges)
+    for id in vertices:
+        if id not in visited:
+            c = follow(id, edges)
             visited.update(c)
-            components[id1] = c
+            components.append(c)
 
     return components
 
 
-def components_dict_to_df(components):
+def components_to_df(components, id_func=None):
+    """
+    Convert components to a join table with columns id1, id2
+    Args:
+        components: A collection of components, each of which is a set of vertex ids.
+            If a dictionary, then the key is the id for the component. Otherwise,
+            the component id is determined by applying id_func to the component.
+        id_func: If components is a dictionary, this should be None. Otherwise,
+            this is a callable that, given a set of vertices, deermines the id.
+            If components is not a dict and id_func is None, it defaults to `min`.
+    Returns: A dataframe representing the one-to-many relationship between
+            component names (id1) and their members (id2).
+    """
     deduped = np.empty((0, 2), dtype=int)
 
-    for id1 in components:
-        deduped = np.append(deduped, [[id1, id2] for id2 in components[id1]], axis=0)
+    if id_func is None:
+        if isinstance(components, dict):
+            raise ValueError("If components is a dict, id_func should be None.")
+        else:
+            id_func = min
+
+    for c in components:
+        if id_func is None:
+            id1 = c
+            c = components[c]
+        else:
+            id1 = id_func(c)
+
+        deduped = np.append(deduped, [[id1, id2] for id2 in c], axis=0)
 
     deduped = pd.DataFrame(deduped, columns=['id1', 'id2'])
     return deduped
