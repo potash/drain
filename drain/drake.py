@@ -98,7 +98,7 @@ def to_drakefile(steps, preview=True, debug=False, input_drakefile=None):
     bindir = os.path.join(os.path.dirname(__file__), '..', 'bin')
     # if the step has a $OUTPUT, write drain.log to its directory
     drakefile.write("""drain()
-    if [ -z ${OUTPUT+x} ]; then LOGFILE=$(dirname $OUTPUT)/drain.log; fi
+    if [ $OUTPUT ]; then LOGFILE=$(dirname $OUTPUT)/drain.log; fi
     python %s %s/run_step.py $OUTPUT $INPUTS 2>&1 | tee $LOGFILE
 
 
