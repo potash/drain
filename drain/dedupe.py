@@ -3,21 +3,32 @@ import numpy as np
 from drain.util import execute_sql
 
 
-def follow(id1, edges, visited=None, weak=True):
-    if visited is None:
-        visited = set()
-    visited.add(id1)
+def follow(id, edges, weak=True, _visited=None):
+    """
+    Follow the a graph to find the nodes connected to a given node.
+    Args:
+        id: the id of the starting node
+        edges: a pandas DataFrame of edges. Each row is an edge with two columns containing the ids of the vertices.
+        weak: If True, edges are undirected.
+              Otherwise edges are directed from the first column to the second column.
+        _visited: used internally for recursion
+    Returns: the set of all nodes connected to the starting node.
 
-    for row in edges[edges['id1'] == id1].values:
-        if(row[1] not in visited):
-            follow(row[1], edges, visited)
+    """
+    if _visited is None:
+        _visited = set()
+    _visited.add(id)
+
+    for row in edges[edges.ix[:,0] == id].values:
+        if(row[1] not in _visited):
+            follow(row[1], edges, weak, _visited)
 
     if weak:
-        for row in edges[edges['id2'] == id1].values:
-            if(row[0] not in visited):
-                follow(row[0], edges, visited)
+        for row in edges[edges.ix[:,1] == id].values:
+            if(row[0] not in _visited):
+                follow(row[0], edges, weak, _visited)
 
-    return visited
+    return _visited
 
 
 def get_components(edges, vertices=None):
