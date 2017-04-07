@@ -112,16 +112,27 @@ class Step(object):
         Step's dump on disk. Depends on the constructor's kwargs. """
         return self._hasher.hexdigest()
 
-    def get_input(self, name):
+    def get_input(self, value, _search=None):
         """
-        Searches the inputs tree for a step of the given name
+        Searches the tree for a step
+        Args:
+            value: The value to search for. If value is a string then the search looks for 
+                a step of that name. If the value is a type, it looks for a step 
+                of that type.
+        Returns: The first step found via a depth-first search.
         """
+        if _search is None:
+            if isinstance(value, string_types):
+                _search = lambda s: s.name
+            elif isinstance(value, type):
+                _search = type
+
         for i in self.inputs:
-            step = i.get_input(name)
+            step = i.get_input(value, _search)
             if step is not None:
                 return step
 
-        if self.name == name:
+        if _search(self) == value:
             return self
 
     # returns a shallow copy of _kwargs
@@ -339,6 +350,10 @@ class Construct(Step):
         if isinstance(_class, str):
             _class = util.get_attr(_class)
         Step.__init__(self, _class=_class, **kwargs)
+
+        # default name is class name
+        if hasattr(_class, '__name__'):
+            self.name = _class.__name__
 
     def run(self, *args, **update_kwargs):
         kwargs = self.get_arguments(
