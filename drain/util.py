@@ -9,7 +9,7 @@ import pandas.io.sql
 
 from itertools import chain, product
 from functools import reduce
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 
 try:
     from repoze.lru import lru_cache
@@ -40,6 +40,22 @@ def execute_sql(sql, engine):
 
 def mtime(path):
     return datetime.fromtimestamp(os.stat(path).st_mtime)
+
+
+def parse_dates(df, inplace=True, *args, **kwargs):
+    """
+    Parse all datetime.date and datetime.datetime columns
+    """
+    if not inplace:
+        df = df.copy()
+
+    for c in df.columns:
+        i = df[c].first_valid_index()
+        if i is not None and type(df[c][i]) in (date, datetime):
+            df[c] = pd.to_datetime(df[c], *args, **kwargs)
+
+    if not inplace:
+        return df
 
 
 def touch(path):

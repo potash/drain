@@ -88,7 +88,8 @@ class CreateDatabase(Step):
 
 class FromSQL(Step):
     def __init__(self, query=None, to_str=None, table=None,
-                 tables=None, inputs=None, **read_sql_kwargs):
+                 tables=None, inputs=None, auto_parse_dates=True,
+                 **read_sql_kwargs):
         """
         Use tables to automatically set dependecies
         """
@@ -107,6 +108,7 @@ class FromSQL(Step):
         Step.__init__(self, query=query,
                       to_str=to_str,
                       inputs=inputs,
+                      auto_parse_dates=auto_parse_dates,
                       read_sql_kwargs=read_sql_kwargs)
 
         if tables is not None and 'SQL_DIR' in os.environ:
@@ -119,6 +121,9 @@ class FromSQL(Step):
         for column in self.to_str:
             if column in df.columns:
                 df[column] = df[column].astype(str)
+
+        if self.auto_parse_dates:
+            util.parse_dates(df, inplace=True)
 
         return df
 
