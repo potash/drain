@@ -2,7 +2,7 @@
 # dump grid_search.py output into a temporary drakefile and run it
 DIR=$(pwd)
 DRAIN_DIR="$(dirname "$(readlink -f "$0")")"
-DRAKE_FILE=`mktemp` || exit 1
+DRAKE_FILE=".drain.drake"
 DRAKE_ARGS_FILE=`mktemp` || exit 1
 args="$@"
 
