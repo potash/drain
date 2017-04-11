@@ -22,7 +22,7 @@ setup(
     long_description=readme + '\n\n' + history,
     author="Eric Potash",
     author_email='epotash@uchicago.edu',
-    url='https://github.com/potash/drain',
+    url='https://github.com/dssg/drain',
     packages=[
         'drain',
     ],
