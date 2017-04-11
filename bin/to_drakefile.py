@@ -47,7 +47,11 @@ if __name__ == "__main__":
         args.Drakeinput = 'Drakefile'
     drakeinput = os.path.abspath(args.Drakeinput) if args.Drakeinput else None
 
-    workflow = drake.to_drakefile(steps, preview=args.preview, debug=args.debug, input_drakefile=drakeinput)
+    workflow = drake.to_drakefile(steps, 
+                                  preview=args.preview, 
+                                  debug=args.debug, 
+                                  input_drakefile=drakeinput,
+                                  bindir=os.path.dirname(__file__))
 
     if not args.preview:
         with open(args.drakeoutput, 'w') as drakefile:

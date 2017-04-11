@@ -77,7 +77,7 @@ def to_drake_step(inputs, output):
             output=output_str, inputs=str.join(', ', i))
 
 
-def to_drakefile(steps, preview=True, debug=False, input_drakefile=None):
+def to_drakefile(steps, preview=True, debug=False, input_drakefile=None, bindir=None):
     """
     Args:
         steps: collection of drain.step.Step objects for which to
@@ -86,6 +86,7 @@ def to_drakefile(steps, preview=True, debug=False, input_drakefile=None):
             steps.  When True do not touch filesystem.
         debug: run python with '-m pdb'
         drakefile: path to drakefile to include
+        bindir: path to drake binaries, defaults to ../bin/
     Returns:
         a string representation of the drakefile
     """
@@ -95,7 +96,9 @@ def to_drakefile(steps, preview=True, debug=False, input_drakefile=None):
     if input_drakefile:
         drakefile.write('%context {}\n\n'.format(input_drakefile))
 
-    bindir = os.path.join(os.path.dirname(__file__), '..', 'bin')
+    if bindir is None:
+        bindir = os.path.join(os.path.dirname(__file__), '..', 'bin')
+
     # if the step has a $OUTPUT, write drain.log to its directory
     drakefile.write("""drain()
     if [ $OUTPUT ]; then LOGFILE=$(dirname $OUTPUT)/drain.log; fi
