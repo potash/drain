@@ -312,19 +312,19 @@ for name, function in metric_functions:
 
 
 def lift(predict_step, **kwargs):
-    p = precision(predict_step, **kwargs)
+    p = precision(predict_step, **kwargs)  # noqa: F821
     kwargs.pop('k', None)
     kwargs.pop('p', None)
-    b = baseline(predict_step, **kwargs)
+    b = baseline(predict_step, **kwargs)  # noqa: F821
     return p/b
 
 
 def lift_series(predict_step, **kwargs):
-    p = precision_series(predict_step, **kwargs)
+    p = precision_series(predict_step, **kwargs)  # noqa: F821
 
     # pass everything except k or p to baseline
     b_kwargs = {k: v for k, v in kwargs.items() if k not in ('k', 'p')}
-    b = baseline(predict_step, **b_kwargs)
+    b = baseline(predict_step, **b_kwargs)  # noqa: F821
 
     return p/b
 

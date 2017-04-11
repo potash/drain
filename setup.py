@@ -17,7 +17,7 @@ with open('requirements_dev.txt') as f:
 
 setup(
     name='drain',
-    version='0.0.3',
+    version='0.0.4',
     description="pipeline library",
     long_description=readme + '\n\n' + history,
     author="Eric Potash",
@@ -45,5 +45,5 @@ setup(
     ],
     test_suite='tests',
     tests_require=test_requirements,
-    scripts=['bin/drain', 'bin/to_drakefile.py', 'bin/run_step.py']
+    scripts=['bin/drain', 'bin/to_drakefile.py', 'bin/run_step.py', 'bin/drake']
 )
