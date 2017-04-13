@@ -3,17 +3,17 @@
 
 from setuptools import setup
 
-with open('README.md') as readme_file:
+with open('README.rst') as readme_file:
     readme = readme_file.read()
 
 with open('HISTORY.rst') as history_file:
     history = history_file.read()
 
 with open('requirements.txt') as f:
-        requirements = f.read().splitlines()
+    requirements = f.read().splitlines()
 
 with open('requirements_dev.txt') as f:
-        test_requirements = f.read().splitlines()
+    test_requirements = f.read().splitlines()
 
 setup(
     name='drain',
@@ -45,5 +45,6 @@ setup(
     ],
     test_suite='tests',
     tests_require=test_requirements,
-    scripts=['bin/drain', 'bin/to_drakefile.py', 'bin/run_step.py', 'bin/drake']
+    scripts=['bin/drain', 'bin/to_drakefile.py',
+             'bin/run_step.py', 'bin/drake']
 )
