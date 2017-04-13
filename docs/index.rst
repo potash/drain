@@ -1,5 +1,4 @@
-Welcome to drain's documentation!
-======================================
+.. include:: ../README.rst
 
 Contents:
 
