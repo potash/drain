@@ -5,15 +5,15 @@ drain
 
 Drain is a lightweight framework for writing reproducible data science workflows in Python. The core features are:
 
-* Turn a Python workflow ([DAG]()) into steps that can be run by a tool like `make`.
+* Turn a Python workflow (`DAG <https://en.wikipedia.org/wiki/Directed_acyclic_graph#Data_processing_networks>`_) into steps that can be run by a tool like `make`.
  
-* Transparently pass the results of one step as the input to another, handling any caching that the user requests using efficient tools like [HDF]() and [joblib]().
+* Transparently pass the results of one step as the input to another, handling any caching that the user requests using efficient tools like `HDF <http://www.pytables.org/>`_ and `joblib <https://pythonhosted.org/joblib/generated/joblib.dump.html>`_.
  
-* Enable easy parallel execution of workflows.
+* Enable easy *parallel* execution of workflows.
  
 * Execute only those steps that are determined to be necessary based on timestamps (both source code and data) and dependencies, virtually guaranteeing *reproducibility* of results and efficient development.
 
-It is designed around these principles:
+Drain is designed around these principles:
 
 * Simplicity: drain is very lightweight and easy to use. The core is just a few hundred lines of code. The steps you write in drain get executed with minimal overhead, making drain workflows easy to debug and manage.
 
