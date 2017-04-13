@@ -1,10 +1,8 @@
 drain
 =====
 
-|image0| |image1| |image2| |image3|
+|image0| |image1| |image2| |image3| |image4|
 
--  Free software: MIT license
--  Documentation: https://drain.readthedocs.io.
 
 Introduction
 ------------
@@ -120,7 +118,7 @@ serializable.
 Design decisions
 ~~~~~~~~~~~~~~~~
 
-**TODO**: *Explanations*
+
 
 -  ``Step``'s constructor accepts any keyword argument, but does **not**
    accept positional arguments.
@@ -234,27 +232,7 @@ To ignore the inputs mapping simply define
     def run(self, *args, **kwargs):
         results = [i.get_result() for i in self.inputs]
 
-``resources``
-~~~~~~~~~~~~~
 
-**TODO**
-
-Execution
----------
-
-Given a collection of steps, drain executes them by generating a
-temporary Drakefile for them and then calling ``drake``.
-
-Exploration
------------
-
-metrics
--------
-
-Future improvements
--------------------
-
-option to store in db instead of files
 
 
 .. |image0| image:: https://img.shields.io/pypi/v/drain.svg
@@ -265,3 +243,5 @@ option to store in db instead of files
    :target: https://drain.readthedocs.io/en/latest/?badge=latest
 .. |image3| image:: https://pyup.io/repos/github/potash/drain/shield.svg
    :target: https://pyup.io/repos/github/dssg/drain/
+.. |image4| image:: https://img.shields.io/badge/License-MIT-yellow.svg
+   :target: https://opensource.org/licenses/MIT
