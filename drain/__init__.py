@@ -10,3 +10,5 @@ if 'DRAINPATH' in os.environ:
     PATH = os.path.abspath(os.environ['DRAINPATH'])
 else:
     PATH = None
+
+__version__ = 'v0.0.4'
