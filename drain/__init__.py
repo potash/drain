@@ -11,4 +11,4 @@ if 'DRAINPATH' in os.environ:
 else:
     PATH = None
 
-__version__ = 'v0.0.4'
+__version__ = '0.0.5'
