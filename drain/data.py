@@ -155,20 +155,6 @@ class ToSQL(Step):
         db.to_sql(df, **kwargs)
 
 
-class FromCSV(Step):
-    """
-    wrapper for pd.read_csv
-    """
-    def __init__(self, filepath_or_buffer, **kwargs):
-        Step.__init__(self, filepath_or_buffer=filepath_or_buffer, **kwargs)
-        # TODO: if filepath_or_buffer is a file, add a dependency for it
-        # need a good way to check if string is a valid (not necessarily existant) filepath
-
-    def run(self):
-        kwargs = self.get_arguments()
-        return pd.read_csv(**kwargs)
-
-
 class Merge(Step):
     def run(self, *dfs):
         df = dfs[0]
@@ -290,22 +276,6 @@ def binarize(df, category_classes, all_classes=True, drop=True,
         df_new.drop(columns, axis=1, inplace=True)
 
     return df_new
-
-
-class Binarize(Step):
-    def __init__(self, inputs=None, **binarize_kwargs):
-        Step.__init__(self, inputs=inputs, binarize_kwargs=binarize_kwargs)
-
-    def run(self, df):
-        return binarize(df, **self.binarize_kwargs)
-
-
-class BinarizeSets(Step):
-    def __init__(self, inputs=None, **binarize_kwargs):
-        Step.__init__(self, inputs=inputs, binarize_kwargs=binarize_kwargs)
-
-    def run(self, df):
-        return binarize_sets(df, **self.binarize_kwargs)
 
 
 def binarize_sets(df, columns, cast=False, drop=True, min_freq=None):
@@ -469,14 +439,6 @@ def select_features(df, exclude, include=None, inplace=False):
     exclude = df.columns.difference(include)
     df2 = df.drop(exclude, axis=1, inplace=inplace)
     return df if inplace else df2
-
-
-class SelectFeatures(Step):
-    def __init__(self, inputs, exclude, include=None):
-        self.__init__(inputs=inputs, exclude=exclude, include=include)
-
-    def run(self, df):
-        return select_features(df, self.exclude, self.include)
 
 
 def null_columns(df, train=None):
