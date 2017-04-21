@@ -12,7 +12,8 @@ if __name__ == "__main__":
     
     parser.add_argument('--drakeoutput', type=str, help='internally used temp file for drake workflow')
     parser.add_argument('--drakeargsfile', type=str, help='internally used temp file for drake arguments')
-    parser.add_argument('-D', '--Drakeinput', type=str, default=None, help='dependent drakefile')
+    parser.add_argument('-D', '--Drakeinput', type=str, default=None, help='dependent drakefile (defaults to ./Drakefile, if present)')
+    parser.add_argument('--nodrakeinput', action='store_true', help='ignore ./Drakefile')
     parser.add_argument('-d', '--debug', action='store_true', help='run python -m pdb')
     parser.add_argument('-P', '--preview', action='store_true', help='Preview Drakefile')
     parser.add_argument('--path', type=str, help='output base directory')
@@ -43,7 +44,7 @@ if __name__ == "__main__":
             logging.info('Loaded %s with %s leaf steps' % (s, len(ss)))
             steps += ss
 
-    if args.Drakeinput is None and os.path.exists('Drakefile'):
+    if args.Drakeinput is None and not args.nodrakeinput and os.path.exists('Drakefile'):
         args.Drakeinput = 'Drakefile'
     drakeinput = os.path.abspath(args.Drakeinput) if args.Drakeinput else None
 
