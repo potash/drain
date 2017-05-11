@@ -452,7 +452,8 @@ class PgSQLDatabase(pandas.io.sql.SQLDatabase):
 
         sql = "COPY {table_name} ({columns}) FROM STDIN WITH (FORMAT CSV, HEADER TRUE)".format(
                 table_name=table_name, columns=columns)
-        p = Popen(['psql', '-c', sql], stdout=PIPE, stdin=PIPE, stderr=STDOUT, universal_newlines=True)
+        p = Popen(['psql', '-c', sql], stdout=PIPE, stdin=PIPE, stderr=STDOUT, 
+                  universal_newlines=True)
         frame.to_csv(p.stdin, index=index)
 
         psql_out = p.communicate()[0]
