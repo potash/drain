@@ -9,16 +9,18 @@ import drain
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Use this script to generate a Drakefile for grid search')
-    
-    parser.add_argument('--drakeoutput', type=str, help='internally used temp file for drake workflow')
-    parser.add_argument('--drakeargsfile', type=str, help='internally used temp file for drake arguments')
-    parser.add_argument('-D', '--Drakeinput', type=str, default=None, help='dependent drakefile (defaults to ./Drakefile, if present)')
-    parser.add_argument('--nodrakeinput', action='store_true', help='ignore ./Drakefile')
-    parser.add_argument('-d', '--debug', action='store_true', help='run python -m pdb')
-    parser.add_argument('-P', '--preview', action='store_true', help='Preview Drakefile')
+    #internally used temp file for drake workflow
+    parser.add_argument('--drakeoutput', type=str, help=argparse.SUPPRESS)
+    # internally used temp file for drake arguments
+    parser.add_argument('--drakeargsfile', type=str, help=argparse.SUPPRESS)
+
+    parser.add_argument('--drakefile', type=str, default=None, help='Specifies a dependent drake workflow file (defaults to ./Drakefile, if present).')
+    parser.add_argument('--ignore-drakefile', action='store_true', help='Ignore ./Drakefile')
+    parser.add_argument('--debug', action='store_true', help='Executes steps with Python debugger.')
+    parser.add_argument('--preview', action='store_true', help='Prints the drake workflow that would run, then stops.')
     parser.add_argument('--path', type=str, help='output base directory')
     
-    parser.add_argument('steps', type=str, help='yaml file or reference to python collection of drain.Step objects or reference to python function returning same. can specify multiple using semi-colon separator.')
+    parser.add_argument('steps', type=str, help='The steps to run. The name of a method returning either a drain Step object or collection thereof. Alternatively, the path to a YAML serialization of a step. To specify multiple paths, separate with semi-colons.')
 
     args, drake_args = parser.parse_known_args()
 
@@ -44,14 +46,14 @@ if __name__ == "__main__":
             logging.info('Loaded %s with %s leaf steps' % (s, len(ss)))
             steps += ss
 
-    if args.Drakeinput is None and not args.nodrakeinput and os.path.exists('Drakefile'):
-        args.Drakeinput = 'Drakefile'
-    drakeinput = os.path.abspath(args.Drakeinput) if args.Drakeinput else None
+    if args.drakefile is None and not args.ignore_drakefile and os.path.exists('Drakefile'):
+        args.drakefile = 'Drakefile'
+    drakefile = os.path.abspath(args.drakefile) if args.drakefile else None
 
     workflow = drake.to_drakefile(steps, 
                                   preview=args.preview, 
                                   debug=args.debug, 
-                                  input_drakefile=drakeinput,
+                                  input_drakefile=drakefile,
                                   bindir=os.path.dirname(__file__))
 
     if not args.preview:
@@ -66,11 +68,11 @@ if __name__ == "__main__":
     if args.debug:
         drake_args.insert(0, '-v PYTHONUNBUFFERED=Y')
 
-    # set basedir for drakeinput to get around issue in comments of:
+    # set basedir for drakefile to get around issue in comments of:
     # https://github.com/Factual/drake/pull/211
-    if drakeinput is not None:
-        drake_args.insert(0, '--base=%s' % os.path.dirname(drakeinput))
+    if args.drakefile is not None:
+        drake_args.insert(0, '--base=%s' % os.path.dirname(args.drakefile))
    
     if args.drakeargsfile is not None and not args.preview:
-        with open(args.drakeargsfile, 'w') as drakeargsfile:
-            drakeargsfile.write(str.join(' ', drake_args))
+        with open(args.drakeargsfile, 'w') as args:
+            args.write(str.join(' ', drake_args))
