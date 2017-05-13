@@ -18,21 +18,22 @@ from tables import NaturalNameWarning
 from drain import util
 import drain
 
+_step_dict = {}
 
-def load(steps):
+
+def load(steps, _step_dict=_step_dict):
     """
     safely load steps, excluding those that fail
     """
-    loaded = []
-    for s in steps:
-        try:
-            s.load()
-            loaded.append(s)
-        except:
-            logging.warn('Error during step load:\n%s' %
-                         util.indent(traceback.format_exc()))
-            pass
-    return loaded
+    for i, s in enumerate(steps):
+        if s in _step_dict:
+            steps[i] = _step_dict[s]
+        else:
+            try:
+                s.load()
+            except:
+                logging.warn('Error during step load:\n%s' %
+                             util.indent(traceback.format_exc()))
 
 
 class Step(object):
