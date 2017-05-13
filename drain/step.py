@@ -1,5 +1,6 @@
 import yaml
 
+import collections
 import inspect
 import pandas as pd
 from cached_property import cached_property
@@ -18,22 +19,41 @@ from tables import NaturalNameWarning
 from drain import util
 import drain
 
-_step_dict = {}
+_STEP_CACHE = {}
 
 
-def load(steps, _step_dict=_step_dict):
+def load(steps, reset=False):
     """
-    safely load steps, excluding those that fail
+    safely load steps in place, excluding those that fail
+    Args:
+        steps: the steps to load
     """
-    for i, s in enumerate(steps):
-        if s in _step_dict:
-            steps[i] = _step_dict[s]
+    # work on collections by default for fewer isinstance() calls per call to load()
+    if reset:
+        _STEP_CACHE.clear()
+
+    if callable(steps):
+        steps = steps()
+
+    if not isinstance(steps, collections.Iterable):
+        return load([steps])[0]
+
+    # iterate in reverse
+    # so popping failed steps doesn't affect list indices subsequent list access
+    for i, s in reversed(enumerate(steps)):
+        digest = s._digest
+        if digest in _STEP_CACHE:
+            steps[i] = _STEP_CACHE[digest]
         else:
             try:
                 s.load()
+                _STEP_CACHE[digest] = s
             except:
                 logging.warn('Error during step load:\n%s' %
                              util.indent(traceback.format_exc()))
+                steps.pop(i)
+
+    return steps
 
 
 class Step(object):

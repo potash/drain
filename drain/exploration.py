@@ -7,8 +7,11 @@ import pandas as pd
 from collections import Counter
 from six import StringIO
 
-
 from drain import util, step
+
+
+def explore(steps, reload=False):
+    return StepFrame(index=step.load(steps, reload=reload))
 
 
 def expand(self, prefix=False, index=True, diff=True, existence=True):
@@ -223,6 +226,9 @@ class StepFrame(pd.DataFrame):
     @property
     def _contructor_sliced(self):
         return pd.Series
+
+    def __str__(self):
+        return self.expand().__str__()
 
     # resetting index makes it no longer a StepFrame
     def reset_index(self, *args, **kwargs):

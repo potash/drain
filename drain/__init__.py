@@ -1,6 +1,7 @@
 import logging
 import os
 from . import serialize
+from .exploration import explore  # noqa: F401
 
 logging.basicConfig(format='%(asctime)s %(levelname)s: %(message)s', level=0)
 
