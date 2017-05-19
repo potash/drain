@@ -40,7 +40,7 @@ def load(steps, reload=False):
 
     # iterate in reverse
     # so popping failed steps doesn't affect list indices subsequent list access
-    for i, s in reversed(enumerate(steps)):
+    for i, s in enumerate(reversed(steps)):
         digest = s._digest
         if digest in _STEP_CACHE:
             steps[i] = _STEP_CACHE[digest]
