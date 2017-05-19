@@ -22,14 +22,14 @@ import drain
 _STEP_CACHE = {}
 
 
-def load(steps, reset=False):
+def load(steps, reload=False):
     """
     safely load steps in place, excluding those that fail
     Args:
         steps: the steps to load
     """
     # work on collections by default for fewer isinstance() calls per call to load()
-    if reset:
+    if reload:
         _STEP_CACHE.clear()
 
     if callable(steps):
