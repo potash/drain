@@ -251,6 +251,9 @@ class StepSeries(pd.Series):
     def _contructor_expanddim(self):
         return StepFrame
 
+    def __str__(self):
+        return self.expand().__str__()
+
     def reset_index(self, *args, **kwargs):
         return pd.Series(self).reset_index(*args, **kwargs)
 
