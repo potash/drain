@@ -123,7 +123,7 @@ class FromSQL(Step):
                 df[column] = df[column].astype(str)
 
         if self.auto_parse_dates:
-            util.parse_dates(df, inplace=True)
+            util.parse_dates(df, errors='coerce', inplace=True)
 
         return df
 
