@@ -59,14 +59,7 @@ def calibration():
         cal_est = model.FitPredict(inputs=[cal, d])
         cal_est.target = True
 
-        metrics = model.PrintMetrics(metrics=[
-                {'metric':'baseline'},
-                {'metric':'precision', 'k':100},
-                {'metric':'precision', 'k':200},
-                {'metric':'precision', 'k':300},
-        ], inputs=[cal_est])
-
-        steps.append(metrics)
+        steps.append(cal_est)
 
     return steps
 
