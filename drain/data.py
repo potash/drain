@@ -124,7 +124,7 @@ class FromSQL(Step):
 
         if self.auto_parse_dates:
             util.parse_dates(df, errors='coerce', inplace=True)
-        
+
         return df
 
 
