@@ -207,7 +207,9 @@ class AggregationJoin(Step):
         # aggregations = iter(self.inputs)
         # next(aggregations) # first input is left, not aggregation
         # for aggregation in aggregations:
+        left_columns = list(left.columns)
         left = self.inputs[1].join(left)
+        left = left.drop(left_columns, axis=1)
         return left
 
 
