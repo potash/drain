@@ -430,7 +430,7 @@ def forests(**kwargs):
     d = dict(criterion=['entropy', 'gini'], max_features=['sqrt', 'log2'],
              n_jobs=[-1], **kwargs)
     for estimator_args in util.dict_product(d):
-        steps.append(Construct(name='estimator',
+        steps.append(Construct(
                      _class='sklearn.ensemble.RandomForestClassifier',
                      **estimator_args))
 
@@ -441,8 +441,7 @@ def logits(**kwargs):
     steps = []
     for estimator_args in util.dict_product(dict(
             penalty=['l1', 'l2'], C=[.001, .01, .1, 1], **kwargs)):
-        steps.append(Construct(name='estimator',
-                               _class='sklearn.linear_model.LogisticRegression',
+        steps.append(Construct(_class='sklearn.linear_model.LogisticRegression',
                                **estimator_args))
 
     return steps
@@ -455,8 +454,7 @@ def svms(**kwargs):
                  dual=[True, False], C=[.001, .01, .1, 1])) + \
             util.dict_product(dict(
                     penalty=['l1'], dual=[False], C=[.001, .01, .1, 1])):
-        steps.append(Construct(name='estimator',
-                               _class='sklearn.svm.LinearSVC',
+        steps.append(Construct(_class='sklearn.svm.LinearSVC',
                                **estimator_args))
 
     return steps
