@@ -715,3 +715,22 @@ def bins(df, N, how='linear'):
                 for c in df.columns]
     else:
         raise ValueError('Invalid how: %s' % how)
+
+class Mean(Step):
+    """
+    A drain step for calculating the means of a dataframe
+    """
+    def __init__(self, inputs, func):
+        Step.__init__(self, inputs=inputs, func=func)
+
+    def run(*args, **kwargs):
+        if len(args) > 0:
+            if len(kwargs) > 0:
+                raise ValueError("Describe accepts positional or keyword arguments but not both.")
+            return [df.mean() for df in args]
+        elif len(kwargs) > 0:
+            return {name: df.mean() for name,df in kwargs.iteritems()}
+        else:
+            raise ValueError("No inputs received.")
+
+
