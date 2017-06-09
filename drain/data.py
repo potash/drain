@@ -595,7 +595,7 @@ class Revise(Step):
         subset = (source[self.min_date_column] < self.date) &\
                  (source[self.max_date_column] < self.date)
 
-        # revsied might have bad dtypes because it's small 
+        # revsied might have bad dtypes because it's small
         # and pandas type inference isn't great
         # if so, convert to source dtypes
         if not revised.dtypes.equals(source.dtypes):
