@@ -17,7 +17,7 @@ import collections
 from sklearn import datasets
 from sklearn.utils.validation import _assert_all_finite
 
-from .step import Step
+from .step import Step, MapResults
 
 
 class Column(object):
@@ -66,7 +66,7 @@ class Column(object):
 class ClassificationData(Step):
     def run(self):
         X, y = datasets.make_classification(
-                **self.get_arguments(inputs=False, inputs_mapping=False, dependencies=False))
+                **self.get_arguments(inputs=False, dependencies=False))
         X, y = pd.DataFrame(X), pd.Series(y)
 
         train = np.zeros(len(X), dtype=bool)
@@ -150,7 +150,7 @@ class ToSQL(Step):
             self.inputs.append(CreateDatabase())
 
     def run(self, df, db):
-        kwargs = self.get_arguments(inputs=False, inputs_mapping=False)
+        kwargs = self.get_arguments(inputs=False)
         kwargs['name'] = kwargs.pop('table_name')
         db.to_sql(df, **kwargs)
 
@@ -586,10 +586,11 @@ class Revise(Step):
 
         if from_sql_args is None:
             from_sql_args = {}
-        self.inputs = [FromSQL(table=table, **from_sql_args),
-                       # by depending on table, revised query is given the right dependencies
-                       FromSQL(revised_sql, tables=[table], **from_sql_args)]
-        self.inputs_mapping = ['source', 'revised']
+        self.inputs = [MapResults(
+                    # by depending on table, revised query is given the right dependencies
+                    [FromSQL(table=table, **from_sql_args),
+                     FromSQL(revised_sql, tables=[table], **from_sql_args)],
+                    mapping=['source', 'revised'])]
 
     def run(self, source, revised):
         subset = (source[self.min_date_column] < self.date) &\

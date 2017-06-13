@@ -3,6 +3,7 @@
 # TODO: add this as an executable test?
 
 from drain import step, model, data
+from drain.step import MapResults
 from itertools import product
 
 def prediction():
@@ -54,7 +55,7 @@ def calibration():
         predict.target = True
 
         cal = step.Construct(_class='sklearn.calibration.CalibratedClassifierCV', cv=k_folds,
-                inputs=[predict], inputs_mapping={'y':None})
+                inputs=[MapResults([predict], {'y':None})])
 
         cal_est = model.FitPredict(inputs=[cal, d])
         cal_est.target = True
@@ -79,7 +80,7 @@ def product_model():
     m2.target = True
     m2.name = 'm2'
 
-    p = model.PredictProduct(inputs=[m1,m2], inputs_mapping=['m1', 'm2'])
+    p = model.PredictProduct(inputs=[MapResults([m1,m2], ['m1', 'm2'])])
     p.target = True
     p.name = 'p'
 

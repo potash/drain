@@ -55,13 +55,13 @@ def test_spacetime_join(drain_setup, spacetime_crime_agg):
     print(spacetime_crime_agg.join(left))
 
 def test_spacetime_join_step(spacetime_crime_agg, spacetime_crime_left):
-    join = AggregationJoin(inputs=[spacetime_crime_left, spacetime_crime_agg])
+    join = AggregationJoin(inputs=[spacetime_crime_agg, spacetime_crime_left])
     result = join.execute()
     print(result)
 
 def test_spacetime_join_lag(spacetime_crime_agg, spacetime_crime_left):
     join = SpacetimeAggregationJoin(lag='1d', 
-            inputs=[spacetime_crime_left, spacetime_crime_agg])
+            inputs=[spacetime_crime_agg, spacetime_crime_left])
     result = join.execute()
     print(result)
 

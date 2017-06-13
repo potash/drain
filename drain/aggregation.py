@@ -139,7 +139,8 @@ class AggregationBase(Step):
 
     def run(self, *args, **kwargs):
         if self.parallel:
-            return list(chain(*args))
+            # use tuple to avoid mapping to positional arguments by step.merge_results()
+            return tuple(chain(*args))
 
         if not self.parallel:
             dfs = []
@@ -157,7 +158,12 @@ class AggregationBase(Step):
                 df.set_index(self.insert_args, append=True, inplace=True)
                 dfs.append(df)
 
-            return dfs
+            return tuple(dfs)
+
+    def load(self):
+        # overload load in order to restore result to a tuple
+        Step.load(self)
+        self.set_result(tuple(self.get_result()))
 
     def get_concat_result(self):
         to_concat = {}
@@ -197,18 +203,18 @@ class AggregationBase(Step):
 class AggregationJoin(Step):
     """
     first input is left and second input is aggregation
-    if left step returned a dict, use inputs_mapping to clarify e.g.:
-        inputs_mapping=[{'aux': None}]
+    if left step returned a dict, use MapResults to clarify e.g.:
+        mapping=[{'aux': None}]
     """
     def __init__(self, inputs, **kwargs):
         Step.__init__(self, inputs=inputs, **kwargs)
 
-    def run(self, left, aggregation):
+    def run(self, aggregations, left):
         # aggregations = iter(self.inputs)
         # next(aggregations) # first input is left, not aggregation
         # for aggregation in aggregations:
         left_columns = list(left.columns)
-        left = self.inputs[1].join(left)
+        left = self.inputs[0].join(left)
         left = left.drop(left_columns, axis=1)
         return left
 
@@ -221,15 +227,15 @@ class SpacetimeAggregationJoin(AggregationJoin):
     def __init__(self, inputs, lag=None, **kwargs):
         AggregationJoin.__init__(self, lag=lag, inputs=inputs, **kwargs)
 
-    def run(self, left, aggregation):
+    def run(self, aggregations, left):
         if self.lag is not None:
             delta = data.parse_delta(self.lag)
-            for a in aggregation:
+            for a in aggregations:
                 a.reset_index(level='date', inplace=True)
                 a.date = a.date.apply(lambda d: d + delta)
                 a.set_index('date', append=True, inplace=True)
 
-        return AggregationJoin.run(self, left, aggregation)
+        return AggregationJoin.run(self, aggregations, left)
 
 
 class SimpleAggregation(AggregationBase):

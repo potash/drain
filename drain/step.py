@@ -5,6 +5,7 @@ import inspect
 import pandas as pd
 from cached_property import cached_property
 from six import string_types
+from six.moves import zip_longest
 
 from sklearn.base import _pprint
 import joblib
@@ -114,9 +115,9 @@ class Step(object):
                     i.execute(inputs=inputs, output=output,
                               load_targets=load_targets)
 
-                args, kwargs = self.map_inputs()
+                args = merge_results(self.inputs)
                 logging.info('Running\n%s' % util.indent(str(self)))
-                self.set_result(self.run(*args, **kwargs))
+                self.set_result(self.run(*args.args, **args.kwargs))
 
         if self == output:
             logging.info('Dumping\n%s' % util.indent(str(self)))
@@ -170,58 +171,6 @@ class Step(object):
             if not include[k] and k in d:
                 d.pop(k)
         return d
-
-    def map_inputs(self):
-        kwargs = {}
-        args = []
-
-        if hasattr(self, 'inputs_mapping'):
-            inputs_mapping = util.make_list(self.inputs_mapping)
-
-            if len(self.inputs) < len(inputs_mapping):
-                raise ValueError('Too many inputs_mappings')
-
-            for input, mapping in zip(self.inputs, inputs_mapping):
-                result = input.get_result()
-                if isinstance(mapping, dict):
-                    # pass through any missing keys, so {} is the identity
-                    # do it first so that inputs_mapping overrides keys
-                    for k in set(result.keys()).\
-                            difference(set(mapping.keys())):
-                        kwargs[k] = result[k]
-
-                    for k in mapping:
-                        if mapping[k] is not None:
-                            kwargs[mapping[k]] = result[k]
-                elif isinstance(mapping, list):
-                    if len(mapping) > len(result):
-                        raise ValueError("More keywords than results")
-                    for kw, r in zip(mapping, result):
-                        if kw is not None:
-                            kwargs[kw] = r
-                elif isinstance(mapping, string_types):
-                    kwargs[mapping] = input.get_result()
-                elif mapping is None:  # drop Nones
-                    pass
-                else:
-                    raise ValueError('Input mapping is neither dict nor str: %s' % mapping)
-
-            mapped_inputs = len(inputs_mapping)
-        else:
-            mapped_inputs = 0
-
-        for i in range(mapped_inputs, len(self.inputs)):
-            result = self.inputs[i].get_result()
-            # without a mapping we handle two cases
-            # when the result is a dict merge it with a global dict
-            if isinstance(result, dict):
-                # but do not override
-                kwargs.update({k: v for k, v in result.items() if k not in kwargs})
-            # otherwise use it as a positional argument
-            else:
-                args.append(result)
-
-        return args, kwargs
 
     def get_result(self):
         return self._result
@@ -345,6 +294,120 @@ class Step(object):
         return not self.__eq__(other)
 
 
+class Arguments(object):
+    """
+    A simple wrapper for positional and keyword arguments
+    """
+    def __init__(self, args=None, kwargs=None):
+        self.args = args if args is not None else []
+        self.kwargs = kwargs if kwargs is not None else {}
+
+
+def merge_results(inputs, arguments=None):
+        """
+        Merges results to form arguments to run(). There are two cases for each result:
+         - dictionary: dictionaries get merged and passed as keyword arguments
+         - list: lists get concatenated to positional arguments
+         - Arguments: kwargs gets merged and args gets appended
+         - else: concatenated and passed as postitional arguments
+        Args:
+            inputs: the inputs whose results to merge
+            arguments: an optional existing Arguments object to merge into
+        """
+        if arguments is None:
+            arguments = Arguments()
+
+        args = arguments.args
+        kwargs = arguments.kwargs
+
+        for i in inputs:
+            result = i.get_result()
+            # without a mapping we handle two cases
+            # when the result is a dict merge it with a global dict
+            if isinstance(result, dict):
+                # but do not override
+                kwargs.update({k: v for k, v in result.items() if k not in kwargs})
+            elif isinstance(result, list):
+                args.extend(result)
+            elif isinstance(result, Arguments):
+                args.extend(result.args)
+                kwargs.update({k: v for k, v in result.kwargs.items() if k not in kwargs})
+            # otherwise use it as a positional argument
+            else:
+                args.append(result)
+
+        return Arguments(args, kwargs)
+
+
+class MapResults(Step):
+    """
+    This step maps the results of its inputs into a new form of arguments and keyword arguments.
+    It is a useful connector between steps.
+    """
+
+    DEFAULT = 1
+
+    def __init__(self, inputs, mapping):
+        """
+        Args:
+            inputs: input steps whose results will be mapped
+            mapping: the mapping contains a list of maps. Each map can be:
+                - dictionary: when a result has keyword entries, use this to remap them.
+                    The keys are the source key and the values are the destination keys.
+                    Missing keys are treated as the identity.
+                    A destination of None removes the corresponding result.
+                    Thus an empty dictionary is the identity.
+                - list: when a result has positional entries, use a list to map them to keyword
+                    arguments. Each entry is a string, or None removes the entry.
+                - string: the entire result gets mapped to keyword of the given string.
+                - None: remove results from the given input.
+                - MapResults.DEFAULT: default mapping (as in merge_results())
+
+        Additional entries are mapped in the default way.
+        """
+        Step.__init__(self, inputs=inputs, mapping=mapping)
+
+    def run(self, *args, **kwargs):
+        mapping = util.make_list(self.mapping)
+        arguments = Arguments()
+        args = arguments.args
+        kwargs = arguments.kwargs
+
+        if len(self.inputs) < len(mapping):
+            raise ValueError('Too many maps')
+
+        for input, m in zip_longest(self.inputs, mapping, fillvalue=self.DEFAULT):
+            result = input.get_result()
+            if isinstance(m, dict):
+                # pass through any missing keys, so {} is the identity
+                # do it first so that mapping overrides keys
+                for k in set(result.keys()).\
+                        difference(set(m.keys())):
+                    kwargs[k] = result[k]
+
+                for k in m:
+                    if m[k] is not None:
+                        kwargs[m[k]] = result[k]
+            elif isinstance(m, list):
+                if len(m) > len(result):
+                    raise ValueError("More keywords than results")
+                for kw, r in zip(m, result):
+                    if kw is not None:
+                        kwargs[kw] = r
+                # unmapped args are appended to positional args
+                args.extend(result[len(m):])
+            elif isinstance(m, string_types):
+                kwargs[m] = input.get_result()
+            elif m is None:  # drop Nones
+                pass
+            elif m is self.DEFAULT:
+                merge_results([input], arguments)
+            else:
+                raise ValueError('Input mapping is neither dict nor str: %s' % m)
+
+        return arguments
+
+
 def is_pandas_collection(l):
     """
     Checks if the argument is a non-empty collection of pandas objects,
@@ -378,7 +441,7 @@ class Construct(Step):
 
     def run(self, *args, **update_kwargs):
         kwargs = self.get_arguments(
-                _class=False, inputs=False, inputs_mapping=False)
+                _class=False, inputs=False)
         kwargs.update(update_kwargs)
 
         return self._class(*args, **kwargs)
@@ -390,7 +453,7 @@ class Call(Step):
 
     def run(self, obj, **update_kwargs):
         kwargs = self.get_arguments(
-                _method_name=False, inputs=False, inputs_mapping=False)
+                _method_name=False, inputs=False)
         kwargs.update(update_kwargs)
 
         method = getattr(obj, self._method_name)

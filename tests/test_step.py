@@ -8,36 +8,56 @@ def test_run(drain_setup):
     s.execute()
     assert s.get_result() == 45
 
-def test_run_inputs_mapping():
-    s = Divide(inputs = [Scalar(value=1), Scalar(value=2)], 
-            inputs_mapping=['denominator', 'numerator'])
+def test_run_map_results():
+    s = Divide(inputs=[MapResults(
+            inputs=[Scalar(value=1), Scalar(value=2)], 
+            mapping=['denominator', 'numerator'])])
     s.execute()
     assert s.get_result() == 2
 
-def test_inputs_mapping():
+def test_map_results():
     a = Scalar(1)
     b = Scalar(2)
 
     a.execute()
     b.execute()
 
-    assert Step(inputs=[a,b], inputs_mapping=['a','b']).map_inputs() == ([], {'a':1, 'b':2})
+    c = MapResults(inputs=[a,b], mapping=['a','b'])
+    c.execute()
 
-def test_inputs_mapping_dict():
+    assert c.get_result().args == []
+    assert c.get_result().kwargs == {'a':1, 'b':2}
+
+def test_map_results_dict():
     a = Scalar(1)
     b = Scalar(2)
 
     a.execute()
     b.execute()
 
-    assert Step(inputs=[a,b], inputs_mapping=['a','b']).map_inputs() == ([], {'a':1, 'b':2})
+    c = MapResults(inputs=[a,b], mapping=['a','b'])
+    c.execute()
 
-def test_inputs_mapping_list():
+    assert c.get_result().args == []
+    assert c.get_result().kwargs == {'a':1, 'b':2}
+
+def test_map_results_list():
     a = Scalar([1,2])
     a.execute()
 
-    assert Step(inputs=[a], inputs_mapping=[['a','b']]).map_inputs() == ([], {'a':1, 'b':2})
+    c = MapResults(inputs=[a], mapping=[['a','b']])
+    c.execute()
+    assert c.get_result().args == []
+    assert c.get_result().kwargs == {'a':1, 'b':2}
 
+def test_map_results_default():
+    a = Scalar([1,2])
+    a.execute()
+
+    c = MapResults(inputs=[a], mapping=[MapResults.DEFAULT])
+    c.execute()
+    assert c.get_result().args == [1,2]
+    assert c.get_result().kwargs == {}
 
 
 class DumpStep(Step):
