@@ -460,30 +460,6 @@ class Call(Step):
         return method(**kwargs)
 
 
-class Echo(Step):
-    def run(self, *args, **kwargs):
-        for i in self.inputs:
-            print('%s: %s' % (i, i.get_result()))
-
-
-class Scalar(Step):
-    def __init__(self, value):
-        Step.__init__(self, value=value)
-
-    def run(self):
-        return self.value
-
-
-class Add(Step):
-    def run(self, *values):
-        return sum(values)
-
-
-class Divide(Step):
-    def run(self, numerator, denominator):
-        return numerator / denominator
-
-
 def _expand_inputs(step, steps=None):
     """
     Returns the set of this step and all inputs passed to the constructor (recursively).

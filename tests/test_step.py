@@ -1,7 +1,24 @@
 from drain.step import *
-from drain import step
 import numpy as np
 import tempfile
+
+class Scalar(Step):
+    def __init__(self, value):
+        Step.__init__(self, value=value)
+
+    def run(self):
+        return self.value
+
+
+class Add(Step):
+    def run(self, *values):
+        return sum(values)
+
+
+class Divide(Step):
+    def run(self, numerator, denominator):
+        return numerator / denominator
+
 
 def test_run(drain_setup):
     s = Add(inputs = [Scalar(value=value) for value in range(1,10)])
