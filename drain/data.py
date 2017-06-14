@@ -385,17 +385,25 @@ class Normalize(Step):
         return normalize(X, train=train)
 
 
-def impute(X, train=None, dropna=True, inplace=True):
+def impute(X, value=None, train=None, dropna=True, inplace=True):
     """
-    impute using mean
-    if train is specified, mean is calculated on X[train]
-    if dropna, drop all-nan columns
+    Performs mean imputation on a pandas dataframe.
+    Args:
+        train: an optional training mask with which to compute the mean
+        value: instead of computing the mean, use this as the value argument to fillna
+        dropna: whether to drop all null columns
+        inplace: whether to perform the imputation inplace
+    Returns: the imputed DataFrame
     """
-    Xfit = X[train] if train is not None else X
-    mean = Xfit.mean()
+    if value is None:
+        Xfit = X[train] if train is not None else X
+        value = Xfit.mean()
+    else:
+        if train is not None:
+            raise ValueError("Cannot pass both train and value arguments")
 
     if dropna:
-        null_columns = mean.index[mean.isnull()]
+        null_columns = value.index[value.isnull()]
         if len(null_columns) > 0:
             logging.info('Dropping null columns: \n\t%s' % null_columns)
             if inplace:
@@ -404,9 +412,9 @@ def impute(X, train=None, dropna=True, inplace=True):
                 X = X.drop(null_columns, axis=1, inplace=False)
 
     if inplace:
-        X.fillna(mean.dropna(), inplace=True)
+        X.fillna(value.dropna(), inplace=True)
     else:
-        X = X.fillna(mean.dropna(), inplace=False)
+        X = X.fillna(value.dropna(), inplace=False)
 
     return X
 

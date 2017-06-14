@@ -46,3 +46,18 @@ def test_binarize_not_inplace():
     df2 = data.binarize(df, ['a'], inplace=False)
     assert df.columns.tolist() == ['a']
     assert df2.columns.tolist() == ['a_b', 'a_c']
+
+def test_impute():
+    df = pd.DataFrame([1.0,None,3.0])
+    i = data.impute(df)
+    assert i.equals(pd.DataFrame([1.0,2.0,3.0]))
+
+def test_impute_train():
+    df = pd.DataFrame([1.0,None,3.0])
+    i = data.impute(df, train=pd.Series([True,False,False]))
+    assert i.equals(pd.DataFrame([1.0,1.0,3.0]))
+
+def test_impute_value():
+    df = pd.DataFrame([1.0,None,3.0])
+    i = data.impute(df, value=pd.Series({0:10.0}))
+    assert i.equals(pd.DataFrame([1.0,10.0,3.0]))
