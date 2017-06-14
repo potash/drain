@@ -233,6 +233,9 @@ class StepFrame(pd.DataFrame):
     def __str__(self):
         return self.expand().__str__()
 
+    def to_html(self, *args, **kwargs):
+        return self.expand().to_html(*args, **kwargs)
+
     # resetting index makes it no longer a StepFrame
     def reset_index(self, *args, **kwargs):
         return pd.DataFrame(self).reset_index(*args, **kwargs)
@@ -256,6 +259,9 @@ class StepSeries(pd.Series):
 
     def __str__(self):
         return self.expand().__str__()
+
+    def to_html(self, *args, **kwargs):
+        return self.expand().to_html(*args, **kwargs)
 
     def reset_index(self, *args, **kwargs):
         return pd.Series(self).reset_index(*args, **kwargs)
