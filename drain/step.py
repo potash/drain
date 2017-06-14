@@ -475,7 +475,7 @@ def _expand_inputs(step, steps=None):
     return steps
 
 
-def _collect_kwargs(step):
+def _collect_kwargs(step, drop_duplicate_names=True):
     """
     Collect the kwargs of this step and inputs passed to the constructor (recursively)
     Returns: dictionary of name: kwargs pairs where name is the name of
@@ -483,13 +483,19 @@ def _collect_kwargs(step):
         a name __class__.__name__ is used.
     """
     dicts = {}
+    duplicates = set()
+
     for s in _expand_inputs(step):
         name = s.name if s.name is not None else s.__class__.__name__
         if name in dicts.keys():
-            raise ValueError("Duplicate step names: %s" % name)
+            if drop_duplicate_names:
+                duplicates.add(name)
+            else:
+                raise ValueError("Duplicate step names: %s" % name)
 
         d = dict(s._kwargs)
         d.pop('inputs', None)
         dicts[name] = d
 
+    dicts = {k:v for k,v in dicts.items() if k not in duplicates}
     return dicts

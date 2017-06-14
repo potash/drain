@@ -14,7 +14,7 @@ def explore(steps, reload=False):
     return StepFrame(index=step.load(steps, reload=reload))
 
 
-def expand(self, prefix=False, index=True, diff=True, existence=True):
+def expand(self, prefix=False, index=True, diff=True, existence=True, ignore_duplicate_names=True):
     """
     This function is a member of StepFrame and StepSeries. It is used to
     expand the kwargs of the steps either into the index (index=True) or
@@ -48,11 +48,14 @@ def expand(self, prefix=False, index=True, diff=True, existence=True):
         existence: whether to check for existence of a step in the tree
             instead of a full diff. Only applicable when diff=True. See
             note above.
+        drop_duplicate_names: this argument gets passed to _collect_kwargs
+            for each step. It's not easy to pair nodes across graphs 
+            when names are duplicated within graphs.
 
     Returns: a DatFrame with the arguments of the steps expanded.
     """
     # collect kwargs resulting in a list of {name: kwargs} dicts
-    dicts = [step._collect_kwargs(s) for s in self.index]
+    dicts = [step._collect_kwargs(s, drop_duplicate_names=True) for s in self.index]
     # if any of the kwargs are themselves dicts, expand them
     dicts = [{k: util.dict_expand(v) for k, v in s.items()} for s in dicts]
 
