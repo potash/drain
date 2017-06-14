@@ -303,6 +303,18 @@ class Arguments(object):
         self.kwargs = kwargs if kwargs is not None else {}
 
 
+def _simplify_arguments(arguments):
+    """
+    If positional or keyword arguments are empty return only one or the other.
+    """
+    if len(arguments.args) == 0:
+        return arguments.kwargs
+    elif len(arguments.kwargs) == 0:
+        return arguments.args
+    else:
+        return arguments
+
+
 def merge_results(inputs, arguments=None):
         """
         Merges results to form arguments to run(). There are two cases for each result:
@@ -336,7 +348,7 @@ def merge_results(inputs, arguments=None):
             else:
                 args.append(result)
 
-        return Arguments(args, kwargs)
+        return arguments
 
 
 class MapResults(Step):
@@ -405,7 +417,7 @@ class MapResults(Step):
             else:
                 raise ValueError('Input mapping is neither dict nor str: %s' % m)
 
-        return arguments
+        return _simplify_arguments(arguments)
 
 
 def is_pandas_collection(l):
@@ -497,5 +509,5 @@ def _collect_kwargs(step, drop_duplicate_names=True):
         d.pop('inputs', None)
         dicts[name] = d
 
-    dicts = {k:v for k,v in dicts.items() if k not in duplicates}
+    dicts = {k: v for k, v in dicts.items() if k not in duplicates}
     return dicts

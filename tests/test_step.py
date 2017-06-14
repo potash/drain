@@ -42,8 +42,7 @@ def test_map_results():
     c = MapResults(inputs=[a,b], mapping=['a','b'])
     c.execute()
 
-    assert c.get_result().args == []
-    assert c.get_result().kwargs == {'a':1, 'b':2}
+    assert c.get_result() == {'a':1, 'b':2}
 
 def test_map_results_dict():
     a = Scalar(1)
@@ -55,8 +54,7 @@ def test_map_results_dict():
     c = MapResults(inputs=[a,b], mapping=['a','b'])
     c.execute()
 
-    assert c.get_result().args == []
-    assert c.get_result().kwargs == {'a':1, 'b':2}
+    assert c.get_result() == {'a':1, 'b':2}
 
 def test_map_results_list():
     a = Scalar([1,2])
@@ -64,8 +62,7 @@ def test_map_results_list():
 
     c = MapResults(inputs=[a], mapping=[['a','b']])
     c.execute()
-    assert c.get_result().args == []
-    assert c.get_result().kwargs == {'a':1, 'b':2}
+    assert c.get_result() == {'a':1, 'b':2}
 
 def test_map_results_default():
     a = Scalar([1,2])
@@ -73,8 +70,7 @@ def test_map_results_default():
 
     c = MapResults(inputs=[a], mapping=[MapResults.DEFAULT])
     c.execute()
-    assert c.get_result().args == [1,2]
-    assert c.get_result().kwargs == {}
+    assert c.get_result() == [1,2]
 
 
 class DumpStep(Step):
