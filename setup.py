@@ -20,7 +20,7 @@ setup(
     long_description=open('README.rst').read(),
     author="Eric Potash",
     author_email='epotash@uchicago.edu',
-    url='https://github.com/dssg/drain',
+    url='https://github.com/potash/drain',
     packages=[
         'drain',
     ],

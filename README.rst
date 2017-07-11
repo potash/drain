@@ -24,11 +24,9 @@ Drain is designed around these principles:
 
 .. |image0| image:: https://img.shields.io/pypi/v/drain.svg
    :target: https://pypi.python.org/pypi/drain
-.. |image1| image:: https://api.travis-ci.org/dssg/drain.svg
-   :target: https://travis-ci.org/dssg/drain
+.. |image1| image:: https://api.travis-ci.org/potash/drain.svg
+   :target: https://travis-ci.org/potash/drain
 .. |image2| image:: https://readthedocs.org/projects/drain/badge/?version=latest
    :target: https://drain.readthedocs.io/en/latest/?badge=latest
-.. |image3| image:: https://pyup.io/repos/github/potash/drain/shield.svg
-   :target: https://pyup.io/repos/github/dssg/drain/
 .. |image4| image:: https://img.shields.io/badge/License-MIT-yellow.svg
    :target: https://opensource.org/licenses/MIT
