@@ -147,7 +147,7 @@ class ToSQL(Step):
         Step.__init__(self, table_name=table_name, **kwargs)
 
         if len(self.inputs) == 1:
-            self.inputs.append(CreateDatabase())
+            self.inputs = self.inputs + [MapResults([CreateDatabase()], 'db')]
 
     def run(self, df, db):
         kwargs = self.get_arguments(inputs=False)
