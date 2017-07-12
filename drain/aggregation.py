@@ -83,6 +83,10 @@ class AggregationBase(Step):
             # and skip this df
             logging.info('Joining %s %s' % (self.prefix, str(concat_args)))
             data.prefix_columns(df, self.args_prefix(concat_args))
+            if not set(df.index.names).issubset(left.columns):
+                logging.info("Skipping join since aggregation index not in left: %s"
+                             % df.index.names)
+                continue
             left = left.merge(df, left_on=df.index.names,
                               right_index=True, how='left', copy=False)
             fillna_value = fillna_value.append(self.fillna_value(
