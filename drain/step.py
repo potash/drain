@@ -39,22 +39,21 @@ def load(steps, reload=False):
     if not isinstance(steps, collections.Iterable):
         return load([steps])[0]
 
-    # iterate in reverse
-    # so popping failed steps doesn't affect list indices subsequent list access
-    for i, s in enumerate(reversed(steps)):
+    loaded = []
+    for s in steps:
         digest = s._digest
         if digest in _STEP_CACHE:
-            steps[i] = _STEP_CACHE[digest]
+            loaded.append(_STEP_CACHE[digest])
         else:
             try:
                 s.load()
                 _STEP_CACHE[digest] = s
+                loaded.append(s)
             except:
                 logging.warn('Error during step load:\n%s' %
                              util.indent(traceback.format_exc()))
-                steps.pop(i)
 
-    return steps
+    return loaded
 
 
 class Step(object):
