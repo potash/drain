@@ -2,8 +2,8 @@
 # generate a temporary drakefile and call drake
 DIR=$(pwd)
 DRAIN_DIR="$(dirname "$(readlink -f "$0")")"
-DRAKE_FILE=".drain.drake"
-DRAKE_ARGS_FILE=`mktemp` || exit 1
+export DRAKE_FILE=".drain.drake"
+export DRAKE_ARGS_FILE=".drain.drake_args"
 args="$@"
 
 if [ -f 'default_profile' ]; then
@@ -12,8 +12,8 @@ if [ -f 'default_profile' ]; then
 fi
 
 rm -f $DRAKE_FILE
-python $DRAIN_DIR/to_drakefile.py --drakeargsfile $DRAKE_ARGS_FILE --drakeoutput $DRAKE_FILE $args || exit
-if [ -s "$DRAKE_FILE" ]; then # if DRAKE_FILE is not empty, i.e. to_drakefile did preview
+python $DRAIN_DIR/to_drakefile.py $args || exit
+if [ -s "$DRAKE_FILE" ]; then # if DRAKE_FILE is not empty, i.e. to_drakefile did preview or keep
     drake_args=$(cat $DRAKE_ARGS_FILE)
     if [ -z "$drake_args" ]; then
         drake --tmpdir=$DIR/.drake --logfile=$DIR/drake.log -w $DRAKE_FILE

@@ -156,6 +156,21 @@ class Step(object):
         if _search(self) == value:
             return self
 
+    def get_inputs(self, _visited=None):
+        """
+        Returns: the set of all input steps
+        """
+        if _visited is None:
+            _visited = set()
+
+        _visited.add(self)
+
+        for i in self.inputs:
+            if i not in _visited:
+                i.get_inputs(_visited)
+
+        return _visited
+
     # returns a shallow copy of _kwargs
     # any argument specified is excluded if False
     def get_arguments(self, **include):
@@ -510,3 +525,23 @@ def _collect_kwargs(step, drop_duplicate_names=True):
 
     dicts = {k: v for k, v in dicts.items() if k not in duplicates}
     return dicts
+
+
+def _output_dirnames(workflow=None):
+    """
+    Args:
+        workflow: optional collection of steps
+
+    Returns: If workflow is specified, returns output directories for all target
+        steps in the workflow. If no workflow specified, returns all extant
+        output directories in drain.PATH.
+    """
+    if workflow is None:
+        dirs = set()
+        for cls in os.listdir(drain.PATH):
+            for step in os.listdir(os.path.join(drain.PATH, cls)):
+                dirs.add(os.path.join(drain.PATH, cls, step))
+        return dirs
+    else:
+        steps = util.union(step.get_inputs() for step in workflow if step.target)
+        return set(step._output_dirname for step in steps)

@@ -300,5 +300,5 @@ def export_tree(clf, filename, feature_names=None, max_depth=None):
     dot_data = StringIO()
     tree.export_graphviz(clf, out_file=dot_data,
                          feature_names=feature_names, max_depth=max_depth)
-    graph = pydot.graph_from_dot_data(dot_data.getvalue())[0]
+    graph = pydot.graph_from_dot_data(dot_data.getvalue())
     graph.write_pdf(filename)

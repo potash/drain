@@ -1,6 +1,5 @@
 # run this using the following command:
-# drain/bin/drain --path drain/tests/output/ tests.test_drain::calibration
-# TODO: add this as an executable test?
+# drain/bin/drain execute --path drain/tests/output/ tests.test_drain::calibration
 
 from drain import step, model, data
 from drain.step import MapResults
