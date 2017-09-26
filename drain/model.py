@@ -81,7 +81,7 @@ class FitPredict(Step):
         return result
 
     def dump(self):
-        result = self.get_result()
+        result = self.result
         if self.return_estimator:
             filename = os.path.join(self._dump_dirname, 'estimator.pkl')
             joblib.dump(result['estimator'], filename)
@@ -104,7 +104,7 @@ class FitPredict(Step):
             filename = os.path.join(self._dump_dirname, 'y.hdf')
             result['y'] = pd.read_hdf(filename, 'df')
 
-        self.set_result(result)
+        self.result = result
 
 
 class Fit(FitPredict):
@@ -290,7 +290,7 @@ def true_score(y, outcome='true', score='score', **subset_args):
 
 def make_metric(function):
     def metric(predict_step, **kwargs):
-        y = predict_step.get_result()['y']
+        y = predict_step.result['y']
         subset_args = [k for k in Y_SUBSET_ARGS if k in kwargs]
         kwargs_subset = {k: kwargs[k] for k in subset_args}
         y_true, y_score = true_score(y, **kwargs_subset)
@@ -352,20 +352,20 @@ def recall_series(predict_step, prop=True, **kwargs):
 
 
 def overlap(self, other, **kwargs):
-    y0 = self.get_result()['y']
+    y0 = self.result['y']
     y0 = y_subset(y0, **kwargs)
 
-    y1 = other.get_result()['y']
+    y1 = other.result['y']
     y1 = y_subset(y1, **kwargs)
 
     return len(y0.index & y1.index)
 
 
 def similarity(self, other, **kwargs):
-    y0 = self.get_result()['y']
+    y0 = self.result['y']
     y0 = y_subset(y0, **kwargs)
 
-    y1 = other.get_result()['y']
+    y1 = other.result['y']
     y1 = y_subset(y1, **kwargs)
 
     return np.float32(len(y0.index & y1.index)) / \
@@ -373,7 +373,7 @@ def similarity(self, other, **kwargs):
 
 
 def rank(self, **kwargs):
-    y0 = self.get_result()['y']
+    y0 = self.result['y']
     y0 = y_subset(y0, **kwargs)
     return y0.score.rank(ascending=False)
 

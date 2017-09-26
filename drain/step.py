@@ -105,7 +105,7 @@ class Step(object):
         if inputs is None:
             inputs = []
 
-        if not self.has_result():
+        if not hasattr(self, 'result'):
             if self in inputs or (load_targets and self.target):
                 logging.info('Loading\n%s' % util.indent(str(self)))
                 self.load()
@@ -116,7 +116,7 @@ class Step(object):
 
                 args = merge_results(self.inputs)
                 logging.info('Running\n%s' % util.indent(str(self)))
-                self.set_result(self.run(*args.args, **args.kwargs))
+                self.result = self.run(*args.args, **args.kwargs)
 
         if self == output:
             logging.info('Dumping\n%s' % util.indent(str(self)))
@@ -186,15 +186,6 @@ class Step(object):
                 d.pop(k)
         return d
 
-    def get_result(self):
-        return self._result
-
-    def set_result(self, result):
-        self._result = result
-
-    def has_result(self):
-        return hasattr(self, '_result')
-
     @cached_property
     def _output_dirname(self):
         if drain.PATH is None:
@@ -226,17 +217,17 @@ class Step(object):
             store = pd.HDFStore(hdf_filename, mode='r')
             keys = store.keys()
             if keys == ['/df']:
-                self.set_result(store['df'])
+                self.result = store['df']
             else:
                 if set(keys) == set(map(lambda i: '/%s' % i, range(len(keys)))):
                     # keys are not necessarily ordered
-                    self.set_result([store[str(k)] for k in range(len(keys))])
+                    self.result = [store[str(k)] for k in range(len(keys))]
                 else:
-                    self.set_result({k[1:]: store[k] for k in keys})
+                    self.result = {k[1:]: store[k] for k in keys}
 
         else:
-            self.set_result(joblib.load(
-                    os.path.join(self._output_dirname, 'dump', 'result.pkl')))
+            self.result = joblib.load(
+                    os.path.join(self._output_dirname, 'dump', 'result.pkl'))
 
     def setup_dump(self):
         """
@@ -268,16 +259,15 @@ class Step(object):
 
     def dump(self):
         self.setup_dump()
-        result = self.get_result()
-        if isinstance(result, pd.DataFrame):
-            result.to_hdf(os.path.join(self._dump_dirname, 'result.h5'), 'df')
-        elif is_pandas_collection(result):
-            if not isinstance(result, dict):
-                keys = map(str, range(len(result)))
-                values = result
+        if isinstance(self.result, pd.DataFrame):
+            self.result.to_hdf(os.path.join(self._dump_dirname, 'result.h5'), 'df')
+        elif is_pandas_collection(self.result):
+            if not isinstance(self.result, dict):
+                keys = map(str, range(len(self.result)))
+                values = self.result
             else:
-                keys = result.keys()
-                values = result.values()
+                keys = self.result.keys()
+                values = self.result.values()
 
             store = pd.HDFStore(os.path.join(self._dump_dirname, 'result.h5'))
             # ignore NaturalNameWarning
@@ -287,7 +277,7 @@ class Step(object):
                     store.put(key, df, mode='w')
                 store.close()
         else:
-            joblib.dump(self.get_result(), os.path.join(self._dump_dirname, 'result.pkl'))
+            joblib.dump(self.result, os.path.join(self._dump_dirname, 'result.pkl'))
 
     def __repr__(self):
         class_name = self.__class__.__name__
@@ -347,20 +337,19 @@ def merge_results(inputs, arguments=None):
         kwargs = arguments.kwargs
 
         for i in inputs:
-            result = i.get_result()
             # without a mapping we handle two cases
             # when the result is a dict merge it with a global dict
-            if isinstance(result, dict):
+            if isinstance(i.result, dict):
                 # but do not override
-                kwargs.update({k: v for k, v in result.items() if k not in kwargs})
-            elif isinstance(result, list):
-                args.extend(result)
-            elif isinstance(result, Arguments):
-                args.extend(result.args)
-                kwargs.update({k: v for k, v in result.kwargs.items() if k not in kwargs})
+                kwargs.update({k: v for k, v in i.result.items() if k not in kwargs})
+            elif isinstance(i.result, list):
+                args.extend(i.result)
+            elif isinstance(i.result, Arguments):
+                args.extend(i.result.args)
+                kwargs.update({k: v for k, v in i.result.kwargs.items() if k not in kwargs})
             # otherwise use it as a positional argument
             else:
-                args.append(result)
+                args.append(i.result)
 
         return arguments
 
@@ -403,7 +392,7 @@ class MapResults(Step):
             raise ValueError('Too many maps')
 
         for input, m in zip_longest(self.inputs, mapping, fillvalue=self.DEFAULT):
-            result = input.get_result()
+            result = input.result
             if isinstance(m, dict):
                 # pass through any missing keys, so {} is the identity
                 # do it first so that mapping overrides keys
@@ -423,7 +412,7 @@ class MapResults(Step):
                 # unmapped args are appended to positional args
                 args.extend(result[len(m):])
             elif isinstance(m, string_types):
-                kwargs[m] = input.get_result()
+                kwargs[m] = input.result
             elif m is None:  # drop Nones
                 pass
             elif m is self.DEFAULT:

@@ -167,11 +167,11 @@ class AggregationBase(Step):
     def load(self):
         # overload load in order to restore result to a tuple
         Step.load(self)
-        self.set_result(tuple(self.get_result()))
+        self.result = tuple(self.result)
 
     def get_concat_result(self):
         to_concat = {}
-        dfs = self.get_result()
+        dfs = self.result
         for argument, df in zip(self.arguments, dfs):
             concat_args = tuple(argument[k] for k in self.concat_args)
             if concat_args not in to_concat:
@@ -263,7 +263,7 @@ class SimpleAggregation(AggregationBase):
         return left[df.columns].mean()
 
     def get_aggregator(self, **kwargs):
-        return Aggregator(self.inputs[0].get_result(), self.aggregates)
+        return Aggregator(self.inputs[0].result, self.aggregates)
 
     @property
     def _parallel_kwargs(self):
@@ -369,7 +369,7 @@ class SpacetimeAggregation(AggregationBase):
         return aggregator
 
     def get_data(self, date, delta):
-        df = self.inputs[0].get_result()
+        df = self.inputs[0].result
         df = data.date_select(df, self.date_column, date, delta, self.max_date_column)
         df = data.date_censor(df.copy(), self.censor_columns, date)
         return df

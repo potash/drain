@@ -194,7 +194,7 @@ class ToHDF(Step):
         return
 
     def load(self):
-        self.set_result(pd.HDFStore(os.path.join(self._dump_dirname, 'result.h5'), mode='r'))
+        self.result = pd.HDFStore(os.path.join(self._dump_dirname, 'result.h5'), mode='r')
 
 
 class Shape(Step):

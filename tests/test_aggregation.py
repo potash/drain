@@ -19,13 +19,13 @@ def test_simple_aggregation_parallel(drain_setup, crime_step):
     s = SimpleCrimeAggregation(inputs=[crime_step], 
 	indexes=['District', 'Community Area'], parallel=True)
     s.execute()
-    print(s.get_result())
+    print(s.result)
 
 def test_simple_aggregation(drain_setup, crime_step):
     s = SimpleCrimeAggregation(inputs=[crime_step], 
 	indexes=['District', 'Community Area'], parallel=False)
     s.execute()
-    print(s.get_result())
+    print(s.result)
 
 def test_simple_join(drain_setup, crime_step):
     s = SimpleCrimeAggregation(inputs=[crime_step],
@@ -45,7 +45,7 @@ def test_simple_join_fillna(drain_setup, crime_step):
 
 def test_spacetime_aggregation(drain_setup, spacetime_crime_agg):
     spacetime_crime_agg.execute()
-    print(spacetime_crime_agg.get_result())
+    print(spacetime_crime_agg.result)
 
 def test_spacetime_join(drain_setup, spacetime_crime_agg):
     spacetime_crime_agg.execute()

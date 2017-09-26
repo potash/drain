@@ -12,7 +12,7 @@ def test_to_hdf():
     h.setup_dump()
     h.execute()
 
-    r0, r1 = h.get_result(), d.get_result()
+    r0, r1 = h.result, d.result
 
     for key in r1.keys():
        assert r0[key].equals(r1[key])
