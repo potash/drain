@@ -14,8 +14,7 @@ def explore(steps, reload=False):
     return StepFrame(index=step.load(steps, reload=reload))
 
 
-def expand(self, prefix=False, index=True, diff=True, existence=True,
-           ignore_duplicate_names=True):
+def expand(self, prefix=False, index=True, diff=True, existence=True):
     """
     This function is a member of StepFrame and StepSeries. It is used to
     expand the kwargs of the steps either into the index (index=True) or
@@ -49,9 +48,6 @@ def expand(self, prefix=False, index=True, diff=True, existence=True,
         existence: whether to check for existence of a step in the tree
             instead of a full diff. Only applicable when diff=True. See
             note above.
-        drop_duplicate_names: this argument gets passed to _collect_kwargs
-            for each step. It's not easy to pair nodes across graphs
-            when names are duplicated within graphs.
 
     Returns: a DatFrame with the arguments of the steps expanded.
     """
@@ -107,7 +103,10 @@ def expand(self, prefix=False, index=True, diff=True, existence=True,
     if index:
         columns = list(expanded.columns)
         try:
-            expanded.set_index(columns, inplace=True)
+            if len(columns) > 0:
+                expanded.set_index(columns, inplace=True)
+            else:
+                expanded.index = [None]*len(expanded)
         except TypeError:
             _print_unhashable(expanded, columns)
             expanded.set_index(columns, inplace=True)
@@ -213,6 +212,8 @@ def _assert_step_collection(steps):
     for s in steps:
         if not isinstance(s, step.Step):
             raise ValueError("StepFrame index must consist of drain.step.Step objects")
+    if len(set(steps)) != len(steps):
+        raise ValueError("StepFrame steps must be unique")
 
 
 class StepFrame(pd.DataFrame):

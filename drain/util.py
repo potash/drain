@@ -77,7 +77,7 @@ def intersect(sets):
 
 
 def union(sets):
-    return reduce(lambda a, b: a | b, sets)
+    return reduce(lambda a, b: a | b, sets, set())
 
 
 def to_float(*args):
