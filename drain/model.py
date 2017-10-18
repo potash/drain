@@ -43,13 +43,21 @@ class FitPredict(Step):
             else:
                 X_train, y_train = X, y
 
+            y_missing = y_train.isnull()
+            y_missing_count = y_missing.sum()
+            if y_missing.sum() > 0:
+                logging.info('Dropping %s training examples with missing outcomes'
+                             % y_missing_count)
+                y_train = y_train[~y_missing]
+                X_train = X_train[~y_missing]
+
             y_train = y_train.astype(bool)
 
             logging.info('Fitting with %s examples, %s features' % X_train.shape)
             if 'sample_weight' in inspect.getargspec(estimator.fit).args and\
                     sample_weight is not None:
                 logging.info('Using sample weight')
-                sample_weight = sample_weight.ix[train.index][train].values
+                sample_weight = sample_weight.loc[y_train.index]
                 estimator.fit(X_train, y_train, sample_weight=sample_weight)
             else:
                 estimator.fit(X_train, y_train)
