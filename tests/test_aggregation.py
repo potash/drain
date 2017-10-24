@@ -80,3 +80,10 @@ def test_spacetime_join_fillna(drain_setup, spacetime_crime_agg):
         'date':[np.datetime64(date(2015,12,30)), np.datetime64(date(2015,12,31))]})
     print(spacetime_crime_agg.join(left))
 
+def test_spacetime_partial_join(drain_setup, spacetime_crime_agg):
+    spacetime_crime_agg.execute()
+
+    left = pd.DataFrame({'Community Area':[1,100], 
+        'date':[np.datetime64(date(2015,12,30)), np.datetime64(date(2015,12,31))]})
+    print(spacetime_crime_agg.join(left))
+
