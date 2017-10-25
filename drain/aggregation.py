@@ -85,7 +85,7 @@ class AggregationBase(Step):
             data.prefix_columns(df, self.args_prefix(concat_args))
             if not set(df.index.names).issubset(left.columns):
                 logging.info("Aggregation index not in left: %s" % df.index.names)
-                left = left.reindex(columns=left.columns + df.columns)
+                left = left.reindex(columns=list(left.columns) + list(df.columns))
             else:
                 left = left.merge(df, left_on=df.index.names,
                                   right_index=True, how='left', copy=False)
