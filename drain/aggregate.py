@@ -468,8 +468,8 @@ def aggregate_counts(l):
     if len(lists) == 0:
         return None
     else:
-        l = np.concatenate(lists)
-        return np.unique(l, return_counts=True)
+        ls = np.concatenate(lists)
+        return np.unique(ls, return_counts=True)
 
 
 def days(date1, date2):

@@ -171,7 +171,7 @@ def y_score(estimator, X):
     try:
         y = estimator.predict_proba(X)
         return y[:, 1]
-    except:
+    except(AttributeError):
         return estimator.decision_function(X)
 
 

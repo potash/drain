@@ -49,7 +49,7 @@ def load(steps, reload=False):
                 s.load()
                 _STEP_CACHE[digest] = s
                 loaded.append(s)
-            except:
+            except(Exception):
                 logging.warn('Error during step load:\n%s' %
                              util.indent(traceback.format_exc()))
 
@@ -423,22 +423,22 @@ class MapResults(Step):
         return _simplify_arguments(arguments)
 
 
-def is_pandas_collection(l):
+def is_pandas_collection(c):
     """
     Checks if the argument is a non-empty collection of pandas objects,
         i.e. pd.DataFrame and pd.Series
     """
-    if not (hasattr(l, '__iter__') and len(l) > 0):
+    if not (hasattr(c, '__iter__') and len(c) > 0):
         # make sure it's iterable
         # don't include empty iterables because
         # that would include some sklearn estimator objects
         return False
 
-    if isinstance(l, dict):
-        l = l.values()
+    if isinstance(c, dict):
+        c = c.values()
 
-    for i in l:
-        if not (isinstance(i, pd.DataFrame) or isinstance(i, pd.Series)):
+    for i in c:
+        if not (isinstance(c, pd.DataFrame) or isinstance(c, pd.Series)):
             return False
 
     return True

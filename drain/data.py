@@ -461,7 +461,7 @@ def infinite_columns(df):
     for c in df.columns:
         try:
             _assert_all_finite(df[c])
-        except:
+        except(ValueError):
             columns.append(c)
     return columns
 
@@ -471,7 +471,7 @@ def non_numeric_columns(df):
     for c in df.columns:
         try:
             df[c].astype(float)
-        except:
+        except(ValueError):
             columns.append(c)
 
     return columns
@@ -671,9 +671,9 @@ def parse_delta(s):
     if s == 'all':
         return None
     else:
-        l = delta_regex.findall(s)
-        if len(l) == 1:
-            return relativedelta(**{delta_chars[l[0][1]]: int(l[0][0])})
+        ls = delta_regex.findall(s)
+        if len(ls) == 1:
+            return relativedelta(**{delta_chars[ls[0][1]]: int(ls[0][0])})
         else:
             raise ValueError('Invalid delta string: %s' % s)
 
