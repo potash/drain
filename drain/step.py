@@ -281,9 +281,9 @@ class Step(object):
 
     def __repr__(self):
         class_name = self.__class__.__name__
-
+        args = _pprint(self._kwargs, offset=len(class_name))
         return '%s(%s)' % (class_name,
-                           _pprint(self._kwargs, offset=len(class_name)),)
+                           args.replace('\\n', '\n'))
 
     def __hash__(self):
         return int(self._hasher.hexdigest(), 16)
