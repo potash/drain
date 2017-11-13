@@ -17,7 +17,7 @@ import shutil
 import warnings
 from tables import NaturalNameWarning
 
-from drain import util
+from . import util
 import drain
 
 _STEP_CACHE = {}
@@ -456,14 +456,17 @@ class Call(Step):
 
 def _expand_inputs(step, steps=None):
     """
-    Returns the set of this step and all inputs passed to the constructor (recursively).
+    Returns the set of this step and all steps passed to the constructor (recursively).
     """
     if steps is None:
         steps = set()
 
-    if 'inputs' in step._kwargs.keys():
-        for i in step._kwargs['inputs']:
-            steps.update(_expand_inputs(i))
+    for arg in step._kwargs.values():
+        if isinstance(arg, Step):
+            _expand_inputs(arg, steps=steps)
+        elif util.is_instance_collection(arg, Step):
+            for s in util.get_collection_values(arg):
+                _expand_inputs(s, steps=steps)
 
     steps.add(step)
     return steps
@@ -488,7 +491,8 @@ def _collect_kwargs(step, drop_duplicate_names=True):
                 raise ValueError("Duplicate step names: %s" % name)
 
         d = dict(s._kwargs)
-        d.pop('inputs', None)
+        d = {k: v for k, v in d.items()
+             if not (isinstance(v, Step) or util.is_instance_collection(v, Step))}
         dicts[name] = d
 
     dicts = {k: v for k, v in dicts.items() if k not in duplicates}

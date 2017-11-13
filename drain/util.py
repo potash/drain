@@ -299,6 +299,13 @@ def make_tuple(a):
     return (a,) if not type(a) in (list, tuple) else tuple(a)
 
 
+def get_collection_values(a):
+    if not hasattr(a, '__iter__'):
+        raise ValueError("Must pass iterable")
+
+    return a.values() if isinstance(a, dict) else a
+
+
 def dict_product(*d, **kwargs):
     """
     cartesian product of dict whose values are lists
@@ -518,12 +525,8 @@ def is_instance_collection(c, cls):
         # make sure it's iterable and not empty
         return False
 
-    if isinstance(c, dict):
-        # when c is a dict, we care about its values not its keys
-        c = c.values()
-
     cls = make_list(cls)
-    for i in c:
+    for i in get_collection_values(c):
         instance = False
         for cl in cls:
             if isinstance(i, cl):
