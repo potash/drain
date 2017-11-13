@@ -299,16 +299,19 @@ def make_tuple(a):
     return (a,) if not type(a) in (list, tuple) else tuple(a)
 
 
-def dict_product(d):
+def dict_product(*d, **kwargs):
     """
     cartesian product of dict whose values are lists
-    if product_keys is not None then take product on those keys only
+    Args:
+        d: dictionary to take product of. multiple dictionaries will first
+           be merged by dict_merge
+        kwargs: additional kwargs for convenience
+    Result:
+        a list of dictionaries with the same keys as d and kwargs
     """
+    d = dict(dict_merge(*d), **kwargs)
     holdout = {k: d[k] for k in d if not isinstance(d[k], list)}
     d = {k: d[k] for k in d if k not in holdout}
-
-    if not isinstance(d, dict):
-        raise ValueError('Expected dictionary got %s' % type(d).__name__)
 
     items = d.items()
     if len(items) == 0:
