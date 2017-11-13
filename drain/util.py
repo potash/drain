@@ -306,7 +306,7 @@ def dict_product(*d, **kwargs):
         d: dictionary to take product of. multiple dictionaries will first
            be merged by dict_merge
         kwargs: additional kwargs for convenience
-    Result:
+    Returns:
         a list of dictionaries with the same keys as d and kwargs
     """
     d = dict(dict_merge(*d), **kwargs)
@@ -504,3 +504,32 @@ def indent(s, n_spaces=2, initial=True):
     if initial:
         t = i + t
     return t
+
+
+def is_instance_collection(c, cls):
+    """
+    Args:
+        c: any object
+        cls: a class or a list/tuple of classes
+    Returns: True if c is a non-empty collection of objects, each of which
+        is an instance of one of the specified classes.
+    """
+    if not (hasattr(c, '__iter__') and len(c) > 0):
+        # make sure it's iterable and not empty
+        return False
+
+    if isinstance(c, dict):
+        # when c is a dict, we care about its values not its keys
+        c = c.values()
+
+    cls = make_list(cls)
+    for i in c:
+        instance = False
+        for cl in cls:
+            if isinstance(i, cl):
+                instance = True
+                break
+        if not instance:
+            return False
+
+    return True

@@ -261,7 +261,7 @@ class Step(object):
         self.setup_dump()
         if isinstance(self.result, pd.DataFrame):
             self.result.to_hdf(os.path.join(self._dump_dirname, 'result.h5'), 'df')
-        elif is_pandas_collection(self.result):
+        elif util.is_instance_collection(self.result, [pd.Series, pd.DataFrame]):
             if not isinstance(self.result, dict):
                 keys = map(str, range(len(self.result)))
                 values = self.result
@@ -421,27 +421,6 @@ class MapResults(Step):
                 raise ValueError('Input mapping is neither dict nor str: %s' % m)
 
         return _simplify_arguments(arguments)
-
-
-def is_pandas_collection(c):
-    """
-    Checks if the argument is a non-empty collection of pandas objects,
-        i.e. pd.DataFrame and pd.Series
-    """
-    if not (hasattr(c, '__iter__') and len(c) > 0):
-        # make sure it's iterable
-        # don't include empty iterables because
-        # that would include some sklearn estimator objects
-        return False
-
-    if isinstance(c, dict):
-        c = c.values()
-
-    for i in c:
-        if not (isinstance(c, pd.DataFrame) or isinstance(c, pd.Series)):
-            return False
-
-    return True
 
 
 class Construct(Step):
