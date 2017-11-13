@@ -32,3 +32,20 @@ def test_dict_diff_single():
 
 def test_dict_diff_double():
     assert dict_diff([{}, {1:2, 3:4}, {3:4}]) == [{}, {1:2, 3:4}, {3:4}]
+
+def test_is_instance_collection_empty():
+    assert not is_instance_collection([], int)
+
+def test_is_instance_collection_list():
+    assert is_instance_collection([pd.DataFrame()], pd.DataFrame)
+
+def test_is_instance_collection_dict():
+    assert is_instance_collection({'a':pd.DataFrame()}, pd.DataFrame)
+
+def test_is_instance_collection_multiple():
+    assert is_instance_collection([pd.DataFrame(), pd.Series()], [pd.DataFrame, pd.Series])
+
+def test_is_instance_collection_false():
+    assert not is_instance_collection([pd.DataFrame(), 1], pd.DataFrame)
+
+
