@@ -1,4 +1,5 @@
 from drain.step import *
+from drain import step
 import numpy as np
 import tempfile
 
@@ -133,3 +134,15 @@ def test_dump_hdf_dict():
 
     for k in r:
         assert r[k].equals(t.result[k])
+
+def test_expand_inputs():
+    s = Step(a=1, b={'c':Step(c=2)})
+    assert step._expand_inputs(s) == {s, Step(c=2)}
+
+def test_collect_kwargs():
+    s = Step(a=1, b={'c':Step(c=2)})
+    s.name = 'Step2'
+    assert step._collect_kwargs(s) == {
+            'Step2': {'a':1},
+            'Step': {'c':2}
+    }
