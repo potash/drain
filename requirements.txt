@@ -5,8 +5,8 @@ sqlalchemy
 psycopg2
 tables
 pandas
-sklearn
-scipy
 numpy
+scipy
 joblib
 six
+sklearn
