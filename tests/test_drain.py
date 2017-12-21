@@ -1,13 +1,13 @@
 # run this using the following command:
-# drain/bin/drain execute --path drain/tests/output/ tests.test_drain::calibration
+# drain/bin/drain execute --path drain/tests/output/ -w tests.test_drain::calibration
 
 from drain import step, model, data
 from drain.step import MapResults
 from itertools import product
 
-def prediction():
+def prediction(n_samples=1000, n_features=100):
     # generate the data including a training and test split
-    d = data.ClassificationData(n_samples=1000, n_features=100)
+    d = data.ClassificationData(n_samples=n_samples, n_features=n_features)
     d.target = True
 
     # construct a random forest estimator

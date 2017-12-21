@@ -9,20 +9,19 @@ from six.moves import input
 from drain import step, util, drake, serialize
 import drain
 
-workflows_help = "Each workflow is either: the name of a method returning either a drain Step object or collection thereof; or the path to a YAML serialization of a step. To specify multiple workflows, separate with semi-colons."
+workflows_help = "Each workflow is either: the name of a method returning either a drain Step object or collection thereof; or the path to a YAML serialization of a step."
 
 def parse_workflows(workflows):
     steps = []
-    for s in workflows.split(';'):
+    for s in workflows:
         if s.endswith('.yaml'):
             steps += serialize.load(s)
         else:
-            modulename, fname = s.split('::')
-            mod = importlib.import_module(modulename)
-            s_attr = getattr(mod, fname)
-            # if s is callable, it should return a collection of Steps
-            # otherwise assume it is a collection of Steps
-            ss = util.make_list(s_attr() if hasattr(s_attr, '__call__') else s_attr)
+            modulename = s[:s.split('(')[0].rfind('.')]
+            exec('import %s' % modulename)
+            if s.find('(') < 0:
+                s += '()'
+            ss = util.make_list(eval('%s' % s))
             logging.info('Loaded %s with %s leaf steps' % (s, len(ss)))
             steps += ss
     return steps
@@ -47,11 +46,11 @@ if __name__ == "__main__":
     parser_exec.add_argument('--debug', action='store_true', help='Execute steps with Python debugger.')
     parser_exec.add_argument('--preview', action='store_true', help='Print the drake workflow that would run, then stops.')
     parser_exec.add_argument('--path', type=str, help='Output base directory. If not specified, use $DRAINPATH environment variable.')
-    parser_exec.add_argument('workflows', type=str, help=workflows_help)
+    parser_exec.add_argument('-w', '--workflow', action='append', help=workflows_help, required=True)
    
     parser_keep = subparsers.add_parser('keep', help='Delete all outputs except those which are targets of the specified workflows.')
     parser_keep.add_argument('--path', type=str, help='Output base directory. If not specified, use $DRAINPATH environment variable.')
-    parser_keep.add_argument('workflows', type=str, help=workflows_help)
+    parser_keep.add_argument('-w', '--workflow', action='append', help=workflows_help, required=True)
 
     args, drake_args = parser.parse_known_args()
     if args.path:
@@ -59,7 +58,7 @@ if __name__ == "__main__":
     elif drain.PATH is None:
         raise ValueError('Must pass path argument or set DRAINPATH environment variable')
 
-    steps = parse_workflows(args.workflows)
+    steps = parse_workflows(args.workflow)
 
     if args.command == 'execute':
         if args.drakefile is None and not args.ignore_drakefile and os.path.exists('Drakefile'):
