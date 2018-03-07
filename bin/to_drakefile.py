@@ -1,10 +1,8 @@
 import os
 import sys
 import argparse
-import importlib
 import logging
-import shutil
-from six.moves import input
+import signal
 
 from drain import step, util, drake, serialize
 import drain
@@ -48,9 +46,11 @@ if __name__ == "__main__":
     parser_exec.add_argument('--path', type=str, help='Output base directory. If not specified, use $DRAINPATH environment variable.')
     parser_exec.add_argument('-w', '--workflow', action='append', help=workflows_help, required=True)
    
-    parser_keep = subparsers.add_parser('keep', help='Delete all outputs except those which are targets of the specified workflows.')
-    parser_keep.add_argument('--path', type=str, help='Output base directory. If not specified, use $DRAINPATH environment variable.')
-    parser_keep.add_argument('-w', '--workflow', action='append', help=workflows_help, required=True)
+    parser_list = subparsers.add_parser('list', help='Print step directories. Pipe into rm (for cleanup), du (for disk usage), etc.')
+    parser_list.add_argument('--complete', action='store_true', help='Only include steps missing that have not been completed.')
+    parser_list.add_argument('--invert', action='store_true', help='Print the inverse (complement) of the specified workflows.')
+    parser_list.add_argument('--path', type=str, help='Output base directory. If not specified, use $DRAINPATH environment variable.')
+    parser_list.add_argument('-w', '--workflow', action='append', help=workflows_help, required=False)
 
     args, drake_args = parser.parse_known_args()
     if args.path:
@@ -58,9 +58,8 @@ if __name__ == "__main__":
     elif drain.PATH is None:
         raise ValueError('Must pass path argument or set DRAINPATH environment variable')
 
-    steps = parse_workflows(args.workflow)
-
     if args.command == 'execute':
+        steps = parse_workflows(args.workflow)
         if args.drakefile is None and not args.ignore_drakefile and os.path.exists('Drakefile'):
             args.drakefile = 'Drakefile'
         drakefile = os.path.abspath(args.drakefile) if args.drakefile else None
@@ -92,20 +91,19 @@ if __name__ == "__main__":
                 with open(args.drakeargsfile, 'w') as args:
                     args.write(str.join(' ', drake_args))
 
-    elif args.command == 'keep':
-        rm_dirs = step._output_dirnames().difference(
-                step._output_dirnames(steps))
-        if len(rm_dirs) == 0:
-            print("No outputs to remove.")
-            quit()
-
-        print('The following outputs will be REMOVED:')
-        for d in rm_dirs:
-            print("  " + d)
-        response = input("Do you want to continue? [Y/n] ")
-        if response.upper() == 'Y':
-            for d in rm_dirs:
-                shutil.rmtree(d)
+    elif args.command == 'list':
+        if args.workflow is not None:
+            steps = parse_workflows(args.workflow)
+            dirs = step._output_dirnames(steps)
         else:
-            print("Abort.")
-            exit()
+            dirs = step._output_dirnames()
+
+        if args.complete:
+            dirs = [d for d in dirs if os.path.exists(os.path.join(d, 'target'))]
+            
+        if args.invert:
+            dirs = step._output_dirnames().difference(dirs)
+        
+        signal.signal(signal.SIGPIPE, signal.SIG_DFL)
+        for d in dirs:
+            print(d)
