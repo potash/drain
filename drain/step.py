@@ -354,6 +354,17 @@ def merge_results(inputs, arguments=None):
         return arguments
 
 
+class GetResult(Step):
+    """
+    Given a step that returns a dict, this Step grabs a single value from it.
+    """
+    def __init__(self, step, key):
+        Step.__init__(self, step=step, key=key, inputs=[step])
+
+    def run(self, *args, **kwargs):
+        return kwargs[self.key]
+
+
 class MapResults(Step):
     """
     This step maps the results of its inputs into a new form of arguments and keyword arguments.

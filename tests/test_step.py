@@ -153,3 +153,10 @@ def test_call():
     t.execute()
 
     assert t.result.values[0] == 5
+
+def test_get_reslt():
+    c = Call(dict, a=1)
+    d = GetResult(c, 'a')
+    d.execute()
+
+    assert d.result == 1
