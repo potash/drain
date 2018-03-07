@@ -10,7 +10,7 @@ from sklearn.externals import joblib
 from sklearn.base import _pprint
 
 from drain import util, metrics
-from drain.step import Step, Construct
+from drain.step import Step, Call
 
 
 class FitPredict(Step):
@@ -438,8 +438,8 @@ def forests(**kwargs):
     d = dict(criterion=['entropy', 'gini'], max_features=['sqrt', 'log2'],
              n_jobs=[-1], **kwargs)
     for estimator_args in util.dict_product(d):
-        steps.append(Construct(
-                     _class='sklearn.ensemble.RandomForestClassifier',
+        steps.append(Call(
+                     'sklearn.ensemble.RandomForestClassifier',
                      **estimator_args))
 
     return steps
@@ -449,8 +449,8 @@ def logits(**kwargs):
     steps = []
     for estimator_args in util.dict_product(dict(
             penalty=['l1', 'l2'], C=[.001, .01, .1, 1], **kwargs)):
-        steps.append(Construct(_class='sklearn.linear_model.LogisticRegression',
-                               **estimator_args))
+        steps.append(Call('sklearn.linear_model.LogisticRegression',
+                          **estimator_args))
 
     return steps
 
@@ -462,7 +462,7 @@ def svms(**kwargs):
                  dual=[True, False], C=[.001, .01, .1, 1])) + \
             util.dict_product(dict(
                     penalty=['l1'], dual=[False], C=[.001, .01, .1, 1])):
-        steps.append(Construct(_class='sklearn.svm.LinearSVC',
-                               **estimator_args))
+        steps.append(Call('sklearn.svm.LinearSVC',
+                          **estimator_args))
 
     return steps

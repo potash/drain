@@ -146,3 +146,10 @@ def test_collect_kwargs():
             'Step2': {'a':1},
             'Step': {'c':2}
     }
+
+def test_call():
+    s = Call(pd.DataFrame, data=[0,10])
+    t = Call(s, 'mean')
+    t.execute()
+
+    assert t.result.values[0] == 5

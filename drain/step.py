@@ -423,35 +423,39 @@ class MapResults(Step):
         return _simplify_arguments(arguments)
 
 
-class Construct(Step):
-    def __init__(self, _class, **kwargs):
-        if isinstance(_class, str):
-            _class = util.get_attr(_class)
-        Step.__init__(self, _class=_class, **kwargs)
+class Call(Step):
+    def __init__(self, _base, _method_name=None, inputs=None, **kwargs):
+        """
+        Args:
+            _base: The base from which to call.
+                If a drain Step, then use its result.
+            _method_name: Optional method name.
+                If _base is to be called, leave this None.
+        """
+        if inputs is None:
+            inputs = []
+        if isinstance(_base, Step):
+            inputs = [_base] + inputs
 
-        # default name is class name
-        if hasattr(_class, '__name__'):
-            self.name = _class.__name__
+        Step.__init__(self, _base=_base, _method_name=_method_name,
+                      inputs=inputs, **kwargs)
 
     def run(self, *args, **update_kwargs):
         kwargs = self.get_arguments(
-                _class=False, inputs=False)
+                _base=False, _method_name=False, inputs=False)
         kwargs.update(update_kwargs)
 
-        return self._class(*args, **kwargs)
+        if isinstance(self._base, Step):
+            call = self._base.result
+        elif isinstance(self._base, str):
+            call = util.get_attr(self._base)
+        else:
+            call = self._base
 
+        if self._method_name is not None:
+            call = getattr(call, self._method_name)
 
-class Call(Step):
-    def __init__(self, _method_name, **kwargs):
-        Step.__init__(self, _method_name=_method_name, **kwargs)
-
-    def run(self, obj, **update_kwargs):
-        kwargs = self.get_arguments(
-                _method_name=False, inputs=False)
-        kwargs.update(update_kwargs)
-
-        method = getattr(obj, self._method_name)
-        return method(**kwargs)
+        return call(**kwargs)
 
 
 def _expand_inputs(step, steps=None):
