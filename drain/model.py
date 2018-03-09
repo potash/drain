@@ -35,9 +35,11 @@ class FitPredict(Step):
                       return_predictions=return_predictions, prefit=prefit,
                       predict_train=predict_train)
 
-    def run(self, estimator, X, y, train=None, test=None, aux=None, sample_weight=None,
+    def run(self, estimator, X, y=None, train=None, test=None, aux=None, sample_weight=None,
             feature_importances=None):
         if not self.prefit:
+            if y is None:
+                raise ValueError("Need outcome data y for predictions")
             if train is not None:
                 X_train, y_train = X[train], y[train]
             else:
@@ -75,7 +77,11 @@ class FitPredict(Step):
                 X_test, y_test = X, y
 
             logging.info('Predicting %s examples' % len(X_test))
-            y = pd.DataFrame({'true': y_test})
+            if y_test is not None:
+                y = pd.DataFrame({'test': y_test})
+            else:
+                y = pd.DataFrame(index=X_test.index)
+
             y['score'] = y_score(estimator, X_test)
 
             if self.predict_train:
