@@ -47,10 +47,11 @@ if __name__ == "__main__":
     parser_exec.add_argument('-w', '--workflow', action='append', help=workflows_help, required=True)
    
     parser_list = subparsers.add_parser('list', help='Print step directories. Pipe into rm (for cleanup), du (for disk usage), etc.')
+    parser_list.add_argument('--path', type=str, help='Output base directory. If not specified, use $DRAINPATH environment variable.')
     parser_list.add_argument('--complete', action='store_true', help='Only include steps missing that have not been completed.')
     parser_list.add_argument('--invert', action='store_true', help='Print the inverse (complement) of the specified workflows.')
-    parser_list.add_argument('--path', type=str, help='Output base directory. If not specified, use $DRAINPATH environment variable.')
     parser_list.add_argument('-w', '--workflow', action='append', help=workflows_help, required=False)
+    parser_list.add_argument('--leaf', action='store_true', help='With --workflow, only include leaves.')
 
     args, drake_args = parser.parse_known_args()
     if args.path:
@@ -94,7 +95,7 @@ if __name__ == "__main__":
     elif args.command == 'list':
         if args.workflow is not None:
             steps = parse_workflows(args.workflow)
-            dirs = step._output_dirnames(steps)
+            dirs = step._output_dirnames(steps, leaf=args.leaf)
         else:
             dirs = step._output_dirnames()
 

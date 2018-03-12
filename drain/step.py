@@ -514,10 +514,11 @@ def _collect_kwargs(step, drop_duplicate_names=True):
     return dicts
 
 
-def _output_dirnames(workflow=None):
+def _output_dirnames(workflow=None, leaf=False):
     """
     Args:
         workflow: optional collection of steps
+        leaf: only include leaves of the workflow
 
     Returns: If workflow is specified, returns output directories for all target
         steps in the workflow. If no workflow specified, returns all extant
@@ -530,5 +531,9 @@ def _output_dirnames(workflow=None):
                 dirs.add(os.path.join(drain.PATH, cls, step))
         return dirs
     else:
-        steps = util.union(step.get_inputs() for step in workflow if step.target)
+        if leaf:
+            steps = [step for step in workflow if step.target]
+        else:
+            steps = util.union(step.get_inputs() for step in workflow if step.target)
+
         return set(step._output_dirname for step in steps)
