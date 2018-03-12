@@ -5,7 +5,6 @@ import logging
 
 from copy import deepcopy
 import pandas as pd
-from scipy import stats
 from six import string_types
 
 import numpy as np
@@ -195,28 +194,6 @@ class ToHDF(Step):
 
     def load(self):
         self.result = pd.HDFStore(os.path.join(self._dump_dirname, 'result.h5'), mode='r')
-
-
-class Shape(Step):
-    def run(self, X, index=None, **kwargs):
-        if index is not None:
-            X = X[index]
-        return {'n_rows': X.shape[0], 'n_cols': X.shape[1]}
-
-
-class HoldOut(Step):
-    def run(self, index, **kwargs):
-        mask = np.zeros(len(index), dtype=bool)
-        mask[random.choice(len(index), len(index)*self.p)] = True
-
-        new_index = pd.Series(index.values & (~mask), index=index.index)
-        holdout = pd.Series(index.values & mask, index=index.index)
-
-        return {'index': new_index, 'holdout': holdout}
-
-
-def percentile(series):
-    return pd.Series(stats.rankdata(series)/len(series), index=series.index)
 
 
 def prefix_columns(df, prefix, ignore=[]):
@@ -477,26 +454,6 @@ def non_numeric_columns(df):
     return columns
 
 
-def get_correlates(df, c=.99):
-    corr = df.corr().values
-    for i in range(len(df.columns)):
-        for j in range(i):
-            if corr[i][j] >= c:
-                print(df.columns[i] + ', ' + df.columns[j] + ': ' + str(corr[i][j]))
-
-
-def undersample_by(y, train, p):
-    a = pd.Series([random.random() < p for i in range(len(y))], index=y.index)
-    return train & (y | a)
-
-
-def undersample_to(y, train, p):
-    T = y[train].sum()
-    F = len(y[train]) - T
-    q = p*T/((1-p)*F)
-    return undersample_by(y, train, q)
-
-
 def date_censor_sql(date_column, today, column=None):
     """
     if today is None, then no censoring
@@ -676,51 +633,3 @@ def parse_delta(s):
             return relativedelta(**{delta_chars[ls[0][1]]: int(ls[0][0])})
         else:
             raise ValueError('Invalid delta string: %s' % s)
-
-
-def index_as_series(df, level=None):
-    """
-    return the index (given level) as a series with the original index
-    """
-    if level is not None:
-        values = df.index.get_level_values(level)
-    else:
-        values = df.index.values
-
-    return pd.Series(values, index=df.index)
-
-
-def get_series(df, name):
-    """
-    get a column or index level as series
-    if name is none return the whole index
-    """
-    if name in df.columns:
-        return df[name]
-    else:
-        return index_as_series(df, name)
-
-
-def nearest_neighbors_impute(df, coordinate_columns, data_columns, knr_params={}):
-    from sklearn.neighbors import KNeighborsRegressor
-    for column in data_columns:
-        not_null = df[column].notnull()
-        if (~not_null).sum() == 0:
-            continue
-        knr = KNeighborsRegressor(**knr_params)
-        knr.fit(df.loc[not_null, coordinate_columns], df.loc[not_null, [column]])
-        predicted = knr.predict(df.loc[~not_null, coordinate_columns])
-        df.loc[(~not_null), [column]] = predicted
-
-
-def bins(df, N, how='linear'):
-    if how == 'linear':
-        df_min = df.min()
-        df_max = df.max()
-        return [np.linspace(df_min.ix[c], df_max.ix[c], N)
-                for c in df.columns]
-    if how == 'percentile':
-        return [np.unique(np.percentile(df[c], np.arange(0, 1, 1.0/N)*100))
-                for c in df.columns]
-    else:
-        raise ValueError('Invalid how: %s' % how)

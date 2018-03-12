@@ -7,7 +7,6 @@ import pandas as pd
 import numpy as np
 
 from sklearn.externals import joblib
-from sklearn.base import _pprint
 
 from drain import util, metrics
 from drain.step import Step, Call
@@ -384,20 +383,6 @@ def rank(self, **kwargs):
     y0 = self.result['y']
     y0 = y_subset(y0, **kwargs)
     return y0.score.rank(ascending=False)
-
-
-class PrintMetrics(Step):
-    def __init__(self, metrics, **kwargs):
-        Step.__init__(self, metrics=metrics, **kwargs)
-
-    def run(self, *args, **kwargs):
-        for metric in self.metrics:
-            kwargs = dict(metric)
-            metric_name = kwargs.pop('metric')
-            # TODO: allow external metrics
-            metric_fn = getattr(sys.modules[__name__], metric_name)
-            r = metric_fn(self.inputs[0], **kwargs)
-            print('%s(%s): %s' % (metric_name, _pprint(kwargs, offset=len(metric_name)), r))
 
 
 def perturb(estimator, X, bins, columns=None):
