@@ -156,7 +156,7 @@ def test_call():
 
 def test_get_reslt():
     c = Call(dict, a=1)
-    d = GetResult(c, 'a')
+    d = GetItem(c, 'a')
     d.execute()
 
     assert d.result == 1

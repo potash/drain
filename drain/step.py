@@ -354,14 +354,20 @@ def merge_results(inputs, arguments=None):
         return arguments
 
 
-class GetResult(Step):
+class GetItem(Step):
     """
     Given a step that returns a dict, this Step grabs a single value from it.
     """
-    def __init__(self, step, key):
-        Step.__init__(self, step=step, key=key, inputs=[step])
+    def __init__(self, step, key=None):
+        inputs = [step]
+        if isinstance(key, Step):
+            inputs.append(key)
+
+        Step.__init__(self, step=step, key=key, inputs=inputs)
 
     def run(self, *args, **kwargs):
+        if isinstance(self.key, Step):
+            key = self.key.result
         return kwargs[self.key]
 
 
@@ -376,7 +382,7 @@ class MapResults(Step):
     def __init__(self, inputs, mapping):
         """
         Args:
-            inputs: input steps whose results will be mapped
+            inputs: input step or list of steps whose results will be mapped
             mapping: the mapping contains a list of maps. Each map can be:
                 - dictionary: when a result has keyword entries, use this to remap them.
                     The keys are the source key and the values are the destination keys.
@@ -391,7 +397,7 @@ class MapResults(Step):
 
         Additional entries are mapped in the default way.
         """
-        Step.__init__(self, inputs=inputs, mapping=mapping)
+        Step.__init__(self, inputs=util.make_list(inputs), mapping=mapping)
 
     def run(self, *args, **kwargs):
         mapping = util.make_list(self.mapping)
