@@ -106,8 +106,17 @@ class AggregationBase(Step):
         DataFrame.fillna() value argument. Examples:
             - return 0: replace missing values with zero
             - return df.mean(): replace missing values with column mean
+
+        This default implimentation fills counts with zero.
+        TODO: identify counts more robustly instead of relying on column name
+
+        Typically fill other fields with mean but can't do that during the join
+            because that would leak information across a train/test split
         """
-        return {}
+        value = pd.Series(
+                0, index=[c for c in df.columns
+                          if c.endswith('_count') and c.find('_per_') == -1])
+        return value
 
     def select(self, df, args, inplace=False):
         """
@@ -259,9 +268,6 @@ class SimpleAggregation(AggregationBase):
         AggregationBase.__init__(self, insert_args=[], concat_args=['index'],
                                  aggregator_args=[], parallel=parallel, prefix=prefix)
 
-    def fillna_value(self, df, left, index):
-        return left[df.columns].mean()
-
     def get_aggregator(self, **kwargs):
         return Aggregator(self.inputs[0].result, self.aggregates)
 
@@ -324,18 +330,6 @@ class SpacetimeAggregation(AggregationBase):
     @property
     def indexes(self):
         return {name: value[0] for name, value in self.spacedeltas.items()}
-
-    def fillna_value(self, df, left, **kwargs):
-        """
-        fills counts with zero.
-            TODO: identify counts more robustly instead of relying on column name
-        typically fill other fields with mean but can't do that during the join
-            because that would leak information across a train/test split
-        """
-        value = pd.Series(
-                0, index=[c for c in df.columns
-                          if c.endswith('_count') and c.find('_per_') == -1])
-        return value
 
     @property
     def arguments(self):
