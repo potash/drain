@@ -36,3 +36,4 @@ def configure():
     """
     yaml.add_multi_representer(Step, step_multi_representer)
     yaml.add_multi_constructor('!step', step_multi_constructor)
+    yaml.Dumper.ignore_aliases = lambda *args: True
