@@ -15,7 +15,7 @@ with open('requirements_dev.txt') as f:
 
 setup(
     name='drain',
-    version='0.0.5',
+    version='0.0.6',
     description="pipeline library",
     long_description=open('README.rst').read(),
     author="Eric Potash",
