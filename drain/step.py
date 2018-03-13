@@ -366,9 +366,8 @@ class GetItem(Step):
         Step.__init__(self, step=step, key=key, inputs=inputs)
 
     def run(self, *args, **kwargs):
-        if isinstance(self.key, Step):
-            key = self.key.result
-        return kwargs[self.key]
+        key = self.key.result if isinstance(self.key, Step) else self.key
+        return self.step.result[key]
 
 
 class MapResults(Step):
@@ -464,6 +463,7 @@ class Call(Step):
 
         if isinstance(self._base, Step):
             call = self._base.result
+            args = args[1:]
         elif isinstance(self._base, str):
             call = util.get_attr(self._base)
         else:
@@ -472,7 +472,7 @@ class Call(Step):
         if self._method_name is not None:
             call = getattr(call, self._method_name)
 
-        return call(**kwargs)
+        return call(*args, **kwargs)
 
 
 def _expand_inputs(step, steps=None):
